@@ -14,24 +14,32 @@ client = TestClient(app)
 def _valid_llm_json() -> str:
     return json.dumps(
         {
-            "motivation_clarity": 0.72,
-            "initiative": 0.68,
-            "leadership_impact": 0.61,
-            "growth_trajectory": 0.74,
-            "resilience": 0.66,
-            "program_fit": 0.73,
-            "evidence_richness": 0.64,
-            "specificity_score": 0.62,
-            "evidence_count": 0.58,
-            "consistency_score": 0.70,
-            "completeness_score": 0.71,
-            "genericness_score": 0.29,
-            "contradiction_flag": False,
-            "polished_but_empty_score": 0.24,
-            "cross_section_mismatch_score": 0.19,
-            "top_strength_signals": ["self-started initiative", "clear growth reflection"],
-            "main_gap_signals": ["limited quantified outcomes"],
-            "uncertainties": ["some claims need deeper verification"],
+            "top_strength_signals": [
+                {
+                    "claim": "self-started initiative",
+                    "source": "motivation_questions",
+                    "snippet": "I organized a volunteer team and tracked weekly outcomes.",
+                },
+                {
+                    "claim": "clear growth reflection",
+                    "source": "interview_text",
+                    "snippet": "I can explain actions, timeline, and results with concrete examples.",
+                },
+            ],
+            "main_gap_signals": [
+                {
+                    "claim": "missing quantified outcomes beyond one project",
+                    "source": "motivation_letter_text",
+                    "snippet": "I started a school project and improved participation by 20% in two months.",
+                }
+            ],
+            "uncertainties": [
+                {
+                    "claim": "insufficient breadth of leadership evidence",
+                    "source": "motivation_questions",
+                    "snippet": "I organized a volunteer team and tracked weekly outcomes.",
+                }
+            ],
             "evidence_spans": [
                 {
                     "dimension": "initiative",
@@ -72,7 +80,7 @@ def test_hybrid_mode_default_with_fallback_metadata(monkeypatch) -> None:
     try:
         CONFIG.llm.provider = "openai"
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "hybrid"
+        assert result.extraction_mode == "deterministic_scoring"
         assert isinstance(result.llm_metadata, dict)
     finally:
         CONFIG.llm.provider = old_provider
@@ -90,7 +98,7 @@ def test_llm_mode_with_openai_client_patch(monkeypatch) -> None:
     CONFIG.llm.provider = "openai"
     try:
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "hybrid"
+        assert result.extraction_mode == "deterministic_scoring"
         assert result.llm_metadata is not None
         assert result.llm_metadata.get("provider") == "openai"
     finally:
@@ -132,7 +140,7 @@ def test_invalid_llm_json_falls_back_with_hybrid_mode(monkeypatch) -> None:
     CONFIG.llm.fallback_to_baseline = True
     try:
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "hybrid"
+        assert result.extraction_mode == "deterministic_scoring"
         assert result.llm_metadata is not None
         assert "fallback_reason" in result.llm_metadata
     finally:
@@ -155,9 +163,14 @@ def test_high_risk_does_not_directly_reject_candidate() -> None:
     assert result.recommendation not in {"invalid", "incomplete_application"}
 
 
-def test_sensitive_fields_do_not_affect_merit() -> None:
+def test_sensitive_fields_do_not_affect_merit(monkeypatch) -> None:
     pipeline = ScoringPipeline()
     baseline = _payload()
+
+    def _fake_complete(self, request):
+        return LLMResponse(content=_valid_llm_json(), provider="openai", model=request.model, latency_ms=1)
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
 
     with_sensitive = deepcopy(baseline)
     with_sensitive["gender"] = "female"
@@ -186,8 +199,20 @@ def test_debug_llm_extract_endpoint_with_openai_patch(monkeypatch) -> None:
         response = client.post("/debug/llm-extract", json=payload)
         assert response.status_code == 200
         parsed = response.json()
-        assert "features" in parsed
+        assert "top_strength_claims" in parsed
+        assert "main_gap_claims" in parsed
         assert "llm_metadata" in parsed
         assert parsed["llm_metadata"]["provider"] == "openai"
     finally:
         CONFIG.llm.provider = old_provider
+
+
+def test_debug_score_trace_endpoint_returns_formula_and_components() -> None:
+    payload = _payload()
+    response = client.post("/debug/score-trace", json=payload)
+    assert response.status_code == 200
+    parsed = response.json()
+    assert parsed.get("extraction_mode") == "deterministic_scoring"
+    assert "score_trace" in parsed
+    assert "formulas" in parsed["score_trace"]
+    assert "components" in parsed["score_trace"]

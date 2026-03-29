@@ -83,7 +83,7 @@ Response (guaranteed core fields):
 
 Additional trace fields currently returned:
 
-- `extraction_mode` (`hybrid`)
+- `extraction_mode` (`deterministic_scoring`)
 - `extractor_version`
 - `llm_metadata` (nullable)
 
@@ -135,6 +135,7 @@ Purpose:
 - `POST /debug/features`
 - `POST /debug/explanation`
 - `POST /debug/llm-extract`
+- `POST /debug/score-trace`
 
 Use debug routes for diagnostics only.
 
@@ -147,7 +148,7 @@ Additional endpoints included:
 
 `POST /score` includes additional trace fields:
 
-- `extraction_mode`: `hybrid`
+- `extraction_mode`: `deterministic_scoring`
 - `extractor_version`
 - `llm_metadata` (nullable)
 
@@ -159,12 +160,8 @@ The service uses three levels of scale:
 2. Aggregated raw scores: 0.0..1.0
 3. Display/API scores: integer 0..100
 
-LLM extractor rubric numeric fields support two input styles:
-
-1. normalized 0.0..1.0 values
-2. rubric 0..3 values
-
-If rubric-style values are detected, parser normalizes them to 0.0..1.0 before validation and downstream scoring.
+Numeric text features are computed by deterministic extractors only.
+LLM is used for explainability artifacts (claims + evidence links), not for numeric scoring.
 
 Utility functions:
 
@@ -220,23 +217,24 @@ These are operational candidate-level outputs used in committee workflow:
 - Human interpretation: operational queue guidance only
 - Misuse to avoid: using recommendation as final decision
 
-## Why the LLM Is an Extractor, Not the Judge
+## Why the LLM Is Explainability-Only
 
 LLM usage in this service is intentionally bounded.
 
 The LLM is allowed to:
 
 - read candidate text sections
-- extract structured rubric features in `0.0..1.0`
-- suggest strengths/gaps/uncertainties and evidence spans
+- produce strengths/gaps/uncertainties in claim -> evidence format
+- link claims to quoted evidence snippets with source labels
 
 The LLM is not allowed to:
 
 - produce final admission decision
 - directly set final recommendation as source of truth
+- output numeric scoring features used by merit/confidence/authenticity formulas
 - replace eligibility, privacy filtering, or deterministic scoring formulas
 
-Internal deterministic code computes `merit_score`, `confidence_score`, `authenticity_risk`, and `recommendation` in all modes.
+Internal deterministic code computes all numeric features and final `merit_score`, `confidence_score`, `authenticity_risk`, and `recommendation`.
 
 ### Layer B: System Evaluation Metrics (Validation Metrics)
 
@@ -436,7 +434,7 @@ curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
   "scoring_run_id": "run_20260329120000_ab12cd34",
   "scoring_version": "v1.0.0",
   "prompt_version": null,
-  "extraction_mode": "hybrid",
+  "extraction_mode": "deterministic_scoring",
   "extractor_version": "llm-extractor-v1",
   "llm_metadata": {"provider": "openai", "model": "gpt-4o", "latency_ms": 812},
   "eligibility_status": "eligible",
@@ -492,21 +490,22 @@ Pipeline stages:
 3. Preprocessing and normalization
 4. Eligibility layer
 5. Structured feature extraction
-6. Text rubric extraction (LLM-assisted extractor with deterministic fallback)
-7. Authenticity risk estimation
-8. Feature construction
-9. Scoring engine
-10. Recommendation mapping
-11. Explanation generation
+6. Deterministic text feature extraction
+7. Optional LLM explainability enrichment (claim -> evidence only)
+8. Authenticity risk estimation
+9. Feature construction
+10. Scoring engine
+11. Recommendation mapping
+12. Explanation generation
 
-### Hybrid Extraction Strategy
+### Deterministic Scoring Strategy
 
-- `hybrid` extraction:
-  - LLM extracts structured rubric features
-  - if LLM call/parsing fails, deterministic heuristic extractor is used as fallback
-  - final scores and recommendation are always deterministic and internal
+- numeric features are computed only by deterministic extractors
+- final scores and recommendation are always deterministic and internal
+- LLM is optional and used only for explainability artifacts (claims + evidence links)
+- if LLM explainability fails, deterministic explanations remain available
 
-The LLM is an extractor/helper, not the final decision-maker.
+The LLM is an explainability helper, not a numeric scorer or final decision-maker.
 
 Code structure:
 
@@ -531,8 +530,8 @@ Use `scripts/score_candidates.py` to produce:
 6. Missingness/coverage diagnostics
 7. No-sensitive-fields-used audit
 8. Framework placeholders for future label-based evaluation
-9. Extraction success rate / fallback rate / parsing validity rate
-10. Hybrid extraction stability and fallback diagnostics
+9. Explainability LLM success rate / fallback rate / parsing validity rate
+10. Deterministic scoring stability diagnostics
 
 Run:
 

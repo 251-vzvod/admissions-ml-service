@@ -12,9 +12,11 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.config import CONFIG
 from app.schemas.input import BatchScoreRequest, CandidateInput
 from app.schemas.output import BatchScoreResponse, ScoreResponse
-from app.services.llm_extractor import extract_text_features_with_llm
+from app.services.llm_extractor import extract_explainability_with_llm
 from app.services.preprocessing import preprocess_text_inputs
 from app.services.pipeline import ScoringPipeline
+from app.services.structured_features import extract_structured_features
+from app.services.text_features import extract_text_features
 from app.utils.ids import generate_scoring_run_id
 
 
@@ -41,7 +43,7 @@ def get_scoring_config() -> dict[str, Any]:
             "confidence_components": CONFIG.weights.confidence_components,
         },
         "thresholds": asdict(CONFIG.thresholds),
-        "extraction_strategy": "llm_features_plus_deterministic_scoring",
+        "extraction_strategy": "deterministic_features_plus_optional_llm_explainability",
         "llm_provider": CONFIG.llm.provider,
         "llm_model": CONFIG.llm.model,
         "llm_fallback_to_deterministic_extractor_on_failure": CONFIG.llm.fallback_to_baseline,
@@ -115,17 +117,31 @@ def debug_explanation(candidate: CandidateInput) -> dict[str, Any]:
 
 @router.post("/debug/llm-extract")
 def debug_llm_extract(candidate: CandidateInput) -> dict[str, Any]:
-    """Return parsed LLM extraction object for inspection (when enabled)."""
+    """Return LLM explainability artifacts for inspection."""
     text_inputs = candidate.text_inputs.model_dump(mode="python") if candidate.text_inputs else {}
     bundle = preprocess_text_inputs(text_inputs=text_inputs)
-    result = extract_text_features_with_llm(bundle)
+
+    structured_data = candidate.structured_data.model_dump(mode="python") if candidate.structured_data else {}
+    behavioral_signals = candidate.behavioral_signals.model_dump(mode="python") if candidate.behavioral_signals else {}
+    structured = extract_structured_features(
+        structured_data=structured_data,
+        behavioral_signals=behavioral_signals,
+        bundle=bundle,
+    )
+    deterministic_text = extract_text_features(bundle=bundle, structured=structured.features)
+
+    result = extract_explainability_with_llm(bundle, deterministic_signals=deterministic_text.features)
     return {
-        "features": result.features,
-        "diagnostics": result.diagnostics,
-        "top_strength_signals": result.strengths,
-        "main_gap_signals": result.gaps,
-        "uncertainties": result.uncertainties,
+        "top_strength_claims": result.strength_claims,
+        "main_gap_claims": result.gap_claims,
+        "uncertainty_claims": result.uncertainty_claims,
         "evidence_spans": result.evidence_spans,
         "extractor_rationale": result.rationale,
         "llm_metadata": result.llm_metadata,
     }
+
+
+@router.post("/debug/score-trace")
+def debug_score_trace(candidate: CandidateInput) -> dict[str, Any]:
+    """Return full deterministic scoring trace for auditing."""
+    return pipeline.score_candidate_trace_model(candidate)

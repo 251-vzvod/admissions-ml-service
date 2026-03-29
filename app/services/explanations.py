@@ -21,6 +21,39 @@ def _pick_snippet(text: str, max_len: int = 180) -> str:
     return cleaned[:max_len] + ("..." if len(cleaned) > max_len else "")
 
 
+def _format_claim_with_evidence(item: dict[str, str]) -> str:
+    claim = " ".join((item.get("claim") or "").split()).strip()
+    source = (item.get("source") or "motivation_letter_text").strip() or "motivation_letter_text"
+    snippet = _pick_snippet(item.get("snippet") or "", max_len=120)
+
+    if claim and snippet:
+        return f"{claim} [evidence: {source} -> \"{snippet}\"]"
+    if claim:
+        return claim
+    if snippet:
+        return f"evidence-only [{source}: \"{snippet}\"]"
+    return ""
+
+
+def _normalize_uncertainty_claim(item: dict[str, str]) -> dict[str, str]:
+    claim = " ".join((item.get("claim") or "").split()).strip()
+    lowered = claim.lower()
+    predictive_markers = [
+        "future",
+        "potential",
+        "capability",
+        "will",
+        "may become",
+        "сможет",
+        "потенциал",
+    ]
+    if claim and any(marker in lowered for marker in predictive_markers) and "evidence" not in lowered:
+        claim = f"insufficient evidence to confirm: {claim}"
+    normalized = dict(item)
+    normalized["claim"] = claim
+    return normalized
+
+
 def build_explanation(
     feature_map: dict[str, float | bool],
     merit_breakdown: dict[str, int],
@@ -34,6 +67,9 @@ def build_explanation(
     provided_strengths: list[str] | None = None,
     provided_gaps: list[str] | None = None,
     provided_uncertainties: list[str] | None = None,
+    provided_strength_claims: list[dict[str, str]] | None = None,
+    provided_gap_claims: list[dict[str, str]] | None = None,
+    provided_uncertainty_claims: list[dict[str, str]] | None = None,
     provided_evidence_spans: list[dict[str, str]] | None = None,
     extractor_rationale: str | None = None,
 ) -> ExplanationResult:
@@ -128,10 +164,24 @@ def build_explanation(
         ),
     )
 
+    llm_strengths = [_format_claim_with_evidence(item) for item in (provided_strength_claims or [])]
+    llm_gaps = [_format_claim_with_evidence(item) for item in (provided_gap_claims or [])]
+    llm_uncertainties = [
+        _format_claim_with_evidence(_normalize_uncertainty_claim(item)) for item in (provided_uncertainty_claims or [])
+    ]
+
+    top_strengths_final = [item for item in llm_strengths if item][:3] if llm_strengths else (provided_strengths[:3] if provided_strengths else strengths[:3])
+    main_gaps_final = [item for item in llm_gaps if item][:3] if llm_gaps else (provided_gaps[:3] if provided_gaps else gaps[:3])
+    uncertainties_final = (
+        [item for item in llm_uncertainties if item][:3]
+        if llm_uncertainties
+        else (provided_uncertainties[:3] if provided_uncertainties else uncertainties[:3])
+    )
+
     return ExplanationResult(
-        top_strengths=(provided_strengths[:3] if provided_strengths else strengths[:3]),
-        main_gaps=(provided_gaps[:3] if provided_gaps else gaps[:3]),
-        uncertainties=(provided_uncertainties[:3] if provided_uncertainties else uncertainties[:3]),
+        top_strengths=top_strengths_final,
+        main_gaps=main_gaps_final,
+        uncertainties=uncertainties_final,
         evidence_spans=evidence_spans,
         explanation=ExplanationPayload(summary=summary, scoring_notes=scoring_notes),
     )

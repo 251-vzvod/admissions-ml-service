@@ -10,11 +10,11 @@ from app.schemas.output import ScoreResponse
 from app.services.authenticity import estimate_authenticity_risk
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
-from app.services.llm_extractor import extract_text_features_with_llm
+from app.services.llm_extractor import extract_explainability_with_llm
 from app.services.preprocessing import preprocess_text_inputs
 from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
-from app.services.scoring import compute_scores
+from app.services.scoring import build_score_trace, compute_scores
 from app.services.structured_features import extract_structured_features
 from app.services.text_features import extract_text_features
 from app.utils.ids import generate_scoring_run_id
@@ -22,12 +22,9 @@ from app.utils.math_utils import to_display_score
 
 
 class ScoringPipeline:
-    """Deterministic pipeline for explainable candidate scoring."""
+    """Deterministic scoring pipeline with optional LLM explainability."""
 
-    def score_candidate(self, candidate_payload: dict[str, Any], scoring_run_id: str | None = None) -> ScoreResponse:
-        """Run full scoring flow for a single candidate payload."""
-        scoring_run_id = scoring_run_id or generate_scoring_run_id()
-
+    def _prepare_scoring_context(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
         projected, excluded_hits = merit_safe_projection(candidate_payload)
 
         text_inputs = projected.get("text_inputs") if isinstance(projected, dict) else {}
@@ -42,110 +39,32 @@ class ScoringPipeline:
             profile=projected,
         )
 
-        base_response = {
-            "candidate_id": str(projected.get("candidate_id", "")),
-            "scoring_run_id": scoring_run_id,
-            "scoring_version": CONFIG.scoring_version,
-            "prompt_version": CONFIG.prompt_version,
-            "extraction_mode": "hybrid",
-            "extractor_version": CONFIG.llm.extractor_version,
-            "llm_metadata": None,
-            "eligibility_status": eligibility.status,
-            "eligibility_reasons": list(eligibility.reasons),
+        context: dict[str, Any] = {
+            "projected": projected,
+            "excluded_hits": excluded_hits,
+            "bundle": bundle,
+            "eligibility": eligibility,
         }
 
-        if excluded_hits:
-            base_response["eligibility_reasons"].append("sensitive_fields_excluded_from_scoring")
-
         if eligibility.status in {"invalid", "incomplete_application"}:
-            recommendation = "invalid" if eligibility.status == "invalid" else "incomplete_application"
-            early_flags = ["eligibility_gate"]
-            if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
-                early_flags.append("missing_required_materials")
-            explanation = build_explanation(
-                feature_map={},
-                merit_breakdown={
-                    "potential": 0,
-                    "motivation": 0,
-                    "leadership_agency": 0,
-                    "experience_skills": 0,
-                    "trust_completeness": 0,
-                },
-                recommendation=recommendation,
-                review_flags=early_flags,
-                sections=bundle.sections,
-                extraction_mode="hybrid",
-                merit_score=0,
-                confidence_score=0,
-                authenticity_risk=0,
-            )
-            return ScoreResponse(
-                **base_response,
-                merit_score=0,
-                confidence_score=0,
-                authenticity_risk=0,
-                recommendation=recommendation,
-                review_flags=early_flags,
-                merit_breakdown={
-                    "potential": 0,
-                    "motivation": 0,
-                    "leadership_agency": 0,
-                    "experience_skills": 0,
-                    "trust_completeness": 0,
-                },
-                feature_snapshot={
-                    "completeness_score": bundle.stats.get("non_empty_text_sources", 0) / 3.0,
-                    "excluded_sensitive_fields_count": len(excluded_hits),
-                },
-                top_strengths=explanation.top_strengths,
-                main_gaps=explanation.main_gaps,
-                uncertainties=explanation.uncertainties,
-                evidence_spans=explanation.evidence_spans,
-                explanation=explanation.explanation,
-            )
+            context["early_exit"] = True
+            return context
 
         structured_result = extract_structured_features(
             structured_data=projected.get("structured_data") if isinstance(projected.get("structured_data"), dict) else None,
-            behavioral_signals=projected.get("behavioral_signals") if isinstance(projected.get("behavioral_signals"), dict) else None,
+            behavioral_signals=projected.get("behavioral_signals")
+            if isinstance(projected.get("behavioral_signals"), dict)
+            else None,
             bundle=bundle,
         )
 
-        extraction_mode = "hybrid"
-        extractor_version = CONFIG.llm.extractor_version
-        llm_metadata: dict[str, str | int | float] | None = None
-        llm_strengths: list[str] | None = None
-        llm_gaps: list[str] | None = None
-        llm_uncertainties: list[str] | None = None
-        llm_evidence_spans: list[dict[str, str]] | None = None
-        extractor_rationale: str | None = None
-
-        try:
-            llm_result = extract_text_features_with_llm(bundle=bundle)
-            text_features = llm_result.features
-            text_diagnostics = llm_result.diagnostics
-            llm_metadata = llm_result.llm_metadata
-            llm_strengths = llm_result.strengths
-            llm_gaps = llm_result.gaps
-            llm_uncertainties = llm_result.uncertainties
-            llm_evidence_spans = llm_result.evidence_spans
-            extractor_rationale = llm_result.rationale
-        except RuntimeError as exc:
-            if not CONFIG.llm.fallback_to_baseline:
-                raise
-            text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
-            text_features = text_result.features
-            text_diagnostics = text_result.diagnostics
-            llm_metadata = {
-                "provider": CONFIG.llm.provider,
-                "model": CONFIG.llm.model,
-                "fallback_reason": str(exc),
-            }
+        text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
 
         merged_features: dict[str, float | bool] = {}
         merged_features.update(structured_result.features)
-        merged_features.update(text_features)
+        merged_features.update(text_result.features)
 
-        auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_diagnostics)
+        auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_result.diagnostics)
         merged_features["authenticity_risk_raw"] = auth_result.authenticity_risk_raw
 
         scoring_result = compute_scores(feature_map=merged_features, authenticity_risk_raw=auth_result.authenticity_risk_raw)
@@ -162,9 +81,8 @@ class ScoringPipeline:
         merged_flags = list(recommendation_result.review_flags)
         if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
             merged_flags.append("missing_required_materials")
-        # Preserve stable ordering and avoid duplicates.
-        recommendation_flags = sorted(set(merged_flags))
 
+        recommendation_flags = sorted(set(merged_flags))
         merit_breakdown = {k: to_display_score(v) for k, v in scoring_result.merit_breakdown_raw.items()}
 
         snapshot = {
@@ -190,25 +108,143 @@ class ScoringPipeline:
             "excluded_sensitive_fields_count": len(excluded_hits),
         }
 
+        context.update(
+            {
+                "early_exit": False,
+                "structured_result": structured_result,
+                "text_result": text_result,
+                "merged_features": merged_features,
+                "auth_result": auth_result,
+                "scoring_result": scoring_result,
+                "recommendation_result": recommendation_result,
+                "recommendation_flags": recommendation_flags,
+                "merit_breakdown": merit_breakdown,
+                "snapshot": snapshot,
+            }
+        )
+        return context
+
+    def score_candidate(self, candidate_payload: dict[str, Any], scoring_run_id: str | None = None) -> ScoreResponse:
+        """Run full scoring flow for a single candidate payload."""
+        scoring_run_id = scoring_run_id or generate_scoring_run_id()
+        context = self._prepare_scoring_context(candidate_payload)
+
+        projected = context["projected"]
+        excluded_hits = context["excluded_hits"]
+        bundle = context["bundle"]
+        eligibility = context["eligibility"]
+
+        base_response = {
+            "candidate_id": str(projected.get("candidate_id", "")),
+            "scoring_run_id": scoring_run_id,
+            "scoring_version": CONFIG.scoring_version,
+            "prompt_version": CONFIG.prompt_version,
+            "extraction_mode": "deterministic_scoring",
+            "extractor_version": CONFIG.llm.extractor_version,
+            "llm_metadata": None,
+            "eligibility_status": eligibility.status,
+            "eligibility_reasons": list(eligibility.reasons),
+        }
+
+        if excluded_hits:
+            base_response["eligibility_reasons"].append("sensitive_fields_excluded_from_scoring")
+
+        if context["early_exit"]:
+            recommendation = "invalid" if eligibility.status == "invalid" else "incomplete_application"
+            early_flags = ["eligibility_gate"]
+            if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
+                early_flags.append("missing_required_materials")
+
+            explanation = build_explanation(
+                feature_map={},
+                merit_breakdown={
+                    "potential": 0,
+                    "motivation": 0,
+                    "leadership_agency": 0,
+                    "experience_skills": 0,
+                    "trust_completeness": 0,
+                },
+                recommendation=recommendation,
+                review_flags=early_flags,
+                sections=bundle.sections,
+                extraction_mode="deterministic_scoring",
+                merit_score=0,
+                confidence_score=0,
+                authenticity_risk=0,
+            )
+
+            return ScoreResponse(
+                **base_response,
+                merit_score=0,
+                confidence_score=0,
+                authenticity_risk=0,
+                recommendation=recommendation,
+                review_flags=early_flags,
+                merit_breakdown={
+                    "potential": 0,
+                    "motivation": 0,
+                    "leadership_agency": 0,
+                    "experience_skills": 0,
+                    "trust_completeness": 0,
+                },
+                feature_snapshot={
+                    "completeness_score": bundle.stats.get("non_empty_text_sources", 0) / 3.0,
+                    "excluded_sensitive_fields_count": len(excluded_hits),
+                },
+                top_strengths=explanation.top_strengths,
+                main_gaps=explanation.main_gaps,
+                uncertainties=explanation.uncertainties,
+                evidence_spans=explanation.evidence_spans,
+                explanation=explanation.explanation,
+            )
+
+        merged_features = context["merged_features"]
+        scoring_result = context["scoring_result"]
+        recommendation_result = context["recommendation_result"]
+        recommendation_flags = context["recommendation_flags"]
+        merit_breakdown = context["merit_breakdown"]
+        snapshot = context["snapshot"]
+        text_result = context["text_result"]
+
+        llm_metadata: dict[str, str | int | float] | None = None
+        llm_strength_claims: list[dict[str, str]] | None = None
+        llm_gap_claims: list[dict[str, str]] | None = None
+        llm_uncertainty_claims: list[dict[str, str]] | None = None
+        llm_evidence_spans: list[dict[str, str]] | None = None
+        extractor_rationale: str | None = None
+
+        try:
+            llm_result = extract_explainability_with_llm(bundle=bundle, deterministic_signals=text_result.features)
+            llm_metadata = llm_result.llm_metadata
+            llm_strength_claims = llm_result.strength_claims
+            llm_gap_claims = llm_result.gap_claims
+            llm_uncertainty_claims = llm_result.uncertainty_claims
+            llm_evidence_spans = llm_result.evidence_spans
+            extractor_rationale = llm_result.rationale
+        except RuntimeError as exc:
+            llm_metadata = {
+                "provider": CONFIG.llm.provider,
+                "model": CONFIG.llm.model,
+                "fallback_reason": str(exc),
+            }
+
         explanation_result = build_explanation(
             feature_map=snapshot,
             merit_breakdown=merit_breakdown,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_result.review_flags,
             sections=bundle.sections,
-            extraction_mode=extraction_mode,
+            extraction_mode="deterministic_scoring",
             merit_score=scoring_result.merit_score,
             confidence_score=scoring_result.confidence_score,
             authenticity_risk=scoring_result.authenticity_risk,
-            provided_strengths=llm_strengths,
-            provided_gaps=llm_gaps,
-            provided_uncertainties=llm_uncertainties,
+            provided_strength_claims=llm_strength_claims,
+            provided_gap_claims=llm_gap_claims,
+            provided_uncertainty_claims=llm_uncertainty_claims,
             provided_evidence_spans=llm_evidence_spans,
             extractor_rationale=extractor_rationale,
         )
 
-        base_response["extraction_mode"] = extraction_mode
-        base_response["extractor_version"] = extractor_version
         base_response["llm_metadata"] = llm_metadata
 
         return ScoreResponse(
@@ -227,7 +263,50 @@ class ScoringPipeline:
             explanation=explanation_result.explanation,
         )
 
+    def score_candidate_trace(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
+        """Return full deterministic score trace for auditing/debugging."""
+        context = self._prepare_scoring_context(candidate_payload)
+
+        projected = context["projected"]
+        eligibility = context["eligibility"]
+
+        payload: dict[str, Any] = {
+            "candidate_id": str(projected.get("candidate_id", "")),
+            "eligibility_status": eligibility.status,
+            "eligibility_reasons": list(eligibility.reasons),
+            "scoring_version": CONFIG.scoring_version,
+            "extraction_mode": "deterministic_scoring",
+        }
+
+        if context["early_exit"]:
+            payload["note"] = "score_trace_unavailable_for_invalid_or_incomplete_application"
+            return payload
+
+        merged_features = context["merged_features"]
+        auth_result = context["auth_result"]
+        scoring_trace = build_score_trace(merged_features, auth_result.authenticity_risk_raw)
+
+        payload.update(
+            {
+                "review_flags": context["recommendation_flags"],
+                "recommendation": context["recommendation_result"].recommendation,
+                "structured_features": context["structured_result"].features,
+                "text_features": context["text_result"].features,
+                "authenticity": {
+                    "authenticity_risk_raw": round(auth_result.authenticity_risk_raw, 6),
+                    "review_flags": context["auth_result"].review_flags,
+                },
+                "score_trace": scoring_trace,
+            }
+        )
+        return payload
+
     def score_candidate_model(self, model: Any, scoring_run_id: str | None = None) -> ScoreResponse:
         """Helper for pydantic models accepted by API layer."""
         payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)
         return self.score_candidate(payload, scoring_run_id=scoring_run_id)
+
+    def score_candidate_trace_model(self, model: Any) -> dict[str, Any]:
+        """Helper to build score trace from pydantic models in API layer."""
+        payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)
+        return self.score_candidate_trace(payload)

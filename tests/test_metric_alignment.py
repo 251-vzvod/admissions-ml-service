@@ -8,28 +8,42 @@ from app.services.structured_features import extract_structured_features
 from app.services.text_features import extract_text_features
 
 
-def test_llm_parser_supports_rubric_0_to_3_scale() -> None:
+def test_llm_parser_supports_claim_to_evidence_schema() -> None:
     payload = {
-        "motivation_clarity": 3,
-        "initiative": 2,
-        "leadership_impact": 1,
-        "growth_trajectory": 0,
-        "resilience": 3,
-        "program_fit": 2,
-        "evidence_richness": 1,
-        "specificity_score": 2,
-        "evidence_count": 1,
-        "consistency_score": 3,
-        "completeness_score": 2,
-        "genericness_score": 1,
-        "contradiction_flag": False,
-        "polished_but_empty_score": 1,
-        "cross_section_mismatch_score": 2,
+        "top_strength_signals": [
+            {
+                "claim": "helped peer with coursework",
+                "source": "motivation_questions",
+                "snippet": "я после школы оставался с ним и мы вместе разбирались",
+            }
+        ],
+        "main_gap_signals": [
+            {
+                "claim": "missing quantified outcomes",
+                "source": "motivation_letter_text",
+                "snippet": "особо своих проектов не было",
+            }
+        ],
+        "uncertainties": [
+            {
+                "claim": "insufficient leadership scope evidence",
+                "source": "interview_text",
+                "snippet": "я редко бываю лидером",
+            }
+        ],
+        "evidence_spans": [
+            {
+                "dimension": "initiative",
+                "source": "motivation_questions",
+                "text": "я после школы оставался с ним и мы вместе разбирались",
+            }
+        ],
+        "extractor_rationale": "Claims are grounded in direct episodes from Q/A and interview.",
     }
     parsed = parse_llm_extraction_json(json.dumps(payload))
-    assert parsed.motivation_clarity == 1.0
-    assert round(parsed.initiative, 4) == round(2.0 / 3.0, 4)
-    assert round(parsed.leadership_impact, 4) == round(1.0 / 3.0, 4)
+    assert parsed.top_strength_signals[0].claim == "helped peer with coursework"
+    assert parsed.top_strength_signals[0].source == "motivation_questions"
+    assert parsed.evidence_spans[0].dimension == "initiative"
 
 
 def test_baseline_text_features_include_new_mismatch_signals() -> None:

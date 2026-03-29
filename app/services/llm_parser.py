@@ -1,4 +1,4 @@
-"""Validation and parsing for structured LLM extractor outputs."""
+"""Validation and parsing for LLM explainability outputs."""
 
 from __future__ import annotations
 
@@ -7,25 +7,18 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app.utils.math_utils import clamp01
 
+class LLMClaimEvidence(BaseModel):
+    claim: str
+    source: Literal["motivation_letter_text", "motivation_questions", "interview_text"]
+    snippet: str
 
-RUBRIC_NUMERIC_FIELDS = {
-    "motivation_clarity",
-    "initiative",
-    "leadership_impact",
-    "growth_trajectory",
-    "resilience",
-    "program_fit",
-    "evidence_richness",
-    "specificity_score",
-    "evidence_count",
-    "consistency_score",
-    "completeness_score",
-    "genericness_score",
-    "polished_but_empty_score",
-    "cross_section_mismatch_score",
-}
+    @field_validator("claim", "snippet", mode="before")
+    @classmethod
+    def normalize_text(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return " ".join(str(value).split()).strip()
 
 
 class LLMEvidenceSpan(BaseModel):
@@ -33,87 +26,87 @@ class LLMEvidenceSpan(BaseModel):
     source: Literal["motivation_letter_text", "motivation_questions", "interview_text"]
     text: str
 
+    @field_validator("dimension", "text", mode="before")
+    @classmethod
+    def normalize_text(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return " ".join(str(value).split()).strip()
 
-class LLMExtractionOutput(BaseModel):
-    motivation_clarity: float
-    initiative: float
-    leadership_impact: float
-    growth_trajectory: float
-    resilience: float
-    program_fit: float
-    evidence_richness: float
 
-    specificity_score: float
-    evidence_count: float
-    consistency_score: float
-    completeness_score: float
-
-    genericness_score: float
-    contradiction_flag: bool
-    polished_but_empty_score: float
-    cross_section_mismatch_score: float
-
-    top_strength_signals: list[str] = Field(default_factory=list)
-    main_gap_signals: list[str] = Field(default_factory=list)
-    uncertainties: list[str] = Field(default_factory=list)
+class LLMExplainabilityOutput(BaseModel):
+    top_strength_signals: list[LLMClaimEvidence] = Field(default_factory=list)
+    main_gap_signals: list[LLMClaimEvidence] = Field(default_factory=list)
+    uncertainties: list[LLMClaimEvidence] = Field(default_factory=list)
     evidence_spans: list[LLMEvidenceSpan] = Field(default_factory=list)
     extractor_rationale: str = ""
 
-    @field_validator(
-        "motivation_clarity",
-        "initiative",
-        "leadership_impact",
-        "growth_trajectory",
-        "resilience",
-        "program_fit",
-        "evidence_richness",
-        "specificity_score",
-        "evidence_count",
-        "consistency_score",
-        "completeness_score",
-        "genericness_score",
-        "polished_but_empty_score",
-        "cross_section_mismatch_score",
-        mode="before",
-    )
+    @field_validator("extractor_rationale", mode="before")
     @classmethod
-    def clamp_numeric(cls, value: Any) -> float:
-        try:
-            return clamp01(float(value))
-        except (TypeError, ValueError):
-            return 0.0
+    def normalize_rationale(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return " ".join(str(value).split()).strip()
 
 
 class LLMParseError(RuntimeError):
     """Raised when LLM output cannot be parsed into schema."""
 
 
-def parse_llm_extraction_json(raw_text: str) -> LLMExtractionOutput:
-    """Parse and validate LLM JSON output into strict extraction schema."""
+def _extract_first_json_object(raw_text: str) -> dict[str, Any] | None:
+    """Extract first balanced JSON object from wrapper text responses."""
+    start = raw_text.find("{")
+    if start < 0:
+        return None
+
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for idx in range(start, len(raw_text)):
+        ch = raw_text[idx]
+
+        if in_string:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\":
+                escaped = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+        if ch == "{":
+            depth += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                snippet = raw_text[start : idx + 1]
+                try:
+                    parsed = json.loads(snippet)
+                except json.JSONDecodeError:
+                    return None
+                return parsed if isinstance(parsed, dict) else None
+
+    return None
+
+
+def parse_llm_extraction_json(raw_text: str) -> LLMExplainabilityOutput:
+    """Parse and validate LLM JSON output into explainability schema."""
     try:
         payload = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        raise LLMParseError("invalid_json_response") from exc
-
-    if isinstance(payload, dict):
-        numeric_values: list[float] = []
-        for key in RUBRIC_NUMERIC_FIELDS:
-            raw_value = payload.get(key)
-            try:
-                numeric_values.append(float(raw_value))
-            except (TypeError, ValueError):
-                continue
-
-        rubric_mode = any(1.0 < value <= 3.0 for value in numeric_values)
-        if rubric_mode:
-            for key in RUBRIC_NUMERIC_FIELDS:
-                raw_value = payload.get(key)
-                try:
-                    payload[key] = float(raw_value) / 3.0
-                except (TypeError, ValueError):
-                    continue
+        extracted = _extract_first_json_object(raw_text)
+        if extracted is None:
+            raise LLMParseError("invalid_json_response") from exc
+        payload = extracted
 
     try:
-        return LLMExtractionOutput.model_validate(payload)
+        return LLMExplainabilityOutput.model_validate(payload)
     except ValidationError as exc:
-        raise LLMParseError("invalid_extraction_schema") from exc
+        raise LLMParseError("invalid_explainability_schema") from exc
