@@ -72,6 +72,8 @@ def extract_text_features_with_llm(bundle: NormalizedTextBundle) -> LLMExtractio
         temperature=llm_cfg.temperature,
         timeout_seconds=llm_cfg.timeout_seconds,
         max_retries=llm_cfg.max_retries,
+        retry_backoff_seconds=llm_cfg.retry_backoff_seconds,
+        retry_jitter_seconds=llm_cfg.retry_jitter_seconds,
     )
 
     try:

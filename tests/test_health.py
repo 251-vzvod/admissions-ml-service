@@ -18,6 +18,8 @@ def test_scoring_config_contains_extraction_strategy_fields() -> None:
     response = client.get("/config/scoring")
     assert response.status_code == 200
     payload = response.json()
+    assert "scoring_config_version" in payload
+    assert "weight_experiment_protocol_version" in payload
     assert "extraction_strategy" in payload
     assert "llm_provider" in payload
     assert "llm_model" in payload

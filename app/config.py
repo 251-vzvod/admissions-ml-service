@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import os
 from pathlib import Path
+from typing import Any
 
 
 SCORING_VERSION = "v1.0.0"
+SCORING_CONFIG_VERSION = "cfg-v1.1.0"
+WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v1"
 PROMPT_VERSION: str | None = None
 
 
@@ -163,6 +166,8 @@ class LLMConfig:
     timeout_seconds: float = 20.0
     temperature: float = 0.0
     max_retries: int = 1
+    retry_backoff_seconds: float = 0.6
+    retry_jitter_seconds: float = 0.2
     fallback_to_baseline: bool = True
     extractor_version: str = "llm-extractor-v1"
     base_url: str | None = None
@@ -176,6 +181,8 @@ class LLMConfig:
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
             temperature=_env_float("LLM_TEMPERATURE", 0.0),
             max_retries=_env_int("LLM_MAX_RETRIES", 1),
+            retry_backoff_seconds=_env_float("LLM_RETRY_BACKOFF_SECONDS", 0.6),
+            retry_jitter_seconds=_env_float("LLM_RETRY_JITTER_SECONDS", 0.2),
             fallback_to_baseline=_env_bool("LLM_FALLBACK_TO_BASELINE", True),
             base_url=_strip_wrapping_quotes(os.getenv("LLM_BASE_URL")) if os.getenv("LLM_BASE_URL") else None,
             api_key=_strip_wrapping_quotes(os.getenv("LLM_API_KEY")) if os.getenv("LLM_API_KEY") else None,
@@ -187,6 +194,8 @@ class AppConfig:
     """Application configuration container."""
 
     scoring_version: str = SCORING_VERSION
+    scoring_config_version: str = SCORING_CONFIG_VERSION
+    weight_experiment_protocol_version: str = WEIGHT_EXPERIMENT_PROTOCOL_VERSION
     prompt_version: str | None = PROMPT_VERSION
     excluded_fields: list[str] = field(default_factory=lambda: EXCLUDED_FIELDS.copy())
     weights: ScoringWeights = field(default_factory=ScoringWeights)
@@ -196,3 +205,35 @@ class AppConfig:
 
 
 CONFIG = AppConfig()
+
+
+def build_scoring_config_snapshot() -> dict[str, Any]:
+    """Build a serializable snapshot for reproducible scoring/evaluation reports."""
+    return {
+        "scoring_version": CONFIG.scoring_version,
+        "scoring_config_version": CONFIG.scoring_config_version,
+        "weight_experiment_protocol_version": CONFIG.weight_experiment_protocol_version,
+        "prompt_version": CONFIG.prompt_version,
+        "excluded_fields": CONFIG.excluded_fields,
+        "weights": {
+            "merit_breakdown": CONFIG.weights.merit_breakdown,
+            "confidence_components": CONFIG.weights.confidence_components,
+        },
+        "thresholds": asdict(CONFIG.thresholds),
+        "normalization": {
+            "english_scale_max": CONFIG.normalization.english_scale_max,
+            "certificate_scale_max": CONFIG.normalization.certificate_scale_max,
+            "unknown_scale_default": CONFIG.normalization.unknown_scale_default,
+        },
+        "llm": {
+            "provider": CONFIG.llm.provider,
+            "model": CONFIG.llm.model,
+            "timeout_seconds": CONFIG.llm.timeout_seconds,
+            "temperature": CONFIG.llm.temperature,
+            "max_retries": CONFIG.llm.max_retries,
+            "retry_backoff_seconds": CONFIG.llm.retry_backoff_seconds,
+            "retry_jitter_seconds": CONFIG.llm.retry_jitter_seconds,
+            "fallback_to_baseline": CONFIG.llm.fallback_to_baseline,
+            "extractor_version": CONFIG.llm.extractor_version,
+        },
+    }

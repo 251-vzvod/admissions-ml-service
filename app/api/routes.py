@@ -32,6 +32,8 @@ def get_scoring_config() -> dict[str, Any]:
     """Return scoring config required for reproducibility and transparency."""
     return {
         "scoring_version": CONFIG.scoring_version,
+        "scoring_config_version": CONFIG.scoring_config_version,
+        "weight_experiment_protocol_version": CONFIG.weight_experiment_protocol_version,
         "prompt_version": CONFIG.prompt_version,
         "excluded_fields": CONFIG.excluded_fields,
         "weights": {

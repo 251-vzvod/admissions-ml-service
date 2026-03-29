@@ -114,6 +114,8 @@ Purpose:
 Returns:
 
 - `scoring_version`
+- `scoring_config_version`
+- `weight_experiment_protocol_version`
 - `prompt_version`
 - `excluded_fields`
 - `weights`

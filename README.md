@@ -130,6 +130,7 @@ Purpose:
 Includes:
 
 - score version and prompt version
+- scoring config versioning metadata (`scoring_config_version`, `weight_experiment_protocol_version`)
 - exclusion list for privacy-safe scoring
 - weights and thresholds
 - Extraction strategy and LLM settings (`extraction_strategy`, `llm_provider`, `llm_model`, `llm_fallback_to_deterministic_extractor_on_failure`)
@@ -349,6 +350,8 @@ Environment flags:
 - `LLM_TIMEOUT_SECONDS`
 - `LLM_TEMPERATURE`
 - `LLM_MAX_RETRIES`
+- `LLM_RETRY_BACKOFF_SECONDS`
+- `LLM_RETRY_JITTER_SECONDS`
 - `LLM_FALLBACK_TO_BASELINE`
 - `LLM_BASE_URL`
 - `LLM_API_KEY`
@@ -361,6 +364,8 @@ LLM_MODEL=gpt-4o
 LLM_TIMEOUT_SECONDS=20
 LLM_TEMPERATURE=0
 LLM_MAX_RETRIES=1
+LLM_RETRY_BACKOFF_SECONDS=0.6
+LLM_RETRY_JITTER_SECONDS=0.2
 LLM_FALLBACK_TO_BASELINE=true
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=your_api_key_here
@@ -510,6 +515,27 @@ Outputs:
 
 - `data/scored_candidates.json`
 - `data/diagnostics_report.json`
+
+## Evaluation Pack (Offline)
+
+Run full offline evaluation artifacts (hybrid vs deterministic baseline comparison, fairness audit, reliability metrics, config snapshot):
+
+```bash
+python scripts/evaluation_pack.py --input data/candidates.json --output-dir data/evaluation_pack
+```
+
+Artifacts generated:
+
+- `data/evaluation_pack/hybrid_scored_results.json`
+- `data/evaluation_pack/deterministic_baseline_results.json`
+- `data/evaluation_pack/baseline_comparison.json`
+- `data/evaluation_pack/fairness_audit.json`
+- `data/evaluation_pack/scoring_config_snapshot.json`
+- `data/evaluation_pack/evaluation_report.json`
+
+Weight experiment protocol:
+
+- `WEIGHT_EXPERIMENT_PROTOCOL.md`
 
 ## Extension Points Toward LLM Extractor
 
