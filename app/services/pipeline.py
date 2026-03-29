@@ -6,6 +6,7 @@ from dataclasses import asdict
 from typing import Any
 
 from app.config import CONFIG
+from app.schemas.decision import Recommendation, ReviewFlag
 from app.schemas.output import ScoreResponse
 from app.services.authenticity import estimate_authenticity_risk
 from app.services.eligibility import evaluate_eligibility
@@ -46,7 +47,7 @@ class ScoringPipeline:
             "eligibility": eligibility,
         }
 
-        if eligibility.status in {"invalid", "incomplete_application"}:
+        if eligibility.status in {Recommendation.INVALID, Recommendation.INCOMPLETE_APPLICATION}:
             context["early_exit"] = True
             return context
 
@@ -80,7 +81,7 @@ class ScoringPipeline:
 
         merged_flags = list(recommendation_result.review_flags)
         if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
-            merged_flags.append("missing_required_materials")
+            merged_flags.append(ReviewFlag.MISSING_REQUIRED_MATERIALS)
 
         recommendation_flags = sorted(set(merged_flags))
         merit_breakdown = {k: to_display_score(v) for k, v in scoring_result.merit_breakdown_raw.items()}
@@ -150,10 +151,10 @@ class ScoringPipeline:
             base_response["eligibility_reasons"].append("sensitive_fields_excluded_from_scoring")
 
         if context["early_exit"]:
-            recommendation = "invalid" if eligibility.status == "invalid" else "incomplete_application"
-            early_flags = ["eligibility_gate"]
+            recommendation = Recommendation.INVALID if eligibility.status == Recommendation.INVALID else Recommendation.INCOMPLETE_APPLICATION
+            early_flags = [ReviewFlag.ELIGIBILITY_GATE]
             if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
-                early_flags.append("missing_required_materials")
+                early_flags.append(ReviewFlag.MISSING_REQUIRED_MATERIALS)
 
             explanation = build_explanation(
                 feature_map={},

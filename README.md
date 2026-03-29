@@ -143,6 +143,40 @@ Formal material reasons (when configured):
 
 These are routing labels for committee workflow, not admission decisions.
 
+## Contract Constants
+
+Source of truth for API decision labels:
+
+- [app/schemas/decision.py](app/schemas/decision.py)
+
+Canonical `recommendation` values:
+
+- `invalid`
+- `incomplete_application`
+- `insufficient_evidence`
+- `review_priority`
+- `manual_review_required`
+- `standard_review`
+
+Canonical `review_flags` values:
+
+- `eligibility_gate`
+- `low_confidence`
+- `insufficient_evidence`
+- `low_evidence_density`
+- `moderate_authenticity_risk`
+- `high_authenticity_risk`
+- `contradiction_risk`
+- `possible_contradiction`
+- `polished_but_empty_pattern`
+- `high_polished_but_empty`
+- `high_genericness`
+- `cross_section_mismatch`
+- `section_mismatch`
+- `missing_required_materials`
+
+Note: clients should treat unknown future flags as non-breaking and render them as generic/neutral badges.
+
 ## Score Trace (Auditing)
 
 Use `POST /debug/score-trace` to get:

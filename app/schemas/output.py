@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.schemas.decision import Recommendation, ReviewFlag
+
 
 class EvidenceSpan(BaseModel):
     source: str
@@ -39,8 +41,8 @@ class ScoreResponse(BaseModel):
     confidence_score: int
     authenticity_risk: int
 
-    recommendation: str
-    review_flags: list[str] = Field(default_factory=list)
+    recommendation: Recommendation
+    review_flags: list[ReviewFlag] = Field(default_factory=list)
 
     merit_breakdown: dict[str, int] = Field(default_factory=dict)
     feature_snapshot: dict[str, float | bool | int] = Field(default_factory=dict)

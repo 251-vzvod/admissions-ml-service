@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.schemas.decision import ReviewFlag
 from app.utils.math_utils import clamp01
 
 
 @dataclass(slots=True)
 class AuthenticityResult:
     authenticity_risk_raw: float
-    review_flags: list[str]
+    review_flags: list[ReviewFlag]
 
 
 def estimate_authenticity_risk(features: dict[str, float | bool], diagnostics: dict[str, float | bool | int]) -> AuthenticityResult:
@@ -45,25 +46,25 @@ def estimate_authenticity_risk(features: dict[str, float | bool], diagnostics: d
 
     risk = clamp01(risk)
 
-    flags: list[str] = []
+    flags: list[ReviewFlag] = []
     if polished_but_empty_pattern:
-        flags.append("polished_but_empty_pattern")
+        flags.append(ReviewFlag.POLISHED_BUT_EMPTY_PATTERN)
     if polished_but_empty_score > 0.60:
-        flags.append("high_polished_but_empty")
+        flags.append(ReviewFlag.HIGH_POLISHED_BUT_EMPTY)
     if genericness > 0.60:
-        flags.append("high_genericness")
+        flags.append(ReviewFlag.HIGH_GENERICNESS)
     if cross_section_mismatch_score > 0.55:
-        flags.append("cross_section_mismatch")
+        flags.append(ReviewFlag.CROSS_SECTION_MISMATCH)
     if evidence_count < 0.35:
-        flags.append("low_evidence_density")
+        flags.append(ReviewFlag.LOW_EVIDENCE_DENSITY)
     if consistency < 0.45:
-        flags.append("section_mismatch")
+        flags.append(ReviewFlag.SECTION_MISMATCH)
     if contradiction_flag:
-        flags.append("contradiction_risk")
-        flags.append("possible_contradiction")
+        flags.append(ReviewFlag.CONTRADICTION_RISK)
+        flags.append(ReviewFlag.POSSIBLE_CONTRADICTION)
     if 0.45 <= risk < 0.70:
-        flags.append("moderate_authenticity_risk")
+        flags.append(ReviewFlag.MODERATE_AUTHENTICITY_RISK)
     if risk >= 0.70:
-        flags.append("high_authenticity_risk")
+        flags.append(ReviewFlag.HIGH_AUTHENTICITY_RISK)
 
     return AuthenticityResult(authenticity_risk_raw=risk, review_flags=flags)

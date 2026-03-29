@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.schemas.decision import Recommendation, ReviewFlag
 from app.schemas.output import EvidenceSpan, ExplanationNotes, ExplanationPayload
 
 
@@ -57,8 +58,8 @@ def _normalize_uncertainty_claim(item: dict[str, str]) -> dict[str, str]:
 def build_explanation(
     feature_map: dict[str, float | bool],
     merit_breakdown: dict[str, int],
-    recommendation: str,
-    review_flags: list[str],
+    recommendation: Recommendation | str,
+    review_flags: list[ReviewFlag | str],
     sections: dict[str, list[str]],
     extraction_mode: str = "hybrid",
     merit_score: int | None = None,
@@ -98,9 +99,9 @@ def build_explanation(
 
     if float(feature_map.get("genericness_score", 0.0)) > 0.55:
         uncertainties.append("Some text appears generic; committee should verify authenticity of claims.")
-    if "section_mismatch" in review_flags:
+    if ReviewFlag.SECTION_MISMATCH in review_flags:
         uncertainties.append("Section mismatch risk: claims may not be consistently supported across sources.")
-    if recommendation in {"manual_review_required", "insufficient_evidence"}:
+    if recommendation in {Recommendation.MANUAL_REVIEW_REQUIRED, Recommendation.INSUFFICIENT_EVIDENCE}:
         uncertainties.append("Human review is recommended before high-confidence prioritization.")
     if float(feature_map.get("specificity_score", 0.0)) < 0.5 or float(feature_map.get("evidence_count", 0.0)) < 0.5:
         uncertainties.append("Some claims are directionally promising but under-supported by concrete examples.")
