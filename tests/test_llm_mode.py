@@ -1,12 +1,47 @@
 from copy import deepcopy
+import json
 
 from app.config import CONFIG
 from app.main import app
+from app.services.llm_client import LLMResponse, OpenAICompatibleClient
 from app.services.pipeline import ScoringPipeline
 from fastapi.testclient import TestClient
 
 
 client = TestClient(app)
+
+
+def _valid_llm_json() -> str:
+    return json.dumps(
+        {
+            "motivation_clarity": 0.72,
+            "initiative": 0.68,
+            "leadership_impact": 0.61,
+            "growth_trajectory": 0.74,
+            "resilience": 0.66,
+            "program_fit": 0.73,
+            "evidence_richness": 0.64,
+            "specificity_score": 0.62,
+            "evidence_count": 0.58,
+            "consistency_score": 0.70,
+            "completeness_score": 0.71,
+            "genericness_score": 0.29,
+            "contradiction_flag": False,
+            "polished_but_empty_score": 0.24,
+            "cross_section_mismatch_score": 0.19,
+            "top_strength_signals": ["self-started initiative", "clear growth reflection"],
+            "main_gap_signals": ["limited quantified outcomes"],
+            "uncertainties": ["some claims need deeper verification"],
+            "evidence_spans": [
+                {
+                    "dimension": "initiative",
+                    "source": "motivation_questions",
+                    "text": "I started a student club and organized weekly sessions",
+                }
+            ],
+            "extractor_rationale": "Signals are grounded in repeated action examples and reflective narrative.",
+        }
+    )
 
 
 def _payload() -> dict:
@@ -37,30 +72,40 @@ def test_baseline_mode_works_without_llm() -> None:
         CONFIG.llm.enable_llm = old_enable
 
 
-def test_llm_mode_with_mock_provider() -> None:
+def test_llm_mode_with_openai_client_patch(monkeypatch) -> None:
     pipeline = ScoringPipeline()
     old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
+    def _fake_complete(self, request):
+        return LLMResponse(content=_valid_llm_json(), provider="openai", model=request.model, latency_ms=1)
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
+
     CONFIG.llm.enable_llm = True
-    CONFIG.llm.provider = "mock"
+    CONFIG.llm.provider = "openai"
     try:
         result = pipeline.score_candidate(_payload())
         assert result.extraction_mode == "llm"
         assert result.llm_metadata is not None
-        assert result.llm_metadata.get("provider") == "mock"
+        assert result.llm_metadata.get("provider") == "openai"
     finally:
         CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider
 
 
-def test_llm_parsed_extraction_keeps_deterministic_scoring() -> None:
+def test_llm_parsed_extraction_keeps_deterministic_scoring(monkeypatch) -> None:
     pipeline = ScoringPipeline()
     old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
+    def _fake_complete(self, request):
+        return LLMResponse(content=_valid_llm_json(), provider="openai", model=request.model, latency_ms=1)
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
+
     CONFIG.llm.enable_llm = True
-    CONFIG.llm.provider = "mock"
+    CONFIG.llm.provider = "openai"
     try:
         result_a = pipeline.score_candidate(_payload())
         result_b = pipeline.score_candidate(_payload())
@@ -73,14 +118,19 @@ def test_llm_parsed_extraction_keeps_deterministic_scoring() -> None:
         CONFIG.llm.provider = old_provider
 
 
-def test_invalid_llm_json_falls_back_to_baseline() -> None:
+def test_invalid_llm_json_falls_back_to_baseline(monkeypatch) -> None:
     pipeline = ScoringPipeline()
     old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
     old_fallback = CONFIG.llm.fallback_to_baseline
 
+    def _invalid_complete(self, request):
+        return LLMResponse(content="{invalid_json", provider="openai", model=request.model, latency_ms=1)
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _invalid_complete)
+
     CONFIG.llm.enable_llm = True
-    CONFIG.llm.provider = "mock_invalid"
+    CONFIG.llm.provider = "openai"
     CONFIG.llm.fallback_to_baseline = True
     try:
         result = pipeline.score_candidate(_payload())
@@ -124,11 +174,17 @@ def test_sensitive_fields_do_not_affect_merit() -> None:
     assert result_a.merit_score == result_b.merit_score
 
 
-def test_debug_llm_extract_endpoint_with_mock() -> None:
+def test_debug_llm_extract_endpoint_with_openai_patch(monkeypatch) -> None:
     old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
+
+    def _fake_complete(self, request):
+        return LLMResponse(content=_valid_llm_json(), provider="openai", model=request.model, latency_ms=1)
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
+
     CONFIG.llm.enable_llm = True
-    CONFIG.llm.provider = "mock"
+    CONFIG.llm.provider = "openai"
 
     payload = _payload()
     try:
@@ -137,7 +193,7 @@ def test_debug_llm_extract_endpoint_with_mock() -> None:
         parsed = response.json()
         assert "features" in parsed
         assert "llm_metadata" in parsed
-        assert parsed["llm_metadata"]["provider"] == "mock"
+        assert parsed["llm_metadata"]["provider"] == "openai"
     finally:
         CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider

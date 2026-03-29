@@ -159,7 +159,7 @@ class LLMConfig:
     """Configuration for optional LLM-assisted extraction mode."""
 
     enable_llm: bool = False
-    provider: str = "mock"
+    provider: str = "openai"
     model: str = "gpt-4o-mini"
     timeout_seconds: float = 20.0
     temperature: float = 0.0
@@ -174,7 +174,7 @@ class LLMConfig:
     def from_env(cls) -> "LLMConfig":
         return cls(
             enable_llm=_env_bool("ENABLE_LLM", False),
-            provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "mock")),
+            provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "openai")),
             model=_strip_wrapping_quotes(os.getenv("LLM_MODEL", "gpt-4o-mini")),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
             temperature=_env_float("LLM_TEMPERATURE", 0.0),

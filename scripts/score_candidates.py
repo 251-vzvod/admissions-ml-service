@@ -170,7 +170,7 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
 
 
 def compare_baseline_vs_llm(candidates: list[dict[str, Any]]) -> dict[str, Any]:
-    """Run side-by-side baseline and mock-llm scoring to monitor distribution shifts."""
+    """Run side-by-side baseline and llm scoring to monitor distribution shifts."""
     old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
@@ -179,9 +179,12 @@ def compare_baseline_vs_llm(candidates: list[dict[str, Any]]) -> dict[str, Any]:
         CONFIG.llm.enable_llm = False
         baseline = [baseline_pipe.score_candidate(item).model_dump() for item in candidates]
 
-        CONFIG.llm.enable_llm = True
-        CONFIG.llm.provider = "mock"
-        llm_mode = [baseline_pipe.score_candidate(item).model_dump() for item in candidates]
+        llm_available = bool(CONFIG.llm.base_url and CONFIG.llm.api_key)
+        if llm_available:
+            CONFIG.llm.enable_llm = True
+            llm_mode = [baseline_pipe.score_candidate(item).model_dump() for item in candidates]
+        else:
+            llm_mode = []
     finally:
         CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider
@@ -189,20 +192,29 @@ def compare_baseline_vs_llm(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     def avg(items: list[dict[str, Any]], field: str) -> float:
         return float(round(sum(int(x[field]) for x in items) / max(len(items), 1), 2))
 
-    return {
+    response = {
         "baseline_avg": {
             "merit_score": avg(baseline, "merit_score"),
             "confidence_score": avg(baseline, "confidence_score"),
             "authenticity_risk": avg(baseline, "authenticity_risk"),
             "recommendation_distribution": dict(Counter(x["recommendation"] for x in baseline)),
-        },
-        "llm_mode_avg": {
+        }
+    }
+
+    if llm_mode:
+        response["llm_mode_avg"] = {
             "merit_score": avg(llm_mode, "merit_score"),
             "confidence_score": avg(llm_mode, "confidence_score"),
             "authenticity_risk": avg(llm_mode, "authenticity_risk"),
             "recommendation_distribution": dict(Counter(x["recommendation"] for x in llm_mode)),
-        },
-    }
+        }
+    else:
+        response["llm_mode_avg"] = {
+            "status": "skipped",
+            "reason": "llm_credentials_not_configured",
+        }
+
+    return response
 
 
 def main() -> None:

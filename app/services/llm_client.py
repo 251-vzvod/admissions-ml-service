@@ -1,8 +1,7 @@
-"""LLM client abstraction with OpenAI-compatible and mock providers."""
+"""LLM client for OpenAI-compatible chat completion APIs."""
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass
 
@@ -31,14 +30,7 @@ class LLMClientError(RuntimeError):
     """Raised when LLM provider call fails."""
 
 
-class BaseLLMClient:
-    """Provider-agnostic interface for structured extraction calls."""
-
-    def complete(self, request: LLMRequest) -> LLMResponse:
-        raise NotImplementedError
-
-
-class OpenAICompatibleClient(BaseLLMClient):
+class OpenAICompatibleClient:
     """OpenAI-compatible chat completion client."""
 
     def __init__(self, base_url: str, api_key: str, provider: str) -> None:
@@ -81,58 +73,12 @@ class OpenAICompatibleClient(BaseLLMClient):
         raise LLMClientError("llm_provider_request_failed") from last_exc
 
 
-class MockLLMClient(BaseLLMClient):
-    """Mock provider for deterministic local tests."""
-
-    def __init__(self, mode: str = "valid") -> None:
-        self.mode = mode
-
-    def complete(self, request: LLMRequest) -> LLMResponse:
-        if self.mode == "invalid":
-            content = "{invalid_json"
-        else:
-            content = json.dumps(
-                {
-                    "motivation_clarity": 0.72,
-                    "initiative": 0.68,
-                    "leadership_impact": 0.61,
-                    "growth_trajectory": 0.74,
-                    "resilience": 0.66,
-                    "program_fit": 0.73,
-                    "evidence_richness": 0.64,
-                    "specificity_score": 0.62,
-                    "evidence_count": 0.58,
-                    "consistency_score": 0.70,
-                    "completeness_score": 0.71,
-                    "genericness_score": 0.29,
-                    "contradiction_flag": False,
-                    "polished_but_empty_score": 0.24,
-                    "cross_section_mismatch_score": 0.19,
-                    "top_strength_signals": ["self-started initiative", "clear growth reflection"],
-                    "main_gap_signals": ["limited quantified outcomes"],
-                    "uncertainties": ["some claims need deeper verification"],
-                    "evidence_spans": [
-                        {
-                            "dimension": "initiative",
-                            "source": "motivation_questions",
-                            "text": "I started a student club and organized weekly sessions",
-                        }
-                    ],
-                    "extractor_rationale": "Signals are grounded in repeated action examples and reflective narrative.",
-                }
-            )
-
-        return LLMResponse(content=content, provider="mock", model=request.model, latency_ms=1)
-
-
-def build_llm_client(provider: str, base_url: str | None, api_key: str | None) -> BaseLLMClient:
-    """Factory for configured LLM client implementation."""
+def build_llm_client(provider: str, base_url: str | None, api_key: str | None) -> OpenAICompatibleClient:
+    """Factory for OpenAI-compatible client implementation."""
     provider_normalized = provider.strip().lower()
 
-    if provider_normalized == "mock":
-        return MockLLMClient(mode="valid")
-    if provider_normalized == "mock_invalid":
-        return MockLLMClient(mode="invalid")
+    if provider_normalized not in {"openai", "openai-compatible", "openai_compatible"}:
+        raise LLMClientError("unsupported_llm_provider")
 
     if not base_url or not api_key:
         raise LLMClientError("missing_llm_credentials")

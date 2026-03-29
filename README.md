@@ -55,6 +55,101 @@ Code structure:
 - `POST /score`
 - `POST /score/batch`
 
+## Backend Integration Contract
+
+Primary endpoints for backend integration:
+
+1. `POST /score`
+2. `POST /score/batch`
+3. `GET /health`
+4. `GET /config/scoring`
+
+### `POST /score`
+
+Purpose:
+
+- score a single candidate profile
+
+Input (minimum):
+
+- `candidate_id`
+- at least one non-empty text source in `text_inputs`
+
+Response (guaranteed core fields):
+
+- `candidate_id`
+- `scoring_run_id`
+- `scoring_version`
+- `eligibility_status`
+- `merit_score`
+- `confidence_score`
+- `authenticity_risk`
+- `recommendation`
+- `review_flags`
+- `merit_breakdown`
+- `feature_snapshot`
+- `top_strengths`
+- `main_gaps`
+- `uncertainties`
+- `evidence_spans`
+- `explanation`
+
+Additional trace fields currently returned:
+
+- `extraction_mode` (`baseline` or `llm`)
+- `extractor_version`
+- `llm_metadata` (nullable)
+
+### `POST /score/batch`
+
+Purpose:
+
+- score multiple candidates in one call
+
+Input shape:
+
+```json
+{
+  "candidates": [
+    {"candidate_id": "cand_001", "text_inputs": {"motivation_letter_text": "..."}}
+  ]
+}
+```
+
+Response shape:
+
+- `scoring_run_id`
+- `scoring_version`
+- `count`
+- `results` (array of `POST /score` responses)
+
+### `GET /config/scoring`
+
+Purpose:
+
+- discover active scoring/extraction configuration
+
+Includes:
+
+- score version and prompt version
+- exclusion list for privacy-safe scoring
+- weights and thresholds
+- LLM mode flags (`llm_enabled`, `llm_provider`, `llm_model`, `fallback_to_baseline`)
+
+### `GET /health`
+
+Purpose:
+
+- liveness check for deployment and monitoring
+
+### Debug endpoints (not required for production backend flow)
+
+- `POST /debug/features`
+- `POST /debug/explanation`
+- `POST /debug/llm-extract`
+
+Use debug routes for diagnostics only.
+
 Additional endpoints included:
 
 - `POST /score/file`
@@ -265,8 +360,8 @@ Example `.env`:
 
 ```env
 ENABLE_LLM=true
-LLM_PROVIDER=mock
-LLM_MODEL=gpt-4o-mini
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
 LLM_TIMEOUT_SECONDS=20
 LLM_TEMPERATURE=0
 LLM_MAX_RETRIES=1
