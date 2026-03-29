@@ -340,3 +340,26 @@ Main artifacts:
 - Heuristic text features are approximate by design.
 - Authenticity risk is a review-risk signal, not proof of cheating/AI use.
 - Recommendation is operational routing only.
+
+## Deployment on Railway
+
+You can easily deploy this service to [Railway](https://railway.app/):
+
+1. Push your code to a GitHub repository.
+2. Create a new Railway project and connect your repository.
+3. Set environment variables in Railway (see `.env` example in this repo).
+4. Ensure you have a `Procfile` in the root with:
+   
+   ```
+   web: uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+5. Railway will automatically detect the Python project and install dependencies from `requirements.txt`.
+6. The service will be available at your Railway domain, e.g.:
+   
+   https://admissions-ml-service-production.up.railway.app
+
+You can test the API at:
+
+    https://admissions-ml-service-production.up.railway.app/docs
+
+or use any HTTP client to call the endpoints described above.
