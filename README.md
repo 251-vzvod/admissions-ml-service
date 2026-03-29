@@ -13,38 +13,27 @@ The service ingests structured data and text signals from candidate applications
 3. Workflow recommendation labels: `review_priority`, `standard_review`, `manual_review_required`, `insufficient_evidence`, `incomplete_application`, `invalid`
 4. Explainability payload: strengths, gaps, uncertainties, evidence snippets, and scoring notes
 
-## Architecture
+## How To Run (Quick Start)
 
-Pipeline stages:
+### Setup
 
-1. Request validation (Pydantic)
-2. Privacy / merit-safe projection
-3. Preprocessing and normalization
-4. Eligibility layer
-5. Structured feature extraction
-6. Text rubric extraction (LLM-assisted extractor with deterministic fallback)
-7. Authenticity risk estimation
-8. Feature construction
-9. Scoring engine
-10. Recommendation mapping
-11. Explanation generation
+```bash
+python -m venv .venv
+. .venv/Scripts/activate
+pip install -r requirements.txt
+```
 
-### Hybrid Extraction Strategy
+### Start API
 
-- `hybrid` extraction:
-  - LLM extracts structured rubric features
-  - if LLM call/parsing fails, deterministic heuristic extractor is used as fallback
-  - final scores and recommendation are always deterministic and internal
+```bash
+uvicorn app.main:app --reload
+```
 
-The LLM is an extractor/helper, not the final decision-maker.
+### Run Tests
 
-Code structure:
-
-- `app/config.py`: thresholds, weights, normalization assumptions, excluded sensitive fields
-- `app/schemas`: API input/output contracts
-- `app/services`: core pipeline modules
-- `app/api/routes.py`: HTTP endpoints
-- `scripts/score_candidates.py`: batch scoring and system diagnostics without labels
+```bash
+pytest -q
+```
 
 ## Required Endpoints
 
@@ -376,28 +365,6 @@ Fallback behavior:
 - if LLM call/parsing fails and fallback is enabled, pipeline uses deterministic heuristic extraction
 - final scoring and recommendation remain deterministic in all cases
 
-## How To Run
-
-### Setup
-
-```bash
-python -m venv .venv
-. .venv/Scripts/activate
-pip install -r requirements.txt
-```
-
-### Start API
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### Run Tests
-
-```bash
-pytest -q
-```
-
 ## API Examples
 
 ### Single Candidate
@@ -486,6 +453,39 @@ curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
   }
 }
 ```
+
+## Architecture (Deep Dive)
+
+Pipeline stages:
+
+1. Request validation (Pydantic)
+2. Privacy / merit-safe projection
+3. Preprocessing and normalization
+4. Eligibility layer
+5. Structured feature extraction
+6. Text rubric extraction (LLM-assisted extractor with deterministic fallback)
+7. Authenticity risk estimation
+8. Feature construction
+9. Scoring engine
+10. Recommendation mapping
+11. Explanation generation
+
+### Hybrid Extraction Strategy
+
+- `hybrid` extraction:
+  - LLM extracts structured rubric features
+  - if LLM call/parsing fails, deterministic heuristic extractor is used as fallback
+  - final scores and recommendation are always deterministic and internal
+
+The LLM is an extractor/helper, not the final decision-maker.
+
+Code structure:
+
+- `app/config.py`: thresholds, weights, normalization assumptions, excluded sensitive fields
+- `app/schemas`: API input/output contracts
+- `app/services`: core pipeline modules
+- `app/api/routes.py`: HTTP endpoints
+- `scripts/score_candidates.py`: batch scoring and system diagnostics without labels
 
 ## How To Evaluate MVP Without Ground Truth Labels
 
