@@ -46,6 +46,47 @@ def test_llm_parser_supports_claim_to_evidence_schema() -> None:
     assert parsed.evidence_spans[0].dimension == "initiative"
 
 
+def test_llm_parser_accepts_alias_keys_and_source_values() -> None:
+    payload = {
+        "top_strengths": [
+            {
+                "claim": "strong initiative evidence",
+                "source": "interview",
+                "snippet": "I coordinated the team and tracked weekly outcomes.",
+            }
+        ],
+        "main_gaps": [
+            {
+                "claim": "missing long-term impact evidence",
+                "source": "questions",
+                "snippet": "We did not yet run a 12-month follow-up.",
+            }
+        ],
+        "uncertainty_signals": [
+            {
+                "claim": "insufficient evidence for scale",
+                "source": "motivation_letter",
+                "snippet": "I plan to scale later.",
+            }
+        ],
+        "evidence": [
+            {
+                "type": "initiative",
+                "source": "video_interview",
+                "snippet": "We assigned roles and monitored attendance weekly.",
+            }
+        ],
+        "rationale": "Normalized alias response.",
+    }
+
+    parsed = parse_llm_extraction_json(json.dumps(payload))
+    assert parsed.top_strength_signals[0].source == "interview_text"
+    assert parsed.main_gap_signals[0].source == "motivation_questions"
+    assert parsed.uncertainties[0].source == "motivation_letter_text"
+    assert parsed.evidence_spans[0].source == "video_interview_transcript_text"
+    assert parsed.evidence_spans[0].text.startswith("We assigned roles")
+
+
 def test_baseline_text_features_include_new_mismatch_signals() -> None:
     bundle = preprocess_text_inputs(
         {

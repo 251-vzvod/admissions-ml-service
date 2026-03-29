@@ -99,7 +99,7 @@ def extract_explainability_with_llm(
     try:
         parsed = parse_llm_extraction_json(response.content)
     except LLMParseError as exc:
-        raise RuntimeError("llm_parse_failed") from exc
+        raise RuntimeError(f"llm_parse_failed:{exc}") from exc
 
     return _to_result(
         extraction=parsed,
