@@ -26,6 +26,19 @@ Run tests:
 pytest -q
 ```
 
+Run Streamlit demo (in a separate terminal while API is running):
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Demo features:
+
+- Editable JSON payload for one candidate
+- Quick load: default sample, random candidate from `data/candidates.json`, synthetic candidate
+- One-click calls to `/score`, `/debug/score-trace`, and `/debug/llm-extract`
+- Visual summary for recommendation, flags, scores, and explanation blocks
+
 ## API Endpoints
 
 Required:
