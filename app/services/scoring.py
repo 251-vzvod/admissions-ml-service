@@ -43,16 +43,18 @@ def compute_scores(feature_map: dict[str, float | bool], authenticity_risk_raw: 
         [
             (float(f.get("initiative", 0.0)), 0.35),
             (float(f.get("leadership_impact", 0.0)), 0.35),
-            (float(f.get("linked_examples_count", 0.0)), 0.15),
-            (float(f.get("project_mentions_count", 0.0)), 0.15),
+            (float(f.get("evidence_richness", 0.0)), 0.15),
+            (float(f.get("evidence_count", 0.0)), 0.15),
         ]
     )
     experience_skills = weighted_average_normalized(
         [
-            (float(f.get("achievement_mentions_count", 0.0)), 0.35),
-            (float(f.get("project_mentions_count", 0.0)), 0.25),
-            (float(f.get("english_score_normalized", 0.5)), 0.20),
-            (float(f.get("certificate_score_normalized", 0.5)), 0.20),
+            (float(f.get("evidence_count", 0.0)), 0.30),
+            (float(f.get("leadership_impact", 0.0)), 0.20),
+            (float(f.get("achievement_mentions_count", 0.0)), 0.20),
+            (float(f.get("project_mentions_count", 0.0)), 0.15),
+            (float(f.get("english_score_normalized", 0.5)), 0.075),
+            (float(f.get("certificate_score_normalized", 0.5)), 0.075),
         ]
     )
 
@@ -69,6 +71,7 @@ def compute_scores(feature_map: dict[str, float | bool], authenticity_risk_raw: 
         trust_penalty += 0.15
     if bool(f.get("low_evidence_flag", False)):
         trust_penalty += 0.10
+    trust_penalty += float(f.get("genericness_score", 0.0)) * 0.10
     trust_completeness = clamp01(trust_base - trust_penalty)
 
     merit_breakdown_raw = {

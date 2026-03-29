@@ -10,6 +10,7 @@ from app.schemas.output import ScoreResponse
 from app.services.authenticity import estimate_authenticity_risk
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
+from app.services.llm_extractor import extract_text_features_with_llm
 from app.services.preprocessing import preprocess_text_inputs
 from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
@@ -45,6 +46,9 @@ class ScoringPipeline:
             "scoring_run_id": scoring_run_id,
             "scoring_version": CONFIG.scoring_version,
             "prompt_version": CONFIG.prompt_version,
+            "extraction_mode": "baseline",
+            "extractor_version": CONFIG.llm.baseline_extractor_version,
+            "llm_metadata": None,
             "eligibility_status": eligibility.status,
             "eligibility_reasons": list(eligibility.reasons),
         }
@@ -97,13 +101,50 @@ class ScoringPipeline:
             behavioral_signals=projected.get("behavioral_signals") if isinstance(projected.get("behavioral_signals"), dict) else None,
             bundle=bundle,
         )
-        text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
+
+        extraction_mode = "baseline"
+        extractor_version = CONFIG.llm.baseline_extractor_version
+        llm_metadata: dict[str, str | int | float] | None = None
+        llm_strengths: list[str] | None = None
+        llm_gaps: list[str] | None = None
+        llm_uncertainties: list[str] | None = None
+        llm_evidence_spans: list[dict[str, str]] | None = None
+        extractor_rationale: str | None = None
+
+        if CONFIG.llm.enable_llm:
+            try:
+                llm_result = extract_text_features_with_llm(bundle=bundle)
+                text_features = llm_result.features
+                text_diagnostics = llm_result.diagnostics
+                extraction_mode = "llm"
+                extractor_version = CONFIG.llm.extractor_version
+                llm_metadata = llm_result.llm_metadata
+                llm_strengths = llm_result.strengths
+                llm_gaps = llm_result.gaps
+                llm_uncertainties = llm_result.uncertainties
+                llm_evidence_spans = llm_result.evidence_spans
+                extractor_rationale = llm_result.rationale
+            except RuntimeError as exc:
+                if not CONFIG.llm.fallback_to_baseline:
+                    raise
+                text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
+                text_features = text_result.features
+                text_diagnostics = text_result.diagnostics
+                llm_metadata = {
+                    "provider": CONFIG.llm.provider,
+                    "model": CONFIG.llm.model,
+                    "fallback_reason": str(exc),
+                }
+        else:
+            text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
+            text_features = text_result.features
+            text_diagnostics = text_result.diagnostics
 
         merged_features: dict[str, float | bool] = {}
         merged_features.update(structured_result.features)
-        merged_features.update(text_result.features)
+        merged_features.update(text_features)
 
-        auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_result.diagnostics)
+        auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_diagnostics)
         merged_features["authenticity_risk_raw"] = auth_result.authenticity_risk_raw
 
         scoring_result = compute_scores(feature_map=merged_features, authenticity_risk_raw=auth_result.authenticity_risk_raw)
@@ -133,6 +174,8 @@ class ScoringPipeline:
             "completeness_score": round(float(merged_features.get("completeness_score", 0.0)), 4),
             "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
             "contradiction_flag": bool(merged_features.get("contradiction_flag", False)),
+            "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
+            "cross_section_mismatch_score": round(float(merged_features.get("cross_section_mismatch_score", 0.0)), 4),
             "authenticity_risk_raw": round(float(merged_features.get("authenticity_risk_raw", 0.0)), 4),
             "excluded_sensitive_fields_count": len(excluded_hits),
         }
@@ -143,7 +186,16 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_result.review_flags,
             sections=bundle.sections,
+            provided_strengths=llm_strengths,
+            provided_gaps=llm_gaps,
+            provided_uncertainties=llm_uncertainties,
+            provided_evidence_spans=llm_evidence_spans,
+            extractor_rationale=extractor_rationale,
         )
+
+        base_response["extraction_mode"] = extraction_mode
+        base_response["extractor_version"] = extractor_version
+        base_response["llm_metadata"] = llm_metadata
 
         return ScoreResponse(
             **base_response,

@@ -27,6 +27,11 @@ def build_explanation(
     recommendation: str,
     review_flags: list[str],
     sections: dict[str, list[str]],
+    provided_strengths: list[str] | None = None,
+    provided_gaps: list[str] | None = None,
+    provided_uncertainties: list[str] | None = None,
+    provided_evidence_spans: list[dict[str, str]] | None = None,
+    extractor_rationale: str | None = None,
 ) -> ExplanationResult:
     """Build strengths/gaps/uncertainties and natural language scoring notes."""
     strengths: list[str] = []
@@ -55,12 +60,18 @@ def build_explanation(
         uncertainties.append("Human review is recommended before high-confidence prioritization.")
 
     evidence_spans: list[EvidenceSpan] = []
-    for source in ["motivation_letter_text", "motivation_questions", "interview_text"]:
-        source_sections = sections.get(source, [])
-        if source_sections:
-            evidence_spans.append(EvidenceSpan(source=source, snippet=_pick_snippet(source_sections[0])))
-        if len(evidence_spans) >= 2:
-            break
+    if provided_evidence_spans:
+        for span in provided_evidence_spans[:2]:
+            source = span.get("source", "motivation_letter_text")
+            text = span.get("text") or span.get("snippet") or ""
+            evidence_spans.append(EvidenceSpan(source=source, snippet=_pick_snippet(text)))
+    else:
+        for source in ["motivation_letter_text", "motivation_questions", "interview_text"]:
+            source_sections = sections.get(source, [])
+            if source_sections:
+                evidence_spans.append(EvidenceSpan(source=source, snippet=_pick_snippet(source_sections[0])))
+            if len(evidence_spans) >= 2:
+                break
 
     summary = (
         "This profile was scored with a deterministic heuristic baseline that separates candidate potential signals "
@@ -84,6 +95,7 @@ def build_explanation(
         authenticity_risk=(
             "Authenticity risk is a review-risk signal (not cheating proof). "
             "Elevated risk triggers flags and manual routing, not automatic rejection."
+            + (f" Extractor note: {extractor_rationale}" if extractor_rationale else "")
         ),
         recommendation=(
             "Recommendation is a workflow routing label for committee review and must not be interpreted as final admission decision."
@@ -91,9 +103,9 @@ def build_explanation(
     )
 
     return ExplanationResult(
-        top_strengths=strengths[:3],
-        main_gaps=gaps[:3],
-        uncertainties=uncertainties[:3],
+        top_strengths=(provided_strengths[:3] if provided_strengths else strengths[:3]),
+        main_gaps=(provided_gaps[:3] if provided_gaps else gaps[:3]),
+        uncertainties=(provided_uncertainties[:3] if provided_uncertainties else uncertainties[:3]),
         evidence_spans=evidence_spans,
         explanation=ExplanationPayload(summary=summary, scoring_notes=scoring_notes),
     )

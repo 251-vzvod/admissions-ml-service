@@ -12,3 +12,13 @@ def test_health() -> None:
     payload = response.json()
     assert payload["status"] == "ok"
     assert "scoring_version" in payload
+
+
+def test_scoring_config_contains_llm_flags() -> None:
+    response = client.get("/config/scoring")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "llm_enabled" in payload
+    assert "llm_provider" in payload
+    assert "llm_model" in payload
+    assert "fallback_to_baseline" in payload

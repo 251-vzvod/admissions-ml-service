@@ -32,6 +32,8 @@ def test_score_single_candidate() -> None:
 
     result = response.json()
     assert result["candidate_id"] == "cand_test_001"
+    assert result["extraction_mode"] in {"baseline", "llm"}
+    assert "extractor_version" in result
     assert 0 <= result["merit_score"] <= 100
     assert 0 <= result["confidence_score"] <= 100
     assert 0 <= result["authenticity_risk"] <= 100

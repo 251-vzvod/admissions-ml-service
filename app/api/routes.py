@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,8 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.config import CONFIG
 from app.schemas.input import BatchScoreRequest, CandidateInput
 from app.schemas.output import BatchScoreResponse, ScoreResponse
+from app.services.llm_extractor import extract_text_features_with_llm
+from app.services.preprocessing import preprocess_text_inputs
 from app.services.pipeline import ScoringPipeline
 from app.utils.ids import generate_scoring_run_id
 
@@ -35,7 +38,11 @@ def get_scoring_config() -> dict[str, Any]:
             "merit_breakdown": CONFIG.weights.merit_breakdown,
             "confidence_components": CONFIG.weights.confidence_components,
         },
-        "thresholds": CONFIG.thresholds.__dict__,
+        "thresholds": asdict(CONFIG.thresholds),
+        "llm_enabled": CONFIG.llm.enable_llm,
+        "llm_provider": CONFIG.llm.provider,
+        "llm_model": CONFIG.llm.model,
+        "fallback_to_baseline": CONFIG.llm.fallback_to_baseline,
     }
 
 
@@ -101,4 +108,22 @@ def debug_explanation(candidate: CandidateInput) -> dict[str, Any]:
         "uncertainties": scored.uncertainties,
         "evidence_spans": [span.model_dump() for span in scored.evidence_spans],
         "explanation": scored.explanation.model_dump(),
+    }
+
+
+@router.post("/debug/llm-extract")
+def debug_llm_extract(candidate: CandidateInput) -> dict[str, Any]:
+    """Return parsed LLM extraction object for inspection (when enabled)."""
+    text_inputs = candidate.text_inputs.model_dump(mode="python") if candidate.text_inputs else {}
+    bundle = preprocess_text_inputs(text_inputs=text_inputs)
+    result = extract_text_features_with_llm(bundle)
+    return {
+        "features": result.features,
+        "diagnostics": result.diagnostics,
+        "top_strength_signals": result.strengths,
+        "main_gap_signals": result.gaps,
+        "uncertainties": result.uncertainties,
+        "evidence_spans": result.evidence_spans,
+        "extractor_rationale": result.rationale,
+        "llm_metadata": result.llm_metadata,
     }

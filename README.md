@@ -22,12 +22,23 @@ Pipeline stages:
 3. Preprocessing and normalization
 4. Eligibility layer
 5. Structured feature extraction
-6. Text rubric extraction (heuristic, no required external LLM)
+6. Text rubric extraction (heuristic baseline or LLM-assisted extractor)
 7. Authenticity risk estimation
 8. Feature construction
 9. Scoring engine
 10. Recommendation mapping
 11. Explanation generation
+
+### Baseline vs LLM-Assisted Mode
+
+- `baseline` mode:
+  - heuristic text extractor
+  - no external provider required
+- `llm` mode:
+  - LLM extracts structured rubric features only
+  - final scores and recommendation are still deterministic and internal
+
+The LLM is an extractor/helper, not the final decision-maker.
 
 Code structure:
 
@@ -49,6 +60,13 @@ Additional endpoints included:
 - `POST /score/file`
 - `POST /debug/features`
 - `POST /debug/explanation`
+- `POST /debug/llm-extract`
+
+`POST /score` includes additional trace fields:
+
+- `extraction_mode`: `baseline` | `llm`
+- `extractor_version`
+- `llm_metadata` (nullable)
 
 ## Scales And Normalization
 
@@ -111,6 +129,24 @@ These are operational candidate-level outputs used in committee workflow:
 - Inputs: eligibility status + merit/confidence/risk profile
 - Human interpretation: operational queue guidance only
 - Misuse to avoid: using recommendation as final decision
+
+## Why the LLM Is an Extractor, Not the Judge
+
+LLM usage in this service is intentionally bounded.
+
+The LLM is allowed to:
+
+- read candidate text sections
+- extract structured rubric features in `0.0..1.0`
+- suggest strengths/gaps/uncertainties and evidence spans
+
+The LLM is not allowed to:
+
+- produce final admission decision
+- directly set final recommendation as source of truth
+- replace eligibility, privacy filtering, or deterministic scoring formulas
+
+Internal deterministic code computes `merit_score`, `confidence_score`, `authenticity_risk`, and `recommendation` in all modes.
 
 ### Layer B: System Evaluation Metrics (Validation Metrics)
 
@@ -211,6 +247,39 @@ Configured in `app/config.py` (`EXCLUDED_FIELDS`), including:
 
 These fields can introduce unfair bias or socio-economic proxies and are not used as merit signals.
 
+## LLM Configuration
+
+Environment flags:
+
+- `ENABLE_LLM`
+- `LLM_PROVIDER`
+- `LLM_MODEL`
+- `LLM_TIMEOUT_SECONDS`
+- `LLM_TEMPERATURE`
+- `LLM_MAX_RETRIES`
+- `LLM_FALLBACK_TO_BASELINE`
+- `LLM_BASE_URL`
+- `LLM_API_KEY`
+
+Example `.env`:
+
+```env
+ENABLE_LLM=true
+LLM_PROVIDER=mock
+LLM_MODEL=gpt-4o-mini
+LLM_TIMEOUT_SECONDS=20
+LLM_TEMPERATURE=0
+LLM_MAX_RETRIES=1
+LLM_FALLBACK_TO_BASELINE=true
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=your_api_key_here
+```
+
+Fallback behavior:
+
+- if LLM call/parsing fails and fallback is enabled, pipeline uses baseline heuristic extraction
+- final scoring and recommendation remain deterministic in both paths
+
 ## How To Run
 
 ### Setup
@@ -280,6 +349,9 @@ curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
   "scoring_run_id": "run_20260329120000_ab12cd34",
   "scoring_version": "v1.0.0",
   "prompt_version": null,
+  "extraction_mode": "baseline",
+  "extractor_version": "heuristic-extractor-v1",
+  "llm_metadata": null,
   "eligibility_status": "eligible",
   "eligibility_reasons": [],
   "merit_score": 74,
@@ -334,6 +406,8 @@ Use `scripts/score_candidates.py` to produce:
 6. Missingness/coverage diagnostics
 7. No-sensitive-fields-used audit
 8. Framework placeholders for future label-based evaluation
+9. Extraction success rate / fallback rate / parsing validity rate
+10. Baseline-vs-LLM score and recommendation distribution shifts
 
 Run:
 
@@ -348,11 +422,14 @@ Outputs:
 
 ## Extension Points Toward LLM Extractor
 
-The baseline is deterministic and external-LLM independent. Future extension points:
+This repo already supports optional LLM-assisted extraction while keeping deterministic scoring.
 
-- replace/augment `app/services/text_features.py` with LLM-assisted rubric extraction
-- keep same feature contracts for downstream scoring consistency
-- add extractor provenance fields (`extractor_name`, `extractor_version`, confidence)
+Future extension points:
+
+- richer provider adapters in `app/services/llm_client.py`
+- prompt/version governance in `app/services/llm_prompts.py`
+- stronger parser/contract validation in `app/services/llm_parser.py`
+- per-field extractor calibration against reviewer feedback when labels appear
 
 ## Limitations
 
