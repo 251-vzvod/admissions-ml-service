@@ -98,6 +98,94 @@ Core response fields:
 - `merit_breakdown`, `feature_snapshot`
 - `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
 
+Example response shape:
+
+```json
+{
+  "candidate_id": "cand_001",
+  "scoring_run_id": "run_20260329_120000_abcd1234",
+  "scoring_version": "v1.0.0",
+  "prompt_version": null,
+  "extraction_mode": "deterministic_scoring",
+  "extractor_version": "llm-extractor-v1",
+  "llm_metadata": {
+    "provider": "openai",
+    "model": "gpt-4o"
+  },
+  "eligibility_status": "eligible",
+  "eligibility_reasons": [],
+  "merit_score": 25,
+  "confidence_score": 42,
+  "authenticity_risk": 40,
+  "recommendation": "standard_review",
+  "review_flags": [
+    "low_confidence",
+    "low_evidence_density"
+  ],
+  "merit_breakdown": {
+    "potential": 16,
+    "motivation": 18,
+    "leadership_agency": 24,
+    "experience_skills": 32,
+    "trust_completeness": 48
+  },
+  "feature_snapshot": {
+    "motivation_clarity": 0.1123,
+    "initiative": 0.1925,
+    "leadership_impact": 0.2481,
+    "growth_trajectory": 0.0469,
+    "resilience": 0.073,
+    "program_fit": 0.2381,
+    "evidence_richness": 0.2497,
+    "specificity_score": 0.2397,
+    "evidence_count": 0.2899,
+    "consistency_score": 0.9456,
+    "completeness_score": 0.8135,
+    "docs_count_score": 0.5,
+    "portfolio_links_score": 0.5,
+    "has_video_presentation": true,
+    "genericness_score": 0.4498,
+    "contradiction_flag": false,
+    "polished_but_empty_score": 0.4498,
+    "cross_section_mismatch_score": 0.0298,
+    "authenticity_risk_raw": 0.4017,
+    "excluded_sensitive_fields_count": 0
+  },
+  "top_strengths": [
+    "..."
+  ],
+  "main_gaps": [
+    "..."
+  ],
+  "uncertainties": [
+    "..."
+  ],
+  "evidence_spans": [
+    {
+      "source": "motivation_letter_text",
+      "snippet": "..."
+    }
+  ],
+  "explanation": {
+    "summary": "...",
+    "scoring_notes": {
+      "potential": "...",
+      "motivation": "...",
+      "confidence": "...",
+      "authenticity_risk": "...",
+      "recommendation": "..."
+    }
+  }
+}
+```
+
+Response notes:
+
+- `recommendation` and `review_flags` are deterministic backend routing outputs.
+- `llm_metadata` can be `null` when LLM explainability is unavailable.
+- `feature_snapshot` values are normalized in `0..1` scale unless explicitly boolean/count.
+- `merit_score`, `confidence_score`, `authenticity_risk` are display scores in `0..100`.
+
 Trace fields:
 
 - `extraction_mode`: `deterministic_scoring`
