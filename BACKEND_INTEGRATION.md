@@ -77,7 +77,7 @@ Core response fields (stable contract):
 
 Current trace fields (also returned):
 
-- `extraction_mode` (`baseline` | `llm`)
+- `extraction_mode` (`hybrid`)
 - `extractor_version`
 - `llm_metadata` (nullable)
 
@@ -109,7 +109,7 @@ Response fields:
 
 Purpose:
 
-- Read active runtime scoring config and extraction mode flags.
+- Read active runtime scoring config and extraction settings.
 
 Returns:
 
@@ -118,10 +118,10 @@ Returns:
 - `excluded_fields`
 - `weights`
 - `thresholds`
-- `llm_enabled`
+- `extraction_strategy`
 - `llm_provider`
 - `llm_model`
-- `fallback_to_baseline`
+- `llm_fallback_to_deterministic_extractor_on_failure`
 
 ## 4) `GET /health`
 

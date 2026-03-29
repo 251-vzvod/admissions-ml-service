@@ -22,21 +22,19 @@ Pipeline stages:
 3. Preprocessing and normalization
 4. Eligibility layer
 5. Structured feature extraction
-6. Text rubric extraction (heuristic baseline or LLM-assisted extractor)
+6. Text rubric extraction (LLM-assisted extractor with deterministic fallback)
 7. Authenticity risk estimation
 8. Feature construction
 9. Scoring engine
 10. Recommendation mapping
 11. Explanation generation
 
-### Baseline vs LLM-Assisted Mode
+### Hybrid Extraction Strategy
 
-- `baseline` mode:
-  - heuristic text extractor
-  - no external provider required
-- `llm` mode:
-  - LLM extracts structured rubric features only
-  - final scores and recommendation are still deterministic and internal
+- `hybrid` extraction:
+  - LLM extracts structured rubric features
+  - if LLM call/parsing fails, deterministic heuristic extractor is used as fallback
+  - final scores and recommendation are always deterministic and internal
 
 The LLM is an extractor/helper, not the final decision-maker.
 
@@ -96,7 +94,7 @@ Response (guaranteed core fields):
 
 Additional trace fields currently returned:
 
-- `extraction_mode` (`baseline` or `llm`)
+- `extraction_mode` (`hybrid`)
 - `extractor_version`
 - `llm_metadata` (nullable)
 
@@ -134,7 +132,7 @@ Includes:
 - score version and prompt version
 - exclusion list for privacy-safe scoring
 - weights and thresholds
-- LLM mode flags (`llm_enabled`, `llm_provider`, `llm_model`, `fallback_to_baseline`)
+- Extraction strategy and LLM settings (`extraction_strategy`, `llm_provider`, `llm_model`, `llm_fallback_to_deterministic_extractor_on_failure`)
 
 ### `GET /health`
 
@@ -159,7 +157,7 @@ Additional endpoints included:
 
 `POST /score` includes additional trace fields:
 
-- `extraction_mode`: `baseline` | `llm`
+- `extraction_mode`: `hybrid`
 - `extractor_version`
 - `llm_metadata` (nullable)
 
@@ -346,7 +344,6 @@ These fields can introduce unfair bias or socio-economic proxies and are not use
 
 Environment flags:
 
-- `ENABLE_LLM`
 - `LLM_PROVIDER`
 - `LLM_MODEL`
 - `LLM_TIMEOUT_SECONDS`
@@ -359,7 +356,6 @@ Environment flags:
 Example `.env`:
 
 ```env
-ENABLE_LLM=true
 LLM_PROVIDER=openai
 LLM_MODEL=gpt-4o
 LLM_TIMEOUT_SECONDS=20
@@ -372,8 +368,8 @@ LLM_API_KEY=your_api_key_here
 
 Fallback behavior:
 
-- if LLM call/parsing fails and fallback is enabled, pipeline uses baseline heuristic extraction
-- final scoring and recommendation remain deterministic in both paths
+- if LLM call/parsing fails and fallback is enabled, pipeline uses deterministic heuristic extraction
+- final scoring and recommendation remain deterministic in all cases
 
 ## How To Run
 
@@ -390,19 +386,6 @@ pip install -r requirements.txt
 ```bash
 uvicorn app.main:app --reload
 ```
-
-### Run Streamlit Demo
-
-```bash
-streamlit run streamlit_app.py
-```
-
-Demo capabilities:
-
-- switch between `baseline` and `llm` extraction mode
-- run single-candidate scoring from editable JSON
-- run batch scoring from uploaded file or `data/candidates.json`
-- inspect score outputs, extraction metadata, feature snapshot, and explanations
 
 ### Run Tests
 
@@ -457,9 +440,9 @@ curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
   "scoring_run_id": "run_20260329120000_ab12cd34",
   "scoring_version": "v1.0.0",
   "prompt_version": null,
-  "extraction_mode": "baseline",
-  "extractor_version": "heuristic-extractor-v1",
-  "llm_metadata": null,
+  "extraction_mode": "hybrid",
+  "extractor_version": "llm-extractor-v1",
+  "llm_metadata": {"provider": "openai", "model": "gpt-4o", "latency_ms": 812},
   "eligibility_status": "eligible",
   "eligibility_reasons": [],
   "merit_score": 74,
@@ -515,7 +498,7 @@ Use `scripts/score_candidates.py` to produce:
 7. No-sensitive-fields-used audit
 8. Framework placeholders for future label-based evaluation
 9. Extraction success rate / fallback rate / parsing validity rate
-10. Baseline-vs-LLM score and recommendation distribution shifts
+10. Hybrid extraction stability and fallback diagnostics
 
 Run:
 
