@@ -26,6 +26,37 @@ Run tests:
 pytest -q
 ```
 
+## Deploy on Vercel
+
+This repo includes Vercel files:
+
+- `api/index.py` (serverless FastAPI entrypoint)
+- `vercel.json` (routing + Python build config)
+
+Deploy steps:
+
+```bash
+vercel login
+vercel
+vercel --prod
+```
+
+Set env vars in Vercel Project Settings:
+
+- `LLM_PROVIDER`
+- `LLM_MODEL`
+- `LLM_API_KEY`
+- `LLM_TIMEOUT_SECONDS`
+- `LLM_MAX_RETRIES`
+- `LLM_FALLBACK_TO_BASELINE`
+- optional remaining `LLM_*` vars from this README
+
+After deploy, verify:
+
+- `GET /health`
+- `GET /config/scoring`
+- `POST /score`
+
 ## API Endpoints
 
 Required:
