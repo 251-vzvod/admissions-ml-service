@@ -10,6 +10,24 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from app.utils.math_utils import clamp01
 
 
+RUBRIC_NUMERIC_FIELDS = {
+    "motivation_clarity",
+    "initiative",
+    "leadership_impact",
+    "growth_trajectory",
+    "resilience",
+    "program_fit",
+    "evidence_richness",
+    "specificity_score",
+    "evidence_count",
+    "consistency_score",
+    "completeness_score",
+    "genericness_score",
+    "polished_but_empty_score",
+    "cross_section_mismatch_score",
+}
+
+
 class LLMEvidenceSpan(BaseModel):
     dimension: str
     source: Literal["motivation_letter_text", "motivation_questions", "interview_text"]
@@ -76,6 +94,24 @@ def parse_llm_extraction_json(raw_text: str) -> LLMExtractionOutput:
         payload = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise LLMParseError("invalid_json_response") from exc
+
+    if isinstance(payload, dict):
+        numeric_values: list[float] = []
+        for key in RUBRIC_NUMERIC_FIELDS:
+            raw_value = payload.get(key)
+            try:
+                numeric_values.append(float(raw_value))
+            except (TypeError, ValueError):
+                continue
+
+        rubric_mode = any(1.0 < value <= 3.0 for value in numeric_values)
+        if rubric_mode:
+            for key in RUBRIC_NUMERIC_FIELDS:
+                raw_value = payload.get(key)
+                try:
+                    payload[key] = float(raw_value) / 3.0
+                except (TypeError, ValueError):
+                    continue
 
     try:
         return LLMExtractionOutput.model_validate(payload)

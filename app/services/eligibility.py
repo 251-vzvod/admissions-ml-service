@@ -7,6 +7,7 @@ misused as an estimate of candidate merit.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app.config import CONFIG
 from app.services.preprocessing import NormalizedTextBundle
@@ -18,7 +19,40 @@ class EligibilityResult:
     reasons: list[str]
 
 
-def evaluate_eligibility(candidate_id: str | None, consent: bool | None, bundle: NormalizedTextBundle) -> EligibilityResult:
+def _extract_material_counters(profile: dict[str, Any]) -> tuple[int, int, bool]:
+    """Extract documents/portfolio/video counters from common profile locations."""
+    docs_count = 0
+    portfolio_links_count = 0
+    has_video = False
+
+    structured = profile.get("structured_data") if isinstance(profile.get("structured_data"), dict) else {}
+    materials = structured.get("application_materials") if isinstance(structured.get("application_materials"), dict) else {}
+
+    def _len_if_list(value: Any) -> int:
+        return len(value) if isinstance(value, list) else 0
+
+    docs_count += _len_if_list(profile.get("documents"))
+    docs_count += _len_if_list(profile.get("attachments"))
+    docs_count += _len_if_list(profile.get("supporting_documents"))
+    docs_count += _len_if_list(materials.get("documents"))
+    docs_count += _len_if_list(materials.get("attachments"))
+
+    portfolio_links_count += _len_if_list(profile.get("portfolio_links"))
+    portfolio_links_count += _len_if_list(materials.get("portfolio_links"))
+
+    top_video = profile.get("video_presentation_link") or profile.get("videoPresentationLink") or profile.get("video_url")
+    material_video = materials.get("video_presentation_link") or materials.get("videoPresentationLink") or materials.get("video_url")
+    has_video = bool((isinstance(top_video, str) and top_video.strip()) or (isinstance(material_video, str) and material_video.strip()))
+
+    return docs_count, portfolio_links_count, has_video
+
+
+def evaluate_eligibility(
+    candidate_id: str | None,
+    consent: bool | None,
+    bundle: NormalizedTextBundle,
+    profile: dict[str, Any] | None = None,
+) -> EligibilityResult:
     """Evaluate whether application has enough usable data for scoring."""
     reasons: list[str] = []
 
@@ -39,6 +73,18 @@ def evaluate_eligibility(candidate_id: str | None, consent: bool | None, bundle:
 
     if non_empty_sources < CONFIG.thresholds.min_non_empty_sources:
         reasons.append("insufficient_text_sources")
+
+    profile = profile or {}
+    docs_count, portfolio_links_count, has_video = _extract_material_counters(profile)
+
+    if CONFIG.thresholds.min_required_documents > 0 and docs_count < CONFIG.thresholds.min_required_documents:
+        reasons.append("missing_required_materials_documents")
+
+    if CONFIG.thresholds.min_portfolio_links > 0 and portfolio_links_count < CONFIG.thresholds.min_portfolio_links:
+        reasons.append("missing_required_materials_portfolio")
+
+    if CONFIG.thresholds.require_video_presentation and not has_video:
+        reasons.append("missing_required_materials_video")
 
     missing_count = sum(int(v) for v in bundle.missingness_map.values())
 

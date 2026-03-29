@@ -39,6 +39,7 @@ class ScoringPipeline:
             candidate_id=str(projected.get("candidate_id", "")),
             consent=projected.get("consent"),
             bundle=bundle,
+            profile=projected,
         )
 
         base_response = {
@@ -58,6 +59,9 @@ class ScoringPipeline:
 
         if eligibility.status in {"invalid", "incomplete_application"}:
             recommendation = "invalid" if eligibility.status == "invalid" else "incomplete_application"
+            early_flags = ["eligibility_gate"]
+            if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
+                early_flags.append("missing_required_materials")
             explanation = build_explanation(
                 feature_map={},
                 merit_breakdown={
@@ -68,7 +72,7 @@ class ScoringPipeline:
                     "trust_completeness": 0,
                 },
                 recommendation=recommendation,
-                review_flags=["eligibility_gate"],
+                review_flags=early_flags,
                 sections=bundle.sections,
                 extraction_mode="hybrid",
                 merit_score=0,
@@ -81,7 +85,7 @@ class ScoringPipeline:
                 confidence_score=0,
                 authenticity_risk=0,
                 recommendation=recommendation,
-                review_flags=["eligibility_gate"],
+                review_flags=early_flags,
                 merit_breakdown={
                     "potential": 0,
                     "motivation": 0,
@@ -155,6 +159,12 @@ class ScoringPipeline:
             prior_flags=auth_result.review_flags,
         )
 
+        merged_flags = list(recommendation_result.review_flags)
+        if any(reason.startswith("missing_required_materials") for reason in eligibility.reasons):
+            merged_flags.append("missing_required_materials")
+        # Preserve stable ordering and avoid duplicates.
+        recommendation_flags = sorted(set(merged_flags))
+
         merit_breakdown = {k: to_display_score(v) for k, v in scoring_result.merit_breakdown_raw.items()}
 
         snapshot = {
@@ -169,6 +179,9 @@ class ScoringPipeline:
             "evidence_count": round(float(merged_features.get("evidence_count", 0.0)), 4),
             "consistency_score": round(float(merged_features.get("consistency_score", 0.0)), 4),
             "completeness_score": round(float(merged_features.get("completeness_score", 0.0)), 4),
+            "docs_count_score": round(float(merged_features.get("docs_count_score", 0.0)), 4),
+            "portfolio_links_score": round(float(merged_features.get("portfolio_links_score", 0.0)), 4),
+            "has_video_presentation": bool(merged_features.get("has_video_presentation", False)),
             "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
             "contradiction_flag": bool(merged_features.get("contradiction_flag", False)),
             "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
@@ -204,7 +217,7 @@ class ScoringPipeline:
             confidence_score=scoring_result.confidence_score,
             authenticity_risk=scoring_result.authenticity_risk,
             recommendation=recommendation_result.recommendation,
-            review_flags=recommendation_result.review_flags,
+            review_flags=recommendation_flags,
             merit_breakdown=merit_breakdown,
             feature_snapshot=snapshot,
             top_strengths=explanation_result.top_strengths,

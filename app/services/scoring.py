@@ -60,10 +60,13 @@ def compute_scores(feature_map: dict[str, float | bool], authenticity_risk_raw: 
 
     trust_base = weighted_average_normalized(
         [
-            (float(f.get("completeness_score", 0.0)), 0.35),
-            (float(f.get("consistency_score", 0.0)), 0.30),
-            (float(f.get("evidence_count", 0.0)), 0.25),
+            (float(f.get("completeness_score", 0.0)), 0.30),
+            (float(f.get("consistency_score", 0.0)), 0.25),
+            (float(f.get("evidence_count", 0.0)), 0.20),
             (float(f.get("behavioral_completion_score", 0.0)), 0.10),
+            (float(f.get("docs_count_score", 0.0)), 0.07),
+            (float(f.get("portfolio_links_score", 0.0)), 0.05),
+            (1.0 if bool(f.get("has_video_presentation", False)) else 0.0, 0.03),
         ]
     )
     trust_penalty = 0.0

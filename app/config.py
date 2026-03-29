@@ -105,6 +105,11 @@ class Thresholds:
 
     low_evidence: float = 0.35
 
+    # Optional formal eligibility requirements (kept conservative by default).
+    require_video_presentation: bool = False
+    min_required_documents: int = 0
+    min_portfolio_links: int = 0
+
 
 @dataclass(slots=True)
 class NormalizationConfig:

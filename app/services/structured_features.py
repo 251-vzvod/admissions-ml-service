@@ -95,6 +95,31 @@ def extract_structured_features(
     skipped_optional = int(behavioral.get("skipped_optional_questions") or 0)
     skipped_optional_questions_penalty = clamp01(min(skipped_optional, 10) / 10.0)
 
+    application_materials = (
+        structured_data.get("application_materials")
+        if isinstance(structured_data, dict) and isinstance(structured_data.get("application_materials"), dict)
+        else {}
+    )
+
+    documents = application_materials.get("documents") if isinstance(application_materials.get("documents"), list) else []
+    attachments = application_materials.get("attachments") if isinstance(application_materials.get("attachments"), list) else []
+    portfolio_links = (
+        application_materials.get("portfolio_links")
+        if isinstance(application_materials.get("portfolio_links"), list)
+        else []
+    )
+    video_link = (
+        application_materials.get("video_presentation_link")
+        or application_materials.get("videoPresentationLink")
+        or application_materials.get("video_url")
+    )
+
+    docs_count = len(documents) + len(attachments)
+    docs_count_score = clamp01(docs_count / 6.0)
+    portfolio_links_count = len(portfolio_links)
+    portfolio_links_score = clamp01(portfolio_links_count / 4.0)
+    has_video_presentation = bool(isinstance(video_link, str) and video_link.strip())
+
     text_lower = bundle.full_text_lower
     tokens = text_lower.split()
     token_count = max(len(tokens), 1)
@@ -116,6 +141,9 @@ def extract_structured_features(
             "behavioral_completion_score": behavioral_completion_score,
             "returned_to_edit_flag": returned_to_edit_flag,
             "skipped_optional_questions_penalty": skipped_optional_questions_penalty,
+            "docs_count_score": docs_count_score,
+            "portfolio_links_score": portfolio_links_score,
+            "has_video_presentation": has_video_presentation,
             "evidence_count_estimate": evidence_count_estimate,
             "linked_examples_count": linked_examples_count,
             "achievement_mentions_count": achievement_mentions_count,

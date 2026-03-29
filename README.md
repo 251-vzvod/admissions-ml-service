@@ -159,6 +159,13 @@ The service uses three levels of scale:
 2. Aggregated raw scores: 0.0..1.0
 3. Display/API scores: integer 0..100
 
+LLM extractor rubric numeric fields support two input styles:
+
+1. normalized 0.0..1.0 values
+2. rubric 0..3 values
+
+If rubric-style values are detected, parser normalizes them to 0.0..1.0 before validation and downstream scoring.
+
 Utility functions:
 
 - `clamp01`
@@ -257,6 +264,18 @@ Without labels, do not invent supervised metrics. Use sanity/stability diagnosti
 - `conditionally_eligible`: minimally scoreable but high missingness
 - `eligible`: key sections present
 
+Optional formal material requirements can also route applications to `conditionally_eligible`:
+
+- `missing_required_materials_documents`
+- `missing_required_materials_portfolio`
+- `missing_required_materials_video`
+
+These checks are configurable via thresholds in `app/config.py`:
+
+- `min_required_documents`
+- `min_portfolio_links`
+- `require_video_presentation`
+
 Important: incomplete application is not equivalent to low merit.
 
 ### Merit Breakdown Axes (0..100)
@@ -292,6 +311,10 @@ Minus penalties:
 - low evidence
 - elevated authenticity risk (soft penalty)
 
+Routing note:
+
+- `low_confidence` review flag is added when confidence is below `acceptable_confidence` threshold.
+
 ### Authenticity Risk
 
 Raised by:
@@ -300,6 +323,7 @@ Raised by:
 - high genericness
 - low evidence density
 - section mismatch
+- cross-section mismatch score
 - contradiction risk
 
 Reduced by:
@@ -434,7 +458,12 @@ curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
     "initiative": 0.71,
     "evidence_count": 0.57,
     "consistency_score": 0.74,
+    "docs_count_score": 0.33,
+    "portfolio_links_score": 0.25,
+    "has_video_presentation": true,
     "genericness_score": 0.41,
+    "polished_but_empty_score": 0.22,
+    "cross_section_mismatch_score": 0.19,
     "contradiction_flag": false
   },
   "top_strengths": [],

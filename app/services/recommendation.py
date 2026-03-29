@@ -27,6 +27,9 @@ def map_recommendation(
     """Map scores + eligibility into workflow recommendation categories."""
     flags = list(prior_flags)
 
+    if confidence_raw < CONFIG.thresholds.acceptable_confidence:
+        flags.append("low_confidence")
+
     if eligibility_status == "invalid":
         return RecommendationResult(recommendation="invalid", review_flags=flags)
 

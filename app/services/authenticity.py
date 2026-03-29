@@ -60,6 +60,7 @@ def estimate_authenticity_risk(features: dict[str, float | bool], diagnostics: d
         flags.append("section_mismatch")
     if contradiction_flag:
         flags.append("contradiction_risk")
+        flags.append("possible_contradiction")
     if 0.45 <= risk < 0.70:
         flags.append("moderate_authenticity_risk")
     if risk >= 0.70:

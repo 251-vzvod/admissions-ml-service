@@ -61,6 +61,23 @@ def _flag_contradictions(text: str) -> bool:
     return False
 
 
+def _section_metric(section_text: str) -> tuple[float, float]:
+    section_lower = section_text.lower()
+    evidence = clamp01(
+        weighted_average_normalized(
+            [
+                (_density_score(section_lower, ACTION_TERMS, denominator=8.0), 0.35),
+                (_density_score(section_lower, OUTCOME_TERMS, denominator=8.0), 0.30),
+                (_density_score(section_lower, TEMPORAL_TERMS, denominator=10.0), 0.20),
+                (_density_score(section_lower, CAUSE_EFFECT_TERMS, denominator=10.0), 0.15),
+            ],
+            default=0.0,
+        )
+    )
+    generic = _density_score(section_lower, GENERIC_TERMS, denominator=6.0)
+    return evidence, generic
+
+
 def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, float | bool]) -> TextFeaturesResult:
     """Extract heuristic rubric features in normalized [0..1] scale."""
     full_text = bundle.full_text_lower
@@ -203,6 +220,31 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
         + (0.1 if long_but_thin else 0.0)
     )
 
+    section_texts = [bundle.motivation_letter_original, bundle.interview_original, "\n".join(bundle.motivation_answers_original)]
+    section_pairs = []
+    for text in section_texts:
+        if text.strip():
+            section_pairs.append(_section_metric(text))
+
+    mismatch_components: list[float] = []
+    for i in range(len(section_pairs)):
+        for j in range(i + 1, len(section_pairs)):
+            mismatch_components.append(abs(section_pairs[i][0] - section_pairs[j][0]))
+            mismatch_components.append(abs(section_pairs[i][1] - section_pairs[j][1]))
+    cross_section_mismatch_score = clamp01(sum(mismatch_components) / max(len(mismatch_components), 1))
+
+    polished_but_empty_score = clamp01(
+        weighted_average_normalized(
+            [
+                (generic_density, 0.45),
+                (1.0 - evidence_density, 0.35),
+                (1.0 - specificity_score, 0.20),
+            ],
+            default=0.0,
+        )
+        + (0.12 if long_but_thin else 0.0)
+    )
+
     low_evidence_flag = bool(evidence_count < 0.35)
 
     return TextFeaturesResult(
@@ -221,6 +263,8 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "genericness_score": genericness_score,
             "contradiction_flag": contradiction_flag,
             "low_evidence_flag": low_evidence_flag,
+            "polished_but_empty_score": polished_but_empty_score,
+            "cross_section_mismatch_score": cross_section_mismatch_score,
         },
         diagnostics={
             "word_count": word_count,
