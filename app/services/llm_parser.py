@@ -10,7 +10,13 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 class LLMClaimEvidence(BaseModel):
     claim: str
-    source: Literal["motivation_letter_text", "motivation_questions", "interview_text"]
+    source: Literal[
+        "motivation_letter_text",
+        "motivation_questions",
+        "interview_text",
+        "video_interview_transcript_text",
+        "video_presentation_transcript_text",
+    ]
     snippet: str
 
     @field_validator("claim", "snippet", mode="before")
@@ -23,7 +29,13 @@ class LLMClaimEvidence(BaseModel):
 
 class LLMEvidenceSpan(BaseModel):
     dimension: str
-    source: Literal["motivation_letter_text", "motivation_questions", "interview_text"]
+    source: Literal[
+        "motivation_letter_text",
+        "motivation_questions",
+        "interview_text",
+        "video_interview_transcript_text",
+        "video_presentation_transcript_text",
+    ]
     text: str
 
     @field_validator("dimension", "text", mode="before")

@@ -22,7 +22,9 @@ You will read:
 1. motivation letter
 2. answers to motivation questions
 3. interview text
-4. deterministic feature snapshot (already computed by transparent rules)
+4. video interview transcript (optional)
+5. video presentation transcript (optional)
+6. deterministic feature snapshot (already computed by transparent rules)
 
 You must NOT output numeric scoring fields.
 Numeric features are already computed by deterministic rules in backend code.
@@ -46,7 +48,7 @@ Important rules:
 - Evidence span text length target: 12-35 words
 - Do not duplicate evidence spans
 - If motivation_questions are present, include at least one evidence span from motivation_questions
-- Try to cover multiple sources across spans when available (letter, questions, interview)
+- Try to cover multiple sources across spans when available (letter, questions, interview, transcripts)
 
 Return valid JSON only with this exact schema:
 
@@ -98,6 +100,8 @@ def build_extraction_user_prompt(
             for idx, answer in enumerate(bundle.motivation_answers_original)
         ],
         "interview_text": bundle.interview_original,
+            "video_interview_transcript_text": bundle.video_interview_transcript_original,
+            "video_presentation_transcript_text": bundle.video_presentation_transcript_original,
         "deterministic_text_signals": deterministic_signals or {},
         "missingness_map": bundle.missingness_map,
         "text_stats": bundle.stats,

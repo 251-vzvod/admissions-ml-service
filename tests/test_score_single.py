@@ -45,3 +45,22 @@ def test_score_single_candidate() -> None:
         "incomplete_application",
         "invalid",
     }
+
+
+def test_score_single_candidate_with_video_transcript_only() -> None:
+    payload = {
+        "candidate_id": "cand_test_video_001",
+        "text_inputs": {
+            "video_interview_transcript_text": (
+                "I planned a volunteer event, coordinated three classmates, and documented tasks over two weeks. "
+                "During the interview I explained what worked, what failed, and how we improved next time."
+            )
+        },
+    }
+
+    response = client.post("/score", json=payload)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["candidate_id"] == "cand_test_video_001"
+    assert result["eligibility_status"] in {"eligible", "conditionally_eligible"}
+    assert 0 <= result["merit_score"] <= 100

@@ -35,6 +35,8 @@ class TextInputs(BaseModel):
     motivation_letter_text: str | None = None
     motivation_questions: list[MotivationAnswer] = Field(default_factory=list)
     interview_text: str | None = None
+    video_interview_transcript_text: str | None = None
+    video_presentation_transcript_text: str | None = None
 
 
 class BehavioralSignals(BaseModel):

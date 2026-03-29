@@ -183,10 +183,15 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
 
     contradiction_flag = _flag_contradictions(full_text)
 
+    interview_family_present = (
+        int(not bundle.missingness_map.get("interview_text", True))
+        or int(not bundle.missingness_map.get("video_interview_transcript_text", True))
+        or int(not bundle.missingness_map.get("video_presentation_transcript_text", True))
+    )
     section_presence = [
         int(not bundle.missingness_map.get("motivation_letter_text", True)),
         int(not bundle.missingness_map.get("motivation_questions", True)),
-        int(not bundle.missingness_map.get("interview_text", True)),
+        int(bool(interview_family_present)),
     ]
     section_alignment = clamp01(sum(section_presence) / 3.0)
 
@@ -220,7 +225,13 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
         + (0.1 if long_but_thin else 0.0)
     )
 
-    section_texts = [bundle.motivation_letter_original, bundle.interview_original, "\n".join(bundle.motivation_answers_original)]
+    section_texts = [
+        bundle.motivation_letter_original,
+        bundle.interview_original,
+        bundle.video_interview_transcript_original,
+        bundle.video_presentation_transcript_original,
+        "\n".join(bundle.motivation_answers_original),
+    ]
     section_pairs = []
     for text in section_texts:
         if text.strip():

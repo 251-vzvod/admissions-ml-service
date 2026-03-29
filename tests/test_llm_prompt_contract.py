@@ -30,3 +30,18 @@ def test_user_prompt_includes_questions_and_answers() -> None:
     assert '"motivation_questions"' in user_prompt
     assert '"question": "What did you build?"' in user_prompt
     assert '"answer": "I organized a school event and tracked attendance weekly."' in user_prompt
+
+
+def test_user_prompt_includes_video_transcripts_when_present() -> None:
+    bundle = preprocess_text_inputs(
+        {
+            "motivation_letter_text": "Letter text.",
+            "video_interview_transcript_text": "Interview transcript text.",
+            "video_presentation_transcript_text": "Presentation transcript text.",
+        }
+    )
+
+    user_prompt = build_extraction_user_prompt(bundle)
+
+    assert '"video_interview_transcript_text": "Interview transcript text."' in user_prompt
+    assert '"video_presentation_transcript_text": "Presentation transcript text."' in user_prompt

@@ -114,7 +114,13 @@ def build_explanation(
             text = span.get("text") or span.get("snippet") or ""
             evidence_spans.append(EvidenceSpan(source=source, snippet=_pick_snippet(text)))
     else:
-        for source in ["motivation_letter_text", "motivation_questions", "interview_text"]:
+        for source in [
+            "motivation_letter_text",
+            "motivation_questions",
+            "interview_text",
+            "video_interview_transcript_text",
+            "video_presentation_transcript_text",
+        ]:
             source_sections = sections.get(source, [])
             if source_sections:
                 evidence_spans.append(EvidenceSpan(source=source, snippet=_pick_snippet(source_sections[0])))

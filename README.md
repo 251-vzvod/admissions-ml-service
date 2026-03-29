@@ -1,360 +1,162 @@
-﻿# inVision U Scoring Service MVP
+# inVision U Scoring Service MVP
 
-Production-like prototype of an explainable, deterministic FastAPI scoring service for primary candidate review support.
+Explainable FastAPI service for primary candidate screening support.
 
-Important: this service is a decision support tool for committee workflow. It is not an autonomous admission engine.
+This is a decision-support tool for committee workflow, not an autonomous admission engine.
 
-## What This Service Does
+## Core Behavior
 
-The service ingests structured data and text signals from candidate applications, then produces four different layers of outputs:
+- Final numeric scoring is deterministic and rule-based.
+- LLM is optional and used only for explainability text (claims linked to evidence).
+- Sensitive/socio-economic fields are excluded from merit scoring.
+- Human-in-the-loop is required for final decisions.
 
-1. Candidate-level features (atomic signals in 0.0..1.0)
-2. Candidate-level aggregated scores (0..100): `merit_score`, `confidence_score`, `authenticity_risk`
-3. Workflow recommendation labels: `review_priority`, `standard_review`, `manual_review_required`, `insufficient_evidence`, `incomplete_application`, `invalid`
-4. Explainability payload: strengths, gaps, uncertainties, evidence snippets, and scoring notes
-
-## How To Run (Quick Start)
-
-### Setup
+## Quick Start
 
 ```bash
 python -m venv .venv
 . .venv/Scripts/activate
 pip install -r requirements.txt
-```
-
-### Start API
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-### Run Tests
+Run tests:
 
 ```bash
 pytest -q
 ```
 
-## Required Endpoints
+## API Endpoints
+
+Required:
 
 - `GET /health`
 - `GET /config/scoring`
 - `POST /score`
 - `POST /score/batch`
 
-## Backend Integration Contract
+Useful debug endpoints:
 
-Primary endpoints for backend integration:
+- `POST /debug/features`
+- `POST /debug/explanation`
+- `POST /debug/llm-extract` (LLM explainability output only)
+- `POST /debug/score-trace` (deterministic formulas and factor contributions)
 
-1. `POST /score`
-2. `POST /score/batch`
-3. `GET /health`
-4. `GET /config/scoring`
+Additional utility endpoint:
 
-### `POST /score`
+- `POST /score/file`
 
-Purpose:
-
-- score a single candidate profile
-
-Input (minimum):
-
-- `candidate_id`
-- at least one non-empty text source in `text_inputs`
-
-Response (guaranteed core fields):
-
-- `candidate_id`
-- `scoring_run_id`
-- `scoring_version`
-- `eligibility_status`
-- `merit_score`
-- `confidence_score`
-- `authenticity_risk`
-- `recommendation`
-- `review_flags`
-- `merit_breakdown`
-- `feature_snapshot`
-- `top_strengths`
-- `main_gaps`
-- `uncertainties`
-- `evidence_spans`
-- `explanation`
-
-Additional trace fields currently returned:
-
-- `extraction_mode` (`deterministic_scoring`)
-- `extractor_version`
-- `llm_metadata` (nullable)
-
-### `POST /score/batch`
+## `POST /score`
 
 Purpose:
 
-- score multiple candidates in one call
+- Score one candidate profile.
 
-Input shape:
+Minimum input:
+
+- `candidate_id`
+- At least one non-empty text source in `text_inputs`.
+
+Supported `text_inputs` fields:
+
+- `motivation_letter_text`
+- `motivation_questions[]` (`question` + `answer`)
+- `interview_text`
+- `video_interview_transcript_text` (optional)
+- `video_presentation_transcript_text` (optional)
+
+Example request:
 
 ```json
 {
-  "candidates": [
-    {"candidate_id": "cand_001", "text_inputs": {"motivation_letter_text": "..."}}
-  ]
+  "candidate_id": "cand_001",
+  "structured_data": {
+    "education": {
+      "english_proficiency": {"type": "ielts", "score": 7.0},
+      "school_certificate": {"type": "unt", "score": 110}
+    }
+  },
+  "text_inputs": {
+    "motivation_letter_text": "I organized a student project and improved attendance by 30%.",
+    "motivation_questions": [
+      {
+        "question": "Why this program?",
+        "answer": "I want to build social impact projects with measurable outcomes."
+      }
+    ],
+    "video_presentation_transcript_text": "In my video I described a tutoring initiative and weekly tracking."
+  }
 }
 ```
 
-Response shape:
+Core response fields:
 
-- `scoring_run_id`
-- `scoring_version`
-- `count`
-- `results` (array of `POST /score` responses)
+- `candidate_id`, `scoring_run_id`, `scoring_version`
+- `eligibility_status`, `eligibility_reasons`
+- `merit_score`, `confidence_score`, `authenticity_risk`
+- `recommendation`, `review_flags`
+- `merit_breakdown`, `feature_snapshot`
+- `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
 
-### `GET /config/scoring`
-
-Purpose:
-
-- discover active scoring/extraction configuration
-
-Includes:
-
-- score version and prompt version
-- scoring config versioning metadata (`scoring_config_version`, `weight_experiment_protocol_version`)
-- exclusion list for privacy-safe scoring
-- weights and thresholds
-- Extraction strategy and LLM settings (`extraction_strategy`, `llm_provider`, `llm_model`, `llm_fallback_to_deterministic_extractor_on_failure`)
-
-### `GET /health`
-
-Purpose:
-
-- liveness check for deployment and monitoring
-
-### Debug endpoints (not required for production backend flow)
-
-- `POST /debug/features`
-- `POST /debug/explanation`
-- `POST /debug/llm-extract`
-- `POST /debug/score-trace`
-
-Use debug routes for diagnostics only.
-
-Additional endpoints included:
-
-- `POST /score/file`
-- `POST /debug/features`
-- `POST /debug/explanation`
-- `POST /debug/llm-extract`
-
-`POST /score` includes additional trace fields:
+Trace fields:
 
 - `extraction_mode`: `deterministic_scoring`
 - `extractor_version`
 - `llm_metadata` (nullable)
 
-## Scales And Normalization
+## Scoring Model (Short)
 
-The service uses three levels of scale:
+### Deterministic numeric path
 
-1. Feature level: 0.0..1.0
-2. Aggregated raw scores: 0.0..1.0
-3. Display/API scores: integer 0..100
+- Structured features: rule-based extraction from structured data and process signals.
+- Text features: rule-based extraction from all available text sources (letter, Q/A, interview, transcripts).
+- Authenticity risk: deterministic heuristic from genericness/evidence/consistency signals.
+- Final scores: deterministic formulas and fixed weights.
 
-Numeric text features are computed by deterministic extractors only.
-LLM is used for explainability artifacts (claims + evidence links), not for numeric scoring.
+### Explainability path
 
-Utility functions:
+- LLM receives candidate text plus deterministic signals.
+- LLM returns only explainability artifacts in claim -> evidence format.
+- If LLM fails, deterministic fallback explanations are still returned.
 
-- `clamp01`
-- `safe_div`
-- `to_display_score` where `displayed_score = round(raw * 100)`
-- `weighted_average_normalized`
+## Eligibility Statuses
 
-## Product Scores Versus Evaluation Metrics (Critical Distinction)
+- `invalid`: missing id, no usable text, or consent false
+- `incomplete_application`: too little text for reliable scoring
+- `conditionally_eligible`: scoreable but missingness/formal checks trigger review
+- `eligible`: key content present
 
-### Layer A: Candidate Scoring Outputs (Product Scores)
-
-These are operational candidate-level outputs used in committee workflow:
-
-- `merit_score`
-- `confidence_score`
-- `authenticity_risk`
-- `recommendation`
-
-#### `merit_score`
-
-- Measures: strength of potential-related evidence (growth, initiative, leadership agency, motivation fit)
-- Does NOT measure: probability of admission; "overall worth" of a person
-- Why it exists: prioritization/ranking support for committee review queue
-- Inputs: potential and motivation signals, with limited academic influence
-- Human interpretation: higher score means stronger observed potential evidence, not guaranteed admission
-- Misuse to avoid: treating it as auto admit/reject threshold
-
-#### `confidence_score`
-
-- Measures: reliability of this scoring assessment
-- Does NOT measure: candidate quality
-- Why it exists: communicate uncertainty and avoid overconfident automation
-- Inputs: specificity, evidence count, consistency, completeness, contradiction/low-evidence penalties, soft authenticity penalty
-- Human interpretation: low confidence means "needs manual review" more often than "weak candidate"
-- Misuse to avoid: demoting candidates solely due to low confidence
-
-#### `authenticity_risk`
-
-- Measures: review-risk / inauthenticity suspicion uncertainty signal
-- Does NOT measure: cheating proof or chatbot usage proof
-- Why it exists: route cases for manual scrutiny, not final verdict
-- Inputs: genericness, evidence density, mismatch signals, contradiction flag
-- Human interpretation: elevated risk asks for review; it does not invalidate merit automatically
-- Misuse to avoid: direct rejection or hard suppression of merit
-
-#### `recommendation`
-
-- Measures: workflow routing label for committee operations
-- Does NOT measure: final admission outcome
-- Why it exists: reduce manual triage load with transparent categories
-- Inputs: eligibility status + merit/confidence/risk profile
-- Human interpretation: operational queue guidance only
-- Misuse to avoid: using recommendation as final decision
-
-## Why the LLM Is Explainability-Only
-
-LLM usage in this service is intentionally bounded.
-
-The LLM is allowed to:
-
-- read candidate text sections
-- produce strengths/gaps/uncertainties in claim -> evidence format
-- link claims to quoted evidence snippets with source labels
-
-The LLM is not allowed to:
-
-- produce final admission decision
-- directly set final recommendation as source of truth
-- output numeric scoring features used by merit/confidence/authenticity formulas
-- replace eligibility, privacy filtering, or deterministic scoring formulas
-
-Internal deterministic code computes all numeric features and final `merit_score`, `confidence_score`, `authenticity_risk`, and `recommendation`.
-
-### Layer B: System Evaluation Metrics (Validation Metrics)
-
-These evaluate the scoring system quality itself, not candidates:
-
-- coverage
-- missingness rate
-- score variance and distribution checks
-- recommendation mix
-- stability under perturbation tests
-- future rank correlation with manual review labels
-- future precision@k when labels appear
-- future inter-rater agreement proxy
-- future confidence calibration-like analysis
-- authenticity flag-rate analysis
-
-Without labels, do not invent supervised metrics. Use sanity/stability diagnostics instead.
-
-## Scoring Logic
-
-### Eligibility Status
-
-- `invalid`: missing candidate id, no usable content, or consent false
-- `incomplete_application`: too little text for meaningful scoring
-- `conditionally_eligible`: minimally scoreable but high missingness
-- `eligible`: key sections present
-
-Optional formal material requirements can also route applications to `conditionally_eligible`:
+Formal material reasons (when configured):
 
 - `missing_required_materials_documents`
 - `missing_required_materials_portfolio`
 - `missing_required_materials_video`
 
-These checks are configurable via thresholds in `app/config.py`:
+## Recommendation Labels
 
-- `min_required_documents`
-- `min_portfolio_links`
-- `require_video_presentation`
+- `review_priority`
+- `standard_review`
+- `manual_review_required`
+- `insufficient_evidence`
+- `incomplete_application`
+- `invalid`
 
-Important: incomplete application is not equivalent to low merit.
+These are routing labels for committee workflow, not admission decisions.
 
-### Merit Breakdown Axes (0..100)
+## Score Trace (Auditing)
 
-- `potential`: growth trajectory, resilience, initiative, program fit
-- `motivation`: motivation clarity, program fit, evidence richness
-- `leadership_agency`: initiative, leadership impact, linked examples, project mentions
-- `experience_skills`: achievements, project mentions, limited academic readiness signals
-- `trust_completeness`: completeness, consistency, evidence count minus contradiction/low-evidence penalties
+Use `POST /debug/score-trace` to get:
 
-Merit weights are intentionally non-uniform:
+- Explicit formulas for each axis
+- Per-feature values, weights, and contributions
+- Penalty components
+- Raw outputs and 0..100 display scores
 
-- potential: 0.30
-- motivation: 0.25
-- leadership_agency: 0.20
-- experience_skills: 0.15
-- trust_completeness: 0.10
+This endpoint is the main anti-black-box audit surface.
 
-Reason: product goal emphasizes potential, growth, and agency over pure formal academic polish.
+## Configuration
 
-### Confidence Score
-
-Weighted from:
-
-- specificity score
-- evidence count
-- consistency score
-- completeness score
-
-Minus penalties:
-
-- contradiction
-- low evidence
-- elevated authenticity risk (soft penalty)
-
-Routing note:
-
-- `low_confidence` review flag is added when confidence is below `acceptable_confidence` threshold.
-
-### Authenticity Risk
-
-Raised by:
-
-- polished-but-empty pattern
-- high genericness
-- low evidence density
-- section mismatch
-- cross-section mismatch score
-- contradiction risk
-
-Reduced by:
-
-- grounded personal episodes
-- consistent narrative across sections
-- rich concrete evidence
-
-## Fairness And Privacy
-
-Merit-safe projection explicitly excludes sensitive and socio-economic fields from scoring.
-
-### Excluded Fields
-
-Configured in `app/config.py` (`EXCLUDED_FIELDS`), including:
-
-- names
-- personal identifiers (IIN/id number)
-- addresses and phones
-- social links
-- family details
-- income/social background
-- gender/sex
-- citizenship
-- race/ethnicity/religion
-
-### Excluded Reasoning
-
-These fields can introduce unfair bias or socio-economic proxies and are not used as merit signals.
-
-## LLM Configuration
-
-Environment flags:
+Primary env vars:
 
 - `LLM_PROVIDER`
 - `LLM_MODEL`
@@ -367,7 +169,7 @@ Environment flags:
 - `LLM_BASE_URL`
 - `LLM_API_KEY`
 
-Example `.env`:
+Example:
 
 ```env
 LLM_PROVIDER=openai
@@ -382,222 +184,37 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=your_api_key_here
 ```
 
-Fallback behavior:
+## Evaluation Scripts
 
-- if LLM call/parsing fails and fallback is enabled, pipeline uses deterministic heuristic extraction
-- final scoring and recommendation remain deterministic in all cases
-
-## API Examples
-
-### Single Candidate
-
-```bash
-curl -X POST "http://127.0.0.1:8000/score" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "candidate_id": "cand_001",
-    "structured_data": {
-      "education": {
-        "english_proficiency": {"type": "ielts", "score": 7.0},
-        "school_certificate": {"type": "unt", "score": 110}
-      }
-    },
-    "text_inputs": {
-      "motivation_letter_text": "I organized a student project and improved attendance by 30%.",
-      "motivation_questions": [
-        {"question": "Why this program?", "answer": "I want to scale social projects with evidence."}
-      ],
-      "interview_text": "I can explain steps, timeline, and measurable outcomes."
-    }
-  }'
-```
-
-### Batch Scoring
-
-```bash
-curl -X POST "http://127.0.0.1:8000/score/batch" \
-  -H "Content-Type: application/json" \
-  -d @data/candidates.json
-```
-
-### File-Based Scoring
-
-```bash
-curl -X POST "http://127.0.0.1:8000/score/file?file_path=data/candidates.json"
-```
-
-## Example Response Shape
-
-```json
-{
-  "candidate_id": "cand_001",
-  "scoring_run_id": "run_20260329120000_ab12cd34",
-  "scoring_version": "v1.0.0",
-  "prompt_version": null,
-  "extraction_mode": "deterministic_scoring",
-  "extractor_version": "llm-extractor-v1",
-  "llm_metadata": {"provider": "openai", "model": "gpt-4o", "latency_ms": 812},
-  "eligibility_status": "eligible",
-  "eligibility_reasons": [],
-  "merit_score": 74,
-  "confidence_score": 61,
-  "authenticity_risk": 43,
-  "recommendation": "manual_review_required",
-  "review_flags": ["low_evidence_density", "moderate_authenticity_risk"],
-  "merit_breakdown": {
-    "potential": 81,
-    "motivation": 84,
-    "leadership_agency": 68,
-    "experience_skills": 55,
-    "trust_completeness": 62
-  },
-  "feature_snapshot": {
-    "motivation_clarity": 0.84,
-    "initiative": 0.71,
-    "evidence_count": 0.57,
-    "consistency_score": 0.74,
-    "docs_count_score": 0.33,
-    "portfolio_links_score": 0.25,
-    "has_video_presentation": true,
-    "genericness_score": 0.41,
-    "polished_but_empty_score": 0.22,
-    "cross_section_mismatch_score": 0.19,
-    "contradiction_flag": false
-  },
-  "top_strengths": [],
-  "main_gaps": [],
-  "uncertainties": [],
-  "evidence_spans": [],
-  "explanation": {
-    "summary": "...",
-    "scoring_notes": {
-      "potential": "...",
-      "motivation": "...",
-      "confidence": "...",
-      "authenticity_risk": "...",
-      "recommendation": "..."
-    }
-  }
-}
-```
-
-## Architecture (Deep Dive)
-
-Pipeline stages:
-
-1. Request validation (Pydantic)
-2. Privacy / merit-safe projection
-3. Preprocessing and normalization
-4. Eligibility layer
-5. Structured feature extraction
-6. Deterministic text feature extraction
-7. Optional LLM explainability enrichment (claim -> evidence only)
-8. Authenticity risk estimation
-9. Feature construction
-10. Scoring engine
-11. Recommendation mapping
-12. Explanation generation
-
-### Deterministic Scoring Strategy
-
-- numeric features are computed only by deterministic extractors
-- final scores and recommendation are always deterministic and internal
-- LLM is optional and used only for explainability artifacts (claims + evidence links)
-- if LLM explainability fails, deterministic explanations remain available
-
-The LLM is an explainability helper, not a numeric scorer or final decision-maker.
-
-Code structure:
-
-- `app/config.py`: thresholds, weights, normalization assumptions, excluded sensitive fields
-- `app/schemas`: API input/output contracts
-- `app/services`: core pipeline modules
-- `app/api/routes.py`: HTTP endpoints
-- `scripts/score_candidates.py`: batch scoring and system diagnostics without labels
-
-## How To Evaluate MVP Without Ground Truth Labels
-
-Use `scripts/score_candidates.py` to produce:
-
-1. Score distribution report
-2. Recommendation distribution
-3. Confidence vs completeness sanity check
-4. Authenticity risk vs evidence density sanity check
-5. Edge-case and perturbation checks:
-   - remove examples -> confidence should drop
-   - add concrete outcomes -> specificity should rise
-   - make text generic -> authenticity risk should rise
-6. Missingness/coverage diagnostics
-7. No-sensitive-fields-used audit
-8. Framework placeholders for future label-based evaluation
-9. Explainability LLM success rate / fallback rate / parsing validity rate
-10. Deterministic scoring stability diagnostics
-
-Run:
+Quick diagnostics:
 
 ```bash
 python scripts/score_candidates.py --input data/candidates.json
 ```
 
-Outputs:
-
-- `data/scored_candidates.json`
-- `data/diagnostics_report.json`
-
-## Evaluation Pack (Offline)
-
-Run full offline evaluation artifacts (hybrid vs deterministic baseline comparison, fairness audit, reliability metrics, config snapshot):
+Offline evaluation pack:
 
 ```bash
 python scripts/evaluation_pack.py --input data/candidates.json --output-dir data/evaluation_pack
 ```
 
-Artifacts generated:
+Main artifacts:
 
-- `data/evaluation_pack/hybrid_scored_results.json`
-- `data/evaluation_pack/deterministic_baseline_results.json`
-- `data/evaluation_pack/baseline_comparison.json`
-- `data/evaluation_pack/fairness_audit.json`
-- `data/evaluation_pack/scoring_config_snapshot.json`
+- `data/scored_candidates.json`
+- `data/diagnostics_report.json`
 - `data/evaluation_pack/evaluation_report.json`
 
-Weight experiment protocol:
+## Project Map
 
-- `WEIGHT_EXPERIMENT_PROTOCOL.md`
+- `app/api/routes.py`: HTTP endpoints
+- `app/schemas/`: request/response contracts
+- `app/services/`: pipeline, scoring, explainability, privacy
+- `app/config.py`: thresholds, weights, versions, env config
+- `scripts/`: offline scoring/evaluation utilities
+- `tests/`: unit and API tests
 
-## Extension Points Toward LLM Extractor
+## Limits
 
-This repo already supports optional LLM-assisted extraction while keeping deterministic scoring.
-
-Future extension points:
-
-- richer provider adapters in `app/services/llm_client.py`
-- prompt/version governance in `app/services/llm_prompts.py`
-- stronger parser/contract validation in `app/services/llm_parser.py`
-- per-field extractor calibration against reviewer feedback when labels appear
-
-## Limitations
-
-- Heuristic rubric extraction is approximate and not scientific truth
-- Contradiction detection is coarse and intentionally conservative
-- Domain-specific language variability may reduce recall
-- No database/history layer in MVP
-
-## Common Misinterpretations to Avoid
-
-Wrong: "Merit score is admission probability."
-Correct: Merit score is evidence-based potential prioritization support.
-
-Wrong: "Low confidence means weak candidate."
-Correct: Low confidence means the system has weak evidence reliability and needs manual review.
-
-Wrong: "High authenticity risk proves cheating/AI usage."
-Correct: High authenticity risk signals uncertainty and review need, not proof.
-
-Wrong: "Recommendation is final decision."
-Correct: Recommendation is workflow routing for human committee.
-
-## Decision Support Notice
-
-This service supports committee decision-making and triage only.
-It must operate with human-in-the-loop review and must not be used as autonomous admit/reject automation.
+- Heuristic text features are approximate by design.
+- Authenticity risk is a review-risk signal, not proof of cheating/AI use.
+- Recommendation is operational routing only.

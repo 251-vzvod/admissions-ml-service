@@ -16,6 +16,10 @@ class NormalizedTextBundle:
     motivation_letter_lower: str
     interview_original: str
     interview_lower: str
+    video_interview_transcript_original: str
+    video_interview_transcript_lower: str
+    video_presentation_transcript_original: str
+    video_presentation_transcript_lower: str
     motivation_answers_original: list[str]
     motivation_answers_lower: list[str]
     qa_questions_original: list[str]
@@ -30,6 +34,8 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
     """Normalize text inputs while preserving originals for evidence spans."""
     motivation_letter = maybe_text(text_inputs.get("motivation_letter_text"))
     interview_text = maybe_text(text_inputs.get("interview_text"))
+    video_interview_transcript = maybe_text(text_inputs.get("video_interview_transcript_text"))
+    video_presentation_transcript = maybe_text(text_inputs.get("video_presentation_transcript_text"))
 
     raw_qas = text_inputs.get("motivation_questions") or []
     qa_answers: list[str] = []
@@ -41,7 +47,13 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
         qa_answers.append(maybe_text(qa.get("answer")))
 
     non_empty_answers = [a for a in qa_answers if a]
-    full_text_parts = [motivation_letter, interview_text, *non_empty_answers]
+    full_text_parts = [
+        motivation_letter,
+        interview_text,
+        video_interview_transcript,
+        video_presentation_transcript,
+        *non_empty_answers,
+    ]
     full_text = "\n\n".join(part for part in full_text_parts if part)
 
     answer_word_counts = [word_count(a) for a in non_empty_answers]
@@ -50,11 +62,15 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
         "motivation_letter_text": split_sections(motivation_letter),
         "motivation_questions": non_empty_answers,
         "interview_text": split_sections(interview_text),
+        "video_interview_transcript_text": split_sections(video_interview_transcript),
+        "video_presentation_transcript_text": split_sections(video_presentation_transcript),
     }
 
     missingness_map = {
         "motivation_letter_text": not bool(motivation_letter),
         "interview_text": not bool(interview_text),
+        "video_interview_transcript_text": not bool(video_interview_transcript),
+        "video_presentation_transcript_text": not bool(video_presentation_transcript),
         "motivation_questions": len(non_empty_answers) == 0,
     }
 
@@ -68,6 +84,8 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
             [
                 int(bool(motivation_letter)),
                 int(bool(interview_text)),
+                int(bool(video_interview_transcript)),
+                int(bool(video_presentation_transcript)),
                 int(len(non_empty_answers) > 0),
             ]
         ),
@@ -78,6 +96,10 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
         motivation_letter_lower=to_lower(motivation_letter),
         interview_original=interview_text,
         interview_lower=to_lower(interview_text),
+        video_interview_transcript_original=video_interview_transcript,
+        video_interview_transcript_lower=to_lower(video_interview_transcript),
+        video_presentation_transcript_original=video_presentation_transcript,
+        video_presentation_transcript_lower=to_lower(video_presentation_transcript),
         motivation_answers_original=non_empty_answers,
         motivation_answers_lower=[to_lower(a) for a in non_empty_answers],
         qa_questions_original=qa_questions,
