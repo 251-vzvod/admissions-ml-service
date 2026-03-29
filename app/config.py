@@ -4,10 +4,39 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
+from pathlib import Path
 
 
 SCORING_VERSION = "v1.0.0"
 PROMPT_VERSION: str | None = None
+
+
+def _strip_wrapping_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and ((value[0] == '"' and value[-1] == '"') or (value[0] == "'" and value[-1] == "'")):
+        return value[1:-1]
+    return value
+
+
+def _load_dotenv() -> None:
+    """Load .env values into process environment when not already set."""
+    root = Path(__file__).resolve().parents[1]
+    env_path = root / ".env"
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = _strip_wrapping_quotes(value)
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv()
 
 EXCLUDED_FIELDS = [
     "first_name",
@@ -102,7 +131,7 @@ def _env_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+    return _strip_wrapping_quotes(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_float(name: str, default: float) -> float:
@@ -110,7 +139,7 @@ def _env_float(name: str, default: float) -> float:
     if raw is None:
         return default
     try:
-        return float(raw)
+        return float(_strip_wrapping_quotes(raw))
     except ValueError:
         return default
 
@@ -120,7 +149,7 @@ def _env_int(name: str, default: int) -> int:
     if raw is None:
         return default
     try:
-        return int(raw)
+        return int(_strip_wrapping_quotes(raw))
     except ValueError:
         return default
 
@@ -145,14 +174,14 @@ class LLMConfig:
     def from_env(cls) -> "LLMConfig":
         return cls(
             enable_llm=_env_bool("ENABLE_LLM", False),
-            provider=os.getenv("LLM_PROVIDER", "mock"),
-            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "mock")),
+            model=_strip_wrapping_quotes(os.getenv("LLM_MODEL", "gpt-4o-mini")),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
             temperature=_env_float("LLM_TEMPERATURE", 0.0),
             max_retries=_env_int("LLM_MAX_RETRIES", 1),
             fallback_to_baseline=_env_bool("LLM_FALLBACK_TO_BASELINE", True),
-            base_url=os.getenv("LLM_BASE_URL"),
-            api_key=os.getenv("LLM_API_KEY"),
+            base_url=_strip_wrapping_quotes(os.getenv("LLM_BASE_URL")) if os.getenv("LLM_BASE_URL") else None,
+            api_key=_strip_wrapping_quotes(os.getenv("LLM_API_KEY")) if os.getenv("LLM_API_KEY") else None,
         )
 
 
