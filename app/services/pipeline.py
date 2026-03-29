@@ -46,8 +46,8 @@ class ScoringPipeline:
             "scoring_run_id": scoring_run_id,
             "scoring_version": CONFIG.scoring_version,
             "prompt_version": CONFIG.prompt_version,
-            "extraction_mode": "baseline",
-            "extractor_version": CONFIG.llm.baseline_extractor_version,
+            "extraction_mode": "hybrid",
+            "extractor_version": CONFIG.llm.extractor_version,
             "llm_metadata": None,
             "eligibility_status": eligibility.status,
             "eligibility_reasons": list(eligibility.reasons),
@@ -70,6 +70,10 @@ class ScoringPipeline:
                 recommendation=recommendation,
                 review_flags=["eligibility_gate"],
                 sections=bundle.sections,
+                extraction_mode="hybrid",
+                merit_score=0,
+                confidence_score=0,
+                authenticity_risk=0,
             )
             return ScoreResponse(
                 **base_response,
@@ -102,8 +106,8 @@ class ScoringPipeline:
             bundle=bundle,
         )
 
-        extraction_mode = "baseline"
-        extractor_version = CONFIG.llm.baseline_extractor_version
+        extraction_mode = "hybrid"
+        extractor_version = CONFIG.llm.extractor_version
         llm_metadata: dict[str, str | int | float] | None = None
         llm_strengths: list[str] | None = None
         llm_gaps: list[str] | None = None
@@ -111,34 +115,27 @@ class ScoringPipeline:
         llm_evidence_spans: list[dict[str, str]] | None = None
         extractor_rationale: str | None = None
 
-        if CONFIG.llm.enable_llm:
-            try:
-                llm_result = extract_text_features_with_llm(bundle=bundle)
-                text_features = llm_result.features
-                text_diagnostics = llm_result.diagnostics
-                extraction_mode = "llm"
-                extractor_version = CONFIG.llm.extractor_version
-                llm_metadata = llm_result.llm_metadata
-                llm_strengths = llm_result.strengths
-                llm_gaps = llm_result.gaps
-                llm_uncertainties = llm_result.uncertainties
-                llm_evidence_spans = llm_result.evidence_spans
-                extractor_rationale = llm_result.rationale
-            except RuntimeError as exc:
-                if not CONFIG.llm.fallback_to_baseline:
-                    raise
-                text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
-                text_features = text_result.features
-                text_diagnostics = text_result.diagnostics
-                llm_metadata = {
-                    "provider": CONFIG.llm.provider,
-                    "model": CONFIG.llm.model,
-                    "fallback_reason": str(exc),
-                }
-        else:
+        try:
+            llm_result = extract_text_features_with_llm(bundle=bundle)
+            text_features = llm_result.features
+            text_diagnostics = llm_result.diagnostics
+            llm_metadata = llm_result.llm_metadata
+            llm_strengths = llm_result.strengths
+            llm_gaps = llm_result.gaps
+            llm_uncertainties = llm_result.uncertainties
+            llm_evidence_spans = llm_result.evidence_spans
+            extractor_rationale = llm_result.rationale
+        except RuntimeError as exc:
+            if not CONFIG.llm.fallback_to_baseline:
+                raise
             text_result = extract_text_features(bundle=bundle, structured=structured_result.features)
             text_features = text_result.features
             text_diagnostics = text_result.diagnostics
+            llm_metadata = {
+                "provider": CONFIG.llm.provider,
+                "model": CONFIG.llm.model,
+                "fallback_reason": str(exc),
+            }
 
         merged_features: dict[str, float | bool] = {}
         merged_features.update(structured_result.features)
@@ -186,6 +183,10 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_result.review_flags,
             sections=bundle.sections,
+            extraction_mode=extraction_mode,
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
             provided_strengths=llm_strengths,
             provided_gaps=llm_gaps,
             provided_uncertainties=llm_uncertainties,

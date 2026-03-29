@@ -27,6 +27,10 @@ def build_explanation(
     recommendation: str,
     review_flags: list[str],
     sections: dict[str, list[str]],
+    extraction_mode: str = "hybrid",
+    merit_score: int | None = None,
+    confidence_score: int | None = None,
+    authenticity_risk: int | None = None,
     provided_strengths: list[str] | None = None,
     provided_gaps: list[str] | None = None,
     provided_uncertainties: list[str] | None = None,
@@ -44,6 +48,8 @@ def build_explanation(
         strengths.append("Clear initiative and agency markers in self-driven actions.")
     if float(feature_map.get("program_fit", 0.0)) >= 0.60:
         strengths.append("Motivation aligns with the program format and collaborative learning context.")
+    if float(feature_map.get("evidence_count", 0.0)) >= 0.65:
+        strengths.append("Evidence density is sufficient to support a comparatively reliable assessment.")
 
     if float(feature_map.get("specificity_score", 0.0)) < 0.45:
         gaps.append("Specificity is limited; more concrete examples and outcomes would improve reliability.")
@@ -51,6 +57,8 @@ def build_explanation(
         gaps.append("Evidence density is low relative to answer length.")
     if bool(feature_map.get("contradiction_flag", False)):
         gaps.append("Potential internal inconsistency detected across sections.")
+    if float(feature_map.get("completeness_score", 0.0)) < 0.5:
+        gaps.append("Application completeness is moderate/low, which limits confidence in the assessment.")
 
     if float(feature_map.get("genericness_score", 0.0)) > 0.55:
         uncertainties.append("Some text appears generic; committee should verify authenticity of claims.")
@@ -58,6 +66,10 @@ def build_explanation(
         uncertainties.append("Section mismatch risk: claims may not be consistently supported across sources.")
     if recommendation in {"manual_review_required", "insufficient_evidence"}:
         uncertainties.append("Human review is recommended before high-confidence prioritization.")
+    if float(feature_map.get("specificity_score", 0.0)) < 0.5 or float(feature_map.get("evidence_count", 0.0)) < 0.5:
+        uncertainties.append("Some claims are directionally promising but under-supported by concrete examples.")
+    if float(feature_map.get("authenticity_risk_raw", 0.0)) >= 0.45:
+        uncertainties.append("Authenticity risk signals are elevated enough to warrant closer manual reading.")
 
     evidence_spans: list[EvidenceSpan] = []
     if provided_evidence_spans:
@@ -73,10 +85,24 @@ def build_explanation(
             if len(evidence_spans) >= 2:
                 break
 
+    mode_note = (
+        "using LLM-assisted feature extraction with deterministic internal scoring"
+        if extraction_mode in {"llm", "hybrid"}
+        else "using deterministic feature extraction with deterministic internal scoring"
+    )
+    score_suffix = ""
+    if merit_score is not None and confidence_score is not None and authenticity_risk is not None:
+        score_suffix = (
+            f" Scores: merit={merit_score}/100, confidence={confidence_score}/100, "
+            f"authenticity_risk={authenticity_risk}/100."
+        )
+
     summary = (
-        "This profile was scored with a deterministic heuristic baseline that separates candidate potential signals "
-        "(merit), assessment reliability (confidence), and review uncertainty (authenticity risk). "
+        f"This profile was scored {mode_note}. "
+        "The system separates candidate potential signals (merit), assessment reliability (confidence), "
+        "and review uncertainty (authenticity risk). "
         f"Current routing recommendation: {recommendation}."
+        f"{score_suffix}"
     )
 
     scoring_notes = ExplanationNotes(

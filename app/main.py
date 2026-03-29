@@ -11,7 +11,7 @@ app = FastAPI(
     title="inVision U Scoring Service",
     version="1.0.0",
     description=(
-        "Explainable, deterministic baseline scoring service for candidate decision support. "
+        "Explainable scoring service: LLM-based feature extraction with deterministic internal scoring. "
         "This service does not make autonomous admission decisions."
     ),
 )

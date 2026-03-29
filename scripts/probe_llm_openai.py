@@ -22,7 +22,6 @@ def main() -> None:
     result = pipe.score_candidate(candidate).model_dump()
 
     safe_summary = {
-        "llm_enabled": CONFIG.llm.enable_llm,
         "provider": CONFIG.llm.provider,
         "model": CONFIG.llm.model,
         "extraction_mode": result.get("extraction_mode"),

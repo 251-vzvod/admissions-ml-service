@@ -14,11 +14,11 @@ def test_health() -> None:
     assert "scoring_version" in payload
 
 
-def test_scoring_config_contains_llm_flags() -> None:
+def test_scoring_config_contains_extraction_strategy_fields() -> None:
     response = client.get("/config/scoring")
     assert response.status_code == 200
     payload = response.json()
-    assert "llm_enabled" in payload
+    assert "extraction_strategy" in payload
     assert "llm_provider" in payload
     assert "llm_model" in payload
-    assert "fallback_to_baseline" in payload
+    assert "llm_fallback_to_deterministic_extractor_on_failure" in payload

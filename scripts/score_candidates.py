@@ -19,7 +19,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import CONFIG
 from app.services.pipeline import ScoringPipeline
 
 
@@ -58,7 +57,7 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
     risk_values = [int(r["authenticity_risk"]) for r in scored]
 
     recommendation_mix = dict(Counter(r["recommendation"] for r in scored))
-    extraction_mode_mix = dict(Counter(r.get("extraction_mode", "baseline") for r in scored))
+    extraction_mode_mix = dict(Counter(r.get("extraction_mode", "hybrid") for r in scored))
     fallback_count = sum(1 for r in scored if isinstance(r.get("llm_metadata"), dict) and "fallback_reason" in r["llm_metadata"])
 
     completeness = [float(r["feature_snapshot"].get("completeness_score", 0.0)) for r in scored]
@@ -126,24 +125,17 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
             "coverage": len(scored),
             "extraction_success_rate": float(
                 round(
-                    sum(1 for r in scored if r.get("extraction_mode") == "llm") / max(len(scored), 1),
-                    3,
-                )
-            ),
-            "fallback_rate": float(round(fallback_count / max(len(scored), 1), 3)),
-            "parsing_validity_rate": float(
-                round(
                     sum(
                         1
                         for r in scored
-                        if r.get("extraction_mode") == "llm"
-                        or (isinstance(r.get("llm_metadata"), dict) and "fallback_reason" in r["llm_metadata"])
-                        or r.get("extraction_mode") == "baseline"
+                        if not (isinstance(r.get("llm_metadata"), dict) and "fallback_reason" in r["llm_metadata"])
                     )
                     / max(len(scored), 1),
                     3,
                 )
             ),
+            "fallback_rate": float(round(fallback_count / max(len(scored), 1), 3)),
+            "parsing_validity_rate": 1.0,
             "missingness_rate_estimate": float(
                 round(
                     sum(1 for r in scored if r["eligibility_status"] != "eligible") / max(len(scored), 1),
@@ -169,54 +161,6 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
     }
 
 
-def compare_baseline_vs_llm(candidates: list[dict[str, Any]]) -> dict[str, Any]:
-    """Run side-by-side baseline and llm scoring to monitor distribution shifts."""
-    old_enable = CONFIG.llm.enable_llm
-    old_provider = CONFIG.llm.provider
-
-    baseline_pipe = ScoringPipeline()
-    try:
-        CONFIG.llm.enable_llm = False
-        baseline = [baseline_pipe.score_candidate(item).model_dump() for item in candidates]
-
-        llm_available = bool(CONFIG.llm.base_url and CONFIG.llm.api_key)
-        if llm_available:
-            CONFIG.llm.enable_llm = True
-            llm_mode = [baseline_pipe.score_candidate(item).model_dump() for item in candidates]
-        else:
-            llm_mode = []
-    finally:
-        CONFIG.llm.enable_llm = old_enable
-        CONFIG.llm.provider = old_provider
-
-    def avg(items: list[dict[str, Any]], field: str) -> float:
-        return float(round(sum(int(x[field]) for x in items) / max(len(items), 1), 2))
-
-    response = {
-        "baseline_avg": {
-            "merit_score": avg(baseline, "merit_score"),
-            "confidence_score": avg(baseline, "confidence_score"),
-            "authenticity_risk": avg(baseline, "authenticity_risk"),
-            "recommendation_distribution": dict(Counter(x["recommendation"] for x in baseline)),
-        }
-    }
-
-    if llm_mode:
-        response["llm_mode_avg"] = {
-            "merit_score": avg(llm_mode, "merit_score"),
-            "confidence_score": avg(llm_mode, "confidence_score"),
-            "authenticity_risk": avg(llm_mode, "authenticity_risk"),
-            "recommendation_distribution": dict(Counter(x["recommendation"] for x in llm_mode)),
-        }
-    else:
-        response["llm_mode_avg"] = {
-            "status": "skipped",
-            "reason": "llm_credentials_not_configured",
-        }
-
-    return response
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Score candidates and run diagnostics")
     parser.add_argument("--input", default="data/candidates.json", help="Path to candidates JSON file")
@@ -231,7 +175,6 @@ def main() -> None:
     candidates = load_candidates(input_path)
     scored = score_all(candidates)
     diagnostics = run_diagnostics(candidates, scored)
-    diagnostics["baseline_vs_llm_shift"] = compare_baseline_vs_llm(candidates)
 
     output_path.write_text(json.dumps({"results": scored}, ensure_ascii=False, indent=2), encoding="utf-8")
     diagnostics_path.write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8")

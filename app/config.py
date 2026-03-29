@@ -156,9 +156,8 @@ def _env_int(name: str, default: int) -> int:
 
 @dataclass(slots=True)
 class LLMConfig:
-    """Configuration for optional LLM-assisted extraction mode."""
+    """Configuration for LLM-assisted extraction."""
 
-    enable_llm: bool = False
     provider: str = "openai"
     model: str = "gpt-4o-mini"
     timeout_seconds: float = 20.0
@@ -166,14 +165,12 @@ class LLMConfig:
     max_retries: int = 1
     fallback_to_baseline: bool = True
     extractor_version: str = "llm-extractor-v1"
-    baseline_extractor_version: str = "heuristic-extractor-v1"
     base_url: str | None = None
     api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
         return cls(
-            enable_llm=_env_bool("ENABLE_LLM", False),
             provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "openai")),
             model=_strip_wrapping_quotes(os.getenv("LLM_MODEL", "gpt-4o-mini")),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),

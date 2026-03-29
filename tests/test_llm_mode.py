@@ -60,21 +60,26 @@ def _payload() -> dict:
     }
 
 
-def test_baseline_mode_works_without_llm() -> None:
+def test_hybrid_mode_default_with_fallback_metadata(monkeypatch) -> None:
     pipeline = ScoringPipeline()
-    old_enable = CONFIG.llm.enable_llm
-    CONFIG.llm.enable_llm = False
+    old_provider = CONFIG.llm.provider
+
+    def _failing_complete(self, request):
+        raise RuntimeError("forced_llm_failure")
+
+    monkeypatch.setattr(OpenAICompatibleClient, "complete", _failing_complete)
+
     try:
+        CONFIG.llm.provider = "openai"
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "baseline"
-        assert result.llm_metadata is None
+        assert result.extraction_mode == "hybrid"
+        assert isinstance(result.llm_metadata, dict)
     finally:
-        CONFIG.llm.enable_llm = old_enable
+        CONFIG.llm.provider = old_provider
 
 
 def test_llm_mode_with_openai_client_patch(monkeypatch) -> None:
     pipeline = ScoringPipeline()
-    old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
     def _fake_complete(self, request):
@@ -82,21 +87,18 @@ def test_llm_mode_with_openai_client_patch(monkeypatch) -> None:
 
     monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
 
-    CONFIG.llm.enable_llm = True
     CONFIG.llm.provider = "openai"
     try:
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "llm"
+        assert result.extraction_mode == "hybrid"
         assert result.llm_metadata is not None
         assert result.llm_metadata.get("provider") == "openai"
     finally:
-        CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider
 
 
 def test_llm_parsed_extraction_keeps_deterministic_scoring(monkeypatch) -> None:
     pipeline = ScoringPipeline()
-    old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
     def _fake_complete(self, request):
@@ -104,7 +106,6 @@ def test_llm_parsed_extraction_keeps_deterministic_scoring(monkeypatch) -> None:
 
     monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
 
-    CONFIG.llm.enable_llm = True
     CONFIG.llm.provider = "openai"
     try:
         result_a = pipeline.score_candidate(_payload())
@@ -114,13 +115,11 @@ def test_llm_parsed_extraction_keeps_deterministic_scoring(monkeypatch) -> None:
         assert result_a.authenticity_risk == result_b.authenticity_risk
         assert result_a.recommendation == result_b.recommendation
     finally:
-        CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider
 
 
-def test_invalid_llm_json_falls_back_to_baseline(monkeypatch) -> None:
+def test_invalid_llm_json_falls_back_with_hybrid_mode(monkeypatch) -> None:
     pipeline = ScoringPipeline()
-    old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
     old_fallback = CONFIG.llm.fallback_to_baseline
 
@@ -129,16 +128,14 @@ def test_invalid_llm_json_falls_back_to_baseline(monkeypatch) -> None:
 
     monkeypatch.setattr(OpenAICompatibleClient, "complete", _invalid_complete)
 
-    CONFIG.llm.enable_llm = True
     CONFIG.llm.provider = "openai"
     CONFIG.llm.fallback_to_baseline = True
     try:
         result = pipeline.score_candidate(_payload())
-        assert result.extraction_mode == "baseline"
+        assert result.extraction_mode == "hybrid"
         assert result.llm_metadata is not None
         assert "fallback_reason" in result.llm_metadata
     finally:
-        CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider
         CONFIG.llm.fallback_to_baseline = old_fallback
 
@@ -175,7 +172,6 @@ def test_sensitive_fields_do_not_affect_merit() -> None:
 
 
 def test_debug_llm_extract_endpoint_with_openai_patch(monkeypatch) -> None:
-    old_enable = CONFIG.llm.enable_llm
     old_provider = CONFIG.llm.provider
 
     def _fake_complete(self, request):
@@ -183,7 +179,6 @@ def test_debug_llm_extract_endpoint_with_openai_patch(monkeypatch) -> None:
 
     monkeypatch.setattr(OpenAICompatibleClient, "complete", _fake_complete)
 
-    CONFIG.llm.enable_llm = True
     CONFIG.llm.provider = "openai"
 
     payload = _payload()
@@ -195,5 +190,4 @@ def test_debug_llm_extract_endpoint_with_openai_patch(monkeypatch) -> None:
         assert "llm_metadata" in parsed
         assert parsed["llm_metadata"]["provider"] == "openai"
     finally:
-        CONFIG.llm.enable_llm = old_enable
         CONFIG.llm.provider = old_provider

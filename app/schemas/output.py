@@ -28,8 +28,8 @@ class ScoreResponse(BaseModel):
     scoring_run_id: str
     scoring_version: str
     prompt_version: str | None = None
-    extraction_mode: str = "baseline"
-    extractor_version: str = "heuristic-extractor-v1"
+    extraction_mode: str = "hybrid"
+    extractor_version: str = "llm-extractor-v1"
     llm_metadata: dict[str, str | int | float] | None = None
 
     eligibility_status: str

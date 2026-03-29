@@ -39,10 +39,10 @@ def get_scoring_config() -> dict[str, Any]:
             "confidence_components": CONFIG.weights.confidence_components,
         },
         "thresholds": asdict(CONFIG.thresholds),
-        "llm_enabled": CONFIG.llm.enable_llm,
+        "extraction_strategy": "llm_features_plus_deterministic_scoring",
         "llm_provider": CONFIG.llm.provider,
         "llm_model": CONFIG.llm.model,
-        "fallback_to_baseline": CONFIG.llm.fallback_to_baseline,
+        "llm_fallback_to_deterministic_extractor_on_failure": CONFIG.llm.fallback_to_baseline,
     }
 
 
