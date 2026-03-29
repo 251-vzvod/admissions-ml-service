@@ -22,8 +22,18 @@ class EducationInput(BaseModel):
     school_certificate: SchoolCertificate | None = None
 
 
+class ApplicationMaterialsInput(BaseModel):
+    documents: list[str] = Field(default_factory=list)
+    attachments: list[str] = Field(default_factory=list)
+    portfolio_links: list[str] = Field(default_factory=list)
+    video_presentation_link: str | None = None
+    videoPresentationLink: str | None = None
+    video_url: str | None = None
+
+
 class StructuredDataInput(BaseModel):
     education: EducationInput | None = None
+    application_materials: ApplicationMaterialsInput | None = None
 
 
 class MotivationAnswer(BaseModel):

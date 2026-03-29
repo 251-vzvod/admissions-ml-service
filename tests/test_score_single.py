@@ -64,3 +64,34 @@ def test_score_single_candidate_with_video_transcript_only() -> None:
     assert result["candidate_id"] == "cand_test_video_001"
     assert result["eligibility_status"] in {"eligible", "conditionally_eligible"}
     assert 0 <= result["merit_score"] <= 100
+
+
+def test_score_single_uses_application_materials_features() -> None:
+    payload = {
+        "candidate_id": "cand_test_materials_001",
+        "structured_data": {
+            "education": {
+                "english_proficiency": {"type": "ielts", "score": 6.5},
+                "school_certificate": {"type": "unt", "score": 105},
+            },
+            "application_materials": {
+                "documents": ["cv.pdf", "statement.pdf"],
+                "attachments": ["portfolio.pdf"],
+                "portfolio_links": ["https://example.com/portfolio"],
+                "video_presentation_link": "https://example.com/video",
+            },
+        },
+        "text_inputs": {
+            "motivation_letter_text": "I organized a student project with measurable outcomes and weekly reports.",
+            "interview_text": "I led a team of five and tracked participation metrics over three months.",
+        },
+    }
+
+    response = client.post("/score", json=payload)
+    assert response.status_code == 200
+    result = response.json()
+
+    snapshot = result["feature_snapshot"]
+    assert snapshot["docs_count_score"] > 0
+    assert snapshot["portfolio_links_score"] > 0
+    assert snapshot["has_video_presentation"] is True
