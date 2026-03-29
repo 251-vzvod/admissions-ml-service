@@ -296,6 +296,19 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+### Run Streamlit Demo
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Demo capabilities:
+
+- switch between `baseline` and `llm` extraction mode
+- run single-candidate scoring from editable JSON
+- run batch scoring from uploaded file or `data/candidates.json`
+- inspect score outputs, extraction metadata, feature snapshot, and explanations
+
 ### Run Tests
 
 ```bash
