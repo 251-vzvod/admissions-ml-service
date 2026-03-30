@@ -110,6 +110,14 @@ class ScoringPipeline:
             "portfolio_links_score": round(float(merged_features.get("portfolio_links_score", 0.0)), 4),
             "has_video_presentation": bool(merged_features.get("has_video_presentation", False)),
             "logical_source_groups_present": int(bundle.stats.get("logical_source_groups_present", 0)),
+            "material_support_score": round(
+                (
+                    (float(merged_features.get("docs_count_score", 0.0)) * 0.50)
+                    + (float(merged_features.get("portfolio_links_score", 0.0)) * 0.15)
+                    + ((1.0 if bool(merged_features.get("has_video_presentation", False)) else 0.0) * 0.35)
+                ),
+                4,
+            ),
             "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
             "contradiction_flag": bool(merged_features.get("contradiction_flag", False)),
             "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),

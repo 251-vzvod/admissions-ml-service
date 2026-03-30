@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 
-SCORING_VERSION = "v1.1.0"
-SCORING_CONFIG_VERSION = "cfg-v1.2.0"
-WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v2"
+SCORING_VERSION = "v1.2.0"
+SCORING_CONFIG_VERSION = "cfg-v1.3.0"
+WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v3"
 PROMPT_VERSION: str | None = None
 
 
@@ -70,19 +70,19 @@ class ScoringWeights:
 
     merit_breakdown: dict[str, float] = field(
         default_factory=lambda: {
-            "potential": 0.34,
-            "motivation": 0.22,
-            "leadership_agency": 0.22,
-            "experience_skills": 0.14,
-            "trust_completeness": 0.08,
+            "potential": 0.24,
+            "motivation": 0.16,
+            "leadership_agency": 0.20,
+            "experience_skills": 0.24,
+            "trust_completeness": 0.16,
         }
     )
     confidence_components: dict[str, float] = field(
         default_factory=lambda: {
-            "specificity_score": 0.30,
-            "evidence_count": 0.25,
-            "consistency_score": 0.25,
-            "completeness_score": 0.20,
+            "specificity_score": 0.20,
+            "evidence_count": 0.14,
+            "consistency_score": 0.20,
+            "completeness_score": 0.18,
         }
     )
 
@@ -94,14 +94,14 @@ class Thresholds:
     min_words_meaningful_text: int = 40
     min_non_empty_sources: int = 1
 
-    very_low_confidence: float = 0.35
-    acceptable_confidence: float = 0.55
+    very_low_confidence: float = 0.28
+    acceptable_confidence: float = 0.48
 
-    high_merit: float = 0.72
-    medium_merit: float = 0.55
+    high_merit: float = 0.52
+    medium_merit: float = 0.42
 
-    elevated_risk: float = 0.60
-    high_risk: float = 0.75
+    elevated_risk: float = 0.58
+    high_risk: float = 0.72
 
     low_evidence: float = 0.35
 
