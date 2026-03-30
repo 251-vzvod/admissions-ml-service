@@ -306,6 +306,56 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=your_api_key_here
 ```
 
+### Switching Between OpenAI And Ollama
+
+The LLM explainability layer uses an OpenAI-compatible client, so you can switch providers without changing application code.
+
+OpenAI example:
+
+```env
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=your_openai_api_key_here
+```
+
+Ollama example:
+
+```env
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=qwen2.5:3b-instruct
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+```
+
+Quick switch workflow:
+
+1. Run Ollama locally and pull a model, for example:
+
+```bash
+ollama pull qwen2.5:3b-instruct
+```
+
+2. Copy one of the example env files into `.env`:
+
+```bash
+copy .env.ollama.example .env
+```
+
+or:
+
+```bash
+copy .env.openai.example .env
+```
+
+3. Restart the API process after changing `.env`.
+
+Notes:
+
+- offline scoring and evaluation scripts do not require OpenAI credits when LLM explainability is disabled
+- if you want fully credit-free scoring, you can also set `ENABLE_LLM=false`
+- Ollama is intended here for local explainability output, not for final benchmark claims
+
 ## Evaluation Scripts
 
 Quick diagnostics:
@@ -366,6 +416,8 @@ Main artifacts:
 - `docs/annotation_guide.md`: rubric and process for building the gold dataset
 - `docs/candidate_profiles_and_input_format.md`: where profiles come from and what candidate JSON should look like
 - `docs/scoring_system_evolution.md`: evolution of the scoring logic for demo/presentation
+- `docs/final_hackathon_annotation_report.md`: final merged hackathon label set summary
+- `docs/family_aware_validation.md`: leakage-aware validation over counterfactual candidate families
 - `tests/`: unit and API tests
 
 ## Limits
