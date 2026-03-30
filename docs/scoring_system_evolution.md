@@ -253,6 +253,54 @@ That is a credible hackathon workflow because it is:
 - realistic under time pressure
 - honest about label uncertainty
 
+## Phase 6: Candidate Text Normalization
+
+### Why it was needed
+
+Once the candidate pool grew from `52` to `80` profiles, the next bottleneck was no longer volume.
+
+It was text consistency:
+
+- mixed punctuation conventions across RU and EN text
+- occasional mojibake-like quote and dash sequences coming from generation / copy pipelines
+- unstable whitespace and paragraph formatting
+- terminal rendering making some valid UTF-8 strings look broken during debugging
+
+For lexical heuristics and lightweight semantic matching, this kind of noise is expensive.
+
+### What changed
+
+- added a reusable unicode normalization layer in `app/utils/text.py`
+- normalized:
+  - smart quotes and apostrophes
+  - dashes
+  - ellipses
+  - non-breaking and zero-width whitespace
+- added a reproducible dataset cleaner:
+  - `scripts/normalize_candidate_text.py`
+- normalized both:
+  - `data/candidates.json`
+  - `data/candidates_expanded_v1.json`
+
+### Why this matters
+
+This phase does not make the model "smarter".
+
+It makes the input space more stable, which improves:
+
+- deterministic lexical counting
+- semantic chunk matching
+- annotation readability
+- debugging and demo reliability
+
+It is also an honest preprocessing step to show in the presentation:
+
+1. candidate generation
+2. candidate quality audit
+3. text normalization
+4. semantic scoring and ranking
+5. human-reviewed shortlist
+
 ## Current Architecture
 
 ### Baseline

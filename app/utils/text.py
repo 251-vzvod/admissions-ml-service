@@ -3,12 +3,72 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Iterable
 
 
 WORD_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
 SENTENCE_SPLIT_RE = re.compile(r"[.!?]+", flags=re.UNICODE)
 MULTI_SPACE_RE = re.compile(r"\s+", flags=re.UNICODE)
+ZERO_WIDTH_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff]", flags=re.UNICODE)
+
+UNICODE_REPLACEMENTS = {
+    "\r\n": "\n",
+    "\r": "\n",
+    "\u00a0": " ",
+    "\u202f": " ",
+    "\u2009": " ",
+    "\u2002": " ",
+    "\u2003": " ",
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u00ab": '"',
+    "\u00bb": '"',
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u2212": "-",
+    "\u2026": "...",
+}
+
+COMMON_MOJIBAKE_REPLACEMENTS = {
+    "â€™": "'",
+    "â€˜": "'",
+    "â€œ": '"',
+    "â€": '"',
+    "â€“": "-",
+    "â€”": "-",
+    "â€¦": "...",
+    "вЂ™": "'",
+    "вЂ": "'",
+    "вЂњ": '"',
+    "вЂќ": '"',
+    "вЂ“": "-",
+    "вЂ”": "-",
+    "вЂ¦": "...",
+}
+
+
+def normalize_unicode_text(text: str) -> str:
+    """Canonicalize unicode punctuation and repair common mojibake tokens."""
+    if not text:
+        return ""
+    cleaned = unicodedata.normalize("NFC", text)
+    for src, dst in COMMON_MOJIBAKE_REPLACEMENTS.items():
+        cleaned = cleaned.replace(src, dst)
+    for src, dst in UNICODE_REPLACEMENTS.items():
+        cleaned = cleaned.replace(src, dst)
+    cleaned = ZERO_WIDTH_RE.sub("", cleaned)
+    return cleaned
+
+
+def normalize_multiline_text(text: str) -> str:
+    """Normalize unicode and keep paragraph breaks while collapsing inner spacing."""
+    cleaned = normalize_unicode_text(text)
+    paragraphs = [normalize_whitespace(part) for part in cleaned.split("\n\n")]
+    paragraphs = [part for part in paragraphs if part]
+    return "\n\n".join(paragraphs)
 
 
 def normalize_whitespace(text: str) -> str:
@@ -22,7 +82,7 @@ def maybe_text(value: object) -> str:
         return ""
     if not isinstance(value, str):
         value = str(value)
-    return normalize_whitespace(value)
+    return normalize_whitespace(normalize_unicode_text(value))
 
 
 def to_lower(text: str) -> str:
