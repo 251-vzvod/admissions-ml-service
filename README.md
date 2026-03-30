@@ -312,6 +312,26 @@ Quick diagnostics:
 
 ```bash
 python scripts/score_candidates.py --input data/candidates.json
+``` 
+
+Build committee annotation pack:
+
+```bash
+python scripts/build_annotation_pack.py --input data/candidates.json --output data/annotation_pack.json
+```
+
+Fetch external corpora:
+
+```bash
+python scripts/fetch_external_datasets.py --mode open
+```
+
+If you manually place Kaggle datasets under `data/external/raw/learning_agency_*`, the seed builder will pick them up automatically.
+
+Build seed corpus from downloaded corpora:
+
+```bash
+python scripts/build_seed_corpus.py --output data/external/seed_corpus.jsonl
 ```
 
 Offline evaluation pack:
@@ -320,11 +340,20 @@ Offline evaluation pack:
 python scripts/evaluation_pack.py --input data/candidates.json --output-dir data/evaluation_pack
 ```
 
+Offline evaluation pack with committee labels:
+
+```bash
+python scripts/evaluation_pack.py --input data/candidates.json --annotations data/annotation_pack.json --output-dir data/evaluation_pack
+```
+
 Main artifacts:
 
 - `data/scored_candidates.json`
 - `data/diagnostics_report.json`
 - `data/evaluation_pack/evaluation_report.json`
+- `data/evaluation_pack/label_evaluation.json` (when `--annotations` is provided)
+- `data/external/dataset_manifest.json`
+- `data/external/seed_corpus.jsonl`
 
 ## Project Map
 
@@ -333,6 +362,10 @@ Main artifacts:
 - `app/services/`: pipeline, scoring, explainability, privacy
 - `app/config.py`: thresholds, weights, versions, env config
 - `scripts/`: offline scoring/evaluation utilities
+- `docs/ml_nlp_dataset_plan.md`: dataset, annotation, and semantic-space plan
+- `docs/annotation_guide.md`: rubric and process for building the gold dataset
+- `docs/candidate_profiles_and_input_format.md`: where profiles come from and what candidate JSON should look like
+- `docs/scoring_system_evolution.md`: evolution of the scoring logic for demo/presentation
 - `tests/`: unit and API tests
 
 ## Limits
