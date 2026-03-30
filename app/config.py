@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 
-SCORING_VERSION = "v1.0.0"
-SCORING_CONFIG_VERSION = "cfg-v1.1.0"
-WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v1"
+SCORING_VERSION = "v1.1.0"
+SCORING_CONFIG_VERSION = "cfg-v1.2.0"
+WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v2"
 PROMPT_VERSION: str | None = None
 
 
@@ -70,11 +70,11 @@ class ScoringWeights:
 
     merit_breakdown: dict[str, float] = field(
         default_factory=lambda: {
-            "potential": 0.30,
-            "motivation": 0.25,
-            "leadership_agency": 0.20,
-            "experience_skills": 0.15,
-            "trust_completeness": 0.10,
+            "potential": 0.34,
+            "motivation": 0.22,
+            "leadership_agency": 0.22,
+            "experience_skills": 0.14,
+            "trust_completeness": 0.08,
         }
     )
     confidence_components: dict[str, float] = field(

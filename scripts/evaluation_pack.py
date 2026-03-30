@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.config import CONFIG, build_scoring_config_snapshot
+from app.services.annotation_eval import build_label_evaluation, load_annotations
 from app.services.authenticity import estimate_authenticity_risk
 from app.services.eligibility import evaluate_eligibility
 from app.services.pipeline import ScoringPipeline
@@ -47,7 +48,7 @@ def load_candidates(path: Path) -> list[dict[str, Any]]:
 
 def score_hybrid(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     pipeline = ScoringPipeline()
-    return [pipeline.score_candidate(item).model_dump() for item in candidates]
+    return [pipeline.score_candidate(item, enable_llm_explainability=False).model_dump() for item in candidates]
 
 
 def score_deterministic_baseline(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -78,6 +79,7 @@ def score_deterministic_baseline(candidates: list[dict[str, Any]]) -> list[dict[
                     "recommendation": recommendation,
                     "review_flags": ["eligibility_gate"],
                     "llm_metadata": None,
+                    "semantic_rubric_scores": {},
                     "feature_snapshot": {
                         "completeness_score": bundle.stats.get("non_empty_text_sources", 0) / 3.0,
                         "excluded_sensitive_fields_count": len(excluded_hits),
@@ -100,7 +102,11 @@ def score_deterministic_baseline(candidates: list[dict[str, Any]]) -> list[dict[
         auth = estimate_authenticity_risk(features=merged, diagnostics=text.diagnostics)
         merged["authenticity_risk_raw"] = auth.authenticity_risk_raw
 
-        scoring = compute_scores(feature_map=merged, authenticity_risk_raw=auth.authenticity_risk_raw)
+        scoring = compute_scores(
+            feature_map=merged,
+            authenticity_risk_raw=auth.authenticity_risk_raw,
+            use_semantic_layer=False,
+        )
         recommendation_result = map_recommendation(
             eligibility_status=eligibility.status,
             merit_raw=scoring.merit_raw,
@@ -121,6 +127,7 @@ def score_deterministic_baseline(candidates: list[dict[str, Any]]) -> list[dict[
                 "recommendation": recommendation_result.recommendation,
                 "review_flags": recommendation_result.review_flags,
                 "llm_metadata": None,
+                "semantic_rubric_scores": {},
                 "merit_breakdown": breakdown,
                 "feature_snapshot": {
                     "motivation_clarity": round(float(merged.get("motivation_clarity", 0.0)), 4),
@@ -198,6 +205,14 @@ def build_baseline_comparison(hybrid: list[dict[str, Any]], baseline: list[dict[
 
 def build_reliability_report(hybrid: list[dict[str, Any]]) -> dict[str, Any]:
     total = max(len(hybrid), 1)
+    if hybrid and all(row.get("llm_metadata") is None for row in hybrid):
+        return {
+            "coverage": len(hybrid),
+            "mode": "llm_explainability_disabled_for_offline_eval",
+            "llm_extraction_success_rate": None,
+            "llm_fallback_rate": None,
+            "fallback_reason_distribution": {},
+        }
     fallback_rows = [
         row
         for row in hybrid
@@ -322,23 +337,30 @@ def build_eval_report(
     candidates: list[dict[str, Any]],
     hybrid: list[dict[str, Any]],
     baseline: list[dict[str, Any]],
+    label_evaluation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    report = {
         "meta": {
             "candidate_count": len(candidates),
             "scoring_version": CONFIG.scoring_version,
             "scoring_config_version": CONFIG.scoring_config_version,
             "weight_experiment_protocol_version": CONFIG.weight_experiment_protocol_version,
-            "extraction_strategy": "llm_features_plus_deterministic_scoring",
+            "extraction_strategy": "deterministic_features_plus_semantic_rubrics_plus_optional_llm_explainability",
+            "ranking_strategy": "deterministic_baseline_plus_semantic_rubric_layer",
         },
         "llm_reliability": build_reliability_report(hybrid),
         "baseline_comparison": build_baseline_comparison(hybrid, baseline),
         "fairness_audit": build_fairness_audit(candidates, hybrid),
         "notes": [
-            "Deterministic baseline comparison is offline-only and does not change runtime behavior.",
+            "Current LLM layer is explainability-only and does not change numeric scoring.",
+            "Current hybrid pipeline adds a lightweight semantic rubric layer on top of the deterministic baseline.",
+            "Deterministic baseline comparison is offline-only and should be replaced by labeled ranking comparison for model iterations.",
             "Fairness audit is descriptive and should be complemented with committee review.",
         ],
     }
+    if label_evaluation is not None:
+        report["label_evaluation"] = label_evaluation
+    return report
 
 
 def main() -> None:
@@ -348,6 +370,11 @@ def main() -> None:
         "--output-dir",
         default="data/evaluation_pack",
         help="Output directory for evaluation artifacts",
+    )
+    parser.add_argument(
+        "--annotations",
+        default=None,
+        help="Optional path to committee annotation file for ranking evaluation",
     )
     args = parser.parse_args()
 
@@ -362,7 +389,16 @@ def main() -> None:
     baseline_comparison = build_baseline_comparison(hybrid, baseline)
     fairness_audit = build_fairness_audit(candidates, hybrid)
     config_snapshot = build_config_snapshot_with_hash()
-    report = build_eval_report(candidates, hybrid, baseline)
+    label_evaluation = None
+    if args.annotations:
+        annotations = load_annotations(args.annotations)
+        label_evaluation = build_label_evaluation(hybrid, annotations)
+        (output_dir / "label_evaluation.json").write_text(
+            json.dumps(label_evaluation, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    report = build_eval_report(candidates, hybrid, baseline, label_evaluation=label_evaluation)
 
     (output_dir / "hybrid_scored_results.json").write_text(
         json.dumps({"results": hybrid}, ensure_ascii=False, indent=2),

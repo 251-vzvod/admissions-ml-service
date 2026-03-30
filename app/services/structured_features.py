@@ -72,8 +72,9 @@ def extract_structured_features(
     )
     notes.append(f"certificate_score:{cert_note}")
 
-    non_empty_sources = int(bundle.stats.get("non_empty_text_sources", 0))
-    text_completeness_score = clamp01(non_empty_sources / 3.0)
+    logical_groups_present = int(bundle.stats.get("logical_source_groups_present", 0))
+    logical_groups_total = max(int(bundle.stats.get("logical_source_groups_total", 3)), 1)
+    text_completeness_score = clamp01(logical_groups_present / logical_groups_total)
 
     total_questions = len(bundle.qa_questions_original)
     answered_questions = len(bundle.motivation_answers_original)

@@ -46,6 +46,7 @@ class ScoreResponse(BaseModel):
 
     merit_breakdown: dict[str, int] = Field(default_factory=dict)
     feature_snapshot: dict[str, float | bool | int] = Field(default_factory=dict)
+    semantic_rubric_scores: dict[str, int] = Field(default_factory=dict)
 
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)

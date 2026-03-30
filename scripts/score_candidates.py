@@ -34,7 +34,7 @@ def score_all(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     pipeline = ScoringPipeline()
     results = []
     for item in candidates:
-        results.append(pipeline.score_candidate(item).model_dump())
+        results.append(pipeline.score_candidate(item, enable_llm_explainability=False).model_dump())
     return results
 
 
@@ -76,11 +76,11 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
     perturbation = {}
     if candidates:
         pipeline = ScoringPipeline()
-        base = pipeline.score_candidate(candidates[0]).model_dump()
+        base = pipeline.score_candidate(candidates[0], enable_llm_explainability=False).model_dump()
 
         less_evidence_candidate = deepcopy(candidates[0])
         less_evidence_candidate.setdefault("text_inputs", {})["motivation_letter_text"] = "I am motivated and passionate."
-        less_evidence = pipeline.score_candidate(less_evidence_candidate).model_dump()
+        less_evidence = pipeline.score_candidate(less_evidence_candidate, enable_llm_explainability=False).model_dump()
 
         more_concrete_candidate = deepcopy(candidates[0])
         extra = (
@@ -89,13 +89,13 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
         more_concrete_candidate.setdefault("text_inputs", {})["motivation_letter_text"] = (
             (more_concrete_candidate["text_inputs"].get("motivation_letter_text") or "") + extra
         )
-        more_concrete = pipeline.score_candidate(more_concrete_candidate).model_dump()
+        more_concrete = pipeline.score_candidate(more_concrete_candidate, enable_llm_explainability=False).model_dump()
 
         generic_candidate = deepcopy(candidates[0])
         generic_candidate.setdefault("text_inputs", {})["motivation_letter_text"] = (
             "I am passionate and motivated. I want to grow and change the world. " * 12
         )
-        generic_variant = pipeline.score_candidate(generic_candidate).model_dump()
+        generic_variant = pipeline.score_candidate(generic_candidate, enable_llm_explainability=False).model_dump()
 
         perturbation = {
             "remove_examples_confidence_drop": less_evidence["confidence_score"] <= base["confidence_score"],
@@ -123,7 +123,7 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
         },
         "system_evaluation_metrics_without_labels": {
             "coverage": len(scored),
-            "extraction_success_rate": float(
+            "extraction_success_rate": None if all(r.get("llm_metadata") is None for r in scored) else float(
                 round(
                     sum(
                         1
@@ -134,7 +134,7 @@ def run_diagnostics(candidates: list[dict[str, Any]], scored: list[dict[str, Any
                     3,
                 )
             ),
-            "fallback_rate": float(round(fallback_count / max(len(scored), 1), 3)),
+            "fallback_rate": None if all(r.get("llm_metadata") is None for r in scored) else float(round(fallback_count / max(len(scored), 1), 3)),
             "parsing_validity_rate": 1.0,
             "missingness_rate_estimate": float(
                 round(

@@ -43,7 +43,7 @@ def get_scoring_config() -> dict[str, Any]:
             "confidence_components": CONFIG.weights.confidence_components,
         },
         "thresholds": asdict(CONFIG.thresholds),
-        "extraction_strategy": "deterministic_features_plus_optional_llm_explainability",
+        "extraction_strategy": "deterministic_features_plus_semantic_rubrics_plus_optional_llm_explainability",
         "llm_provider": CONFIG.llm.provider,
         "llm_model": CONFIG.llm.model,
         "llm_fallback_to_deterministic_extractor_on_failure": CONFIG.llm.fallback_to_baseline,
@@ -97,6 +97,7 @@ def debug_features(candidate: CandidateInput) -> dict[str, Any]:
     return {
         "candidate_id": scored.candidate_id,
         "feature_snapshot": scored.feature_snapshot,
+        "semantic_rubric_scores": scored.semantic_rubric_scores,
         "merit_breakdown": scored.merit_breakdown,
         "review_flags": scored.review_flags,
     }

@@ -38,17 +38,28 @@ def _component_rows(items: list[tuple[str, float, float]]) -> tuple[list[dict[st
     return rows, raw
 
 
-def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_raw: float) -> dict[str, object]:
+def build_score_trace(
+    feature_map: dict[str, float | bool],
+    authenticity_risk_raw: float,
+    use_semantic_layer: bool = True,
+) -> dict[str, object]:
     """Build auditable factor-level trace for deterministic scoring formulas."""
     f = feature_map
 
     potential_items = [
-        ("growth_trajectory", float(f.get("growth_trajectory", 0.0)), 0.30),
-        ("resilience", float(f.get("resilience", 0.0)), 0.20),
+        ("growth_trajectory", float(f.get("growth_trajectory", 0.0)), 0.32),
+        ("resilience", float(f.get("resilience", 0.0)), 0.23),
         ("initiative", float(f.get("initiative", 0.0)), 0.25),
-        ("program_fit", float(f.get("program_fit", 0.0)), 0.20),
-        ("english_score_normalized", float(f.get("english_score_normalized", 0.5)), 0.05),
+        ("program_fit", float(f.get("program_fit", 0.0)), 0.10),
+        ("evidence_richness", float(f.get("evidence_richness", 0.0)), 0.10),
     ]
+    if use_semantic_layer:
+        potential_items.extend(
+            [
+                ("semantic_growth_trajectory", float(f.get("semantic_growth_trajectory", 0.0)), 0.18),
+                ("semantic_leadership_potential", float(f.get("semantic_leadership_potential", 0.0)), 0.12),
+            ]
+        )
     potential_rows, potential_raw = _component_rows(potential_items)
 
     motivation_items = [
@@ -56,6 +67,8 @@ def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_ra
         ("program_fit", float(f.get("program_fit", 0.0)), 0.30),
         ("evidence_richness", float(f.get("evidence_richness", 0.0)), 0.25),
     ]
+    if use_semantic_layer:
+        motivation_items.append(("semantic_motivation_authenticity", float(f.get("semantic_motivation_authenticity", 0.0)), 0.30))
     motivation_rows, motivation_raw = _component_rows(motivation_items)
 
     leadership_items = [
@@ -64,27 +77,31 @@ def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_ra
         ("evidence_richness", float(f.get("evidence_richness", 0.0)), 0.15),
         ("evidence_count", float(f.get("evidence_count", 0.0)), 0.15),
     ]
+    if use_semantic_layer:
+        leadership_items.extend(
+            [
+                ("semantic_leadership_potential", float(f.get("semantic_leadership_potential", 0.0)), 0.30),
+                ("semantic_hidden_potential", float(f.get("semantic_hidden_potential", 0.0)), 0.10),
+            ]
+        )
     leadership_rows, leadership_raw = _component_rows(leadership_items)
 
     experience_items = [
-        ("evidence_count", float(f.get("evidence_count", 0.0)), 0.30),
-        ("leadership_impact", float(f.get("leadership_impact", 0.0)), 0.20),
+        ("evidence_count", float(f.get("evidence_count", 0.0)), 0.35),
+        ("leadership_impact", float(f.get("leadership_impact", 0.0)), 0.25),
         ("achievement_mentions_count", float(f.get("achievement_mentions_count", 0.0)), 0.20),
-        ("project_mentions_count", float(f.get("project_mentions_count", 0.0)), 0.15),
-        ("english_score_normalized", float(f.get("english_score_normalized", 0.5)), 0.075),
-        ("certificate_score_normalized", float(f.get("certificate_score_normalized", 0.5)), 0.075),
+        ("project_mentions_count", float(f.get("project_mentions_count", 0.0)), 0.20),
     ]
     experience_rows, experience_raw = _component_rows(experience_items)
 
     trust_items = [
-        ("completeness_score", float(f.get("completeness_score", 0.0)), 0.30),
-        ("consistency_score", float(f.get("consistency_score", 0.0)), 0.25),
-        ("evidence_count", float(f.get("evidence_count", 0.0)), 0.20),
-        ("behavioral_completion_score", float(f.get("behavioral_completion_score", 0.0)), 0.10),
-        ("docs_count_score", float(f.get("docs_count_score", 0.0)), 0.07),
-        ("portfolio_links_score", float(f.get("portfolio_links_score", 0.0)), 0.05),
-        ("has_video_presentation", 1.0 if bool(f.get("has_video_presentation", False)) else 0.0, 0.03),
+        ("completeness_score", float(f.get("completeness_score", 0.0)), 0.36),
+        ("consistency_score", float(f.get("consistency_score", 0.0)), 0.30),
+        ("evidence_count", float(f.get("evidence_count", 0.0)), 0.22),
+        ("behavioral_completion_score", float(f.get("behavioral_completion_score", 0.0)), 0.12),
     ]
+    if use_semantic_layer:
+        trust_items.append(("semantic_authenticity_groundedness", float(f.get("semantic_authenticity_groundedness", 0.0)), 0.18))
     trust_rows, trust_base = _component_rows(trust_items)
 
     trust_penalty = 0.0
@@ -118,6 +135,8 @@ def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_ra
         ("consistency_score", float(f.get("consistency_score", 0.0)), CONFIG.weights.confidence_components["consistency_score"]),
         ("completeness_score", float(f.get("completeness_score", 0.0)), CONFIG.weights.confidence_components["completeness_score"]),
     ]
+    if use_semantic_layer:
+        confidence_items.append(("semantic_authenticity_groundedness", float(f.get("semantic_authenticity_groundedness", 0.0)), 0.22))
     confidence_rows, confidence_base = _component_rows(confidence_items)
 
     confidence_penalty = 0.0
@@ -133,10 +152,10 @@ def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_ra
 
     return {
         "formulas": {
-            "potential": "weighted_average([growth_trajectory,resilience,initiative,program_fit,english_score_normalized])",
-            "motivation": "weighted_average([motivation_clarity,program_fit,evidence_richness])",
-            "leadership_agency": "weighted_average([initiative,leadership_impact,evidence_richness,evidence_count])",
-            "experience_skills": "weighted_average([evidence_count,leadership_impact,achievement_mentions_count,project_mentions_count,english_score_normalized,certificate_score_normalized])",
+            "potential": "weighted_average([growth_trajectory,resilience,initiative,program_fit,evidence_richness,semantic_growth_trajectory?,semantic_leadership_potential?])",
+            "motivation": "weighted_average([motivation_clarity,program_fit,evidence_richness,semantic_motivation_authenticity?])",
+            "leadership_agency": "weighted_average([initiative,leadership_impact,evidence_richness,evidence_count,semantic_leadership_potential?,semantic_hidden_potential?])",
+            "experience_skills": "weighted_average([evidence_count,leadership_impact,achievement_mentions_count,project_mentions_count])",
             "trust_completeness": "clamp01(weighted_average(trust_features) - trust_penalty)",
             "merit": "weighted_average([potential,motivation,leadership_agency,experience_skills,trust_completeness], merit_weights)",
             "confidence": "clamp01(weighted_average(confidence_features) - confidence_penalty)",
@@ -172,56 +191,71 @@ def build_score_trace(feature_map: dict[str, float | bool], authenticity_risk_ra
     }
 
 
-def compute_scores(feature_map: dict[str, float | bool], authenticity_risk_raw: float) -> ScoringResult:
+def compute_scores(
+    feature_map: dict[str, float | bool],
+    authenticity_risk_raw: float,
+    use_semantic_layer: bool = True,
+) -> ScoringResult:
     """Compute candidate-level operational scores for decision support."""
     f = feature_map
 
-    potential = weighted_average_normalized(
-        [
-            (float(f.get("growth_trajectory", 0.0)), 0.30),
-            (float(f.get("resilience", 0.0)), 0.20),
-            (float(f.get("initiative", 0.0)), 0.25),
-            (float(f.get("program_fit", 0.0)), 0.20),
-            (float(f.get("english_score_normalized", 0.5)), 0.05),
-        ]
-    )
-    motivation = weighted_average_normalized(
-        [
-            (float(f.get("motivation_clarity", 0.0)), 0.45),
-            (float(f.get("program_fit", 0.0)), 0.30),
-            (float(f.get("evidence_richness", 0.0)), 0.25),
-        ]
-    )
-    leadership_agency = weighted_average_normalized(
-        [
-            (float(f.get("initiative", 0.0)), 0.35),
-            (float(f.get("leadership_impact", 0.0)), 0.35),
-            (float(f.get("evidence_richness", 0.0)), 0.15),
-            (float(f.get("evidence_count", 0.0)), 0.15),
-        ]
-    )
+    potential_items = [
+        (float(f.get("growth_trajectory", 0.0)), 0.32),
+        (float(f.get("resilience", 0.0)), 0.23),
+        (float(f.get("initiative", 0.0)), 0.25),
+        (float(f.get("program_fit", 0.0)), 0.10),
+        (float(f.get("evidence_richness", 0.0)), 0.10),
+    ]
+    if use_semantic_layer:
+        potential_items.extend(
+            [
+                (float(f.get("semantic_growth_trajectory", 0.0)), 0.18),
+                (float(f.get("semantic_leadership_potential", 0.0)), 0.12),
+            ]
+        )
+    potential = weighted_average_normalized(potential_items)
+
+    motivation_items = [
+        (float(f.get("motivation_clarity", 0.0)), 0.45),
+        (float(f.get("program_fit", 0.0)), 0.30),
+        (float(f.get("evidence_richness", 0.0)), 0.25),
+    ]
+    if use_semantic_layer:
+        motivation_items.append((float(f.get("semantic_motivation_authenticity", 0.0)), 0.30))
+    motivation = weighted_average_normalized(motivation_items)
+
+    leadership_items = [
+        (float(f.get("initiative", 0.0)), 0.35),
+        (float(f.get("leadership_impact", 0.0)), 0.35),
+        (float(f.get("evidence_richness", 0.0)), 0.15),
+        (float(f.get("evidence_count", 0.0)), 0.15),
+    ]
+    if use_semantic_layer:
+        leadership_items.extend(
+            [
+                (float(f.get("semantic_leadership_potential", 0.0)), 0.30),
+                (float(f.get("semantic_hidden_potential", 0.0)), 0.10),
+            ]
+        )
+    leadership_agency = weighted_average_normalized(leadership_items)
     experience_skills = weighted_average_normalized(
         [
-            (float(f.get("evidence_count", 0.0)), 0.30),
-            (float(f.get("leadership_impact", 0.0)), 0.20),
+            (float(f.get("evidence_count", 0.0)), 0.35),
+            (float(f.get("leadership_impact", 0.0)), 0.25),
             (float(f.get("achievement_mentions_count", 0.0)), 0.20),
-            (float(f.get("project_mentions_count", 0.0)), 0.15),
-            (float(f.get("english_score_normalized", 0.5)), 0.075),
-            (float(f.get("certificate_score_normalized", 0.5)), 0.075),
+            (float(f.get("project_mentions_count", 0.0)), 0.20),
         ]
     )
 
-    trust_base = weighted_average_normalized(
-        [
-            (float(f.get("completeness_score", 0.0)), 0.30),
-            (float(f.get("consistency_score", 0.0)), 0.25),
-            (float(f.get("evidence_count", 0.0)), 0.20),
-            (float(f.get("behavioral_completion_score", 0.0)), 0.10),
-            (float(f.get("docs_count_score", 0.0)), 0.07),
-            (float(f.get("portfolio_links_score", 0.0)), 0.05),
-            (1.0 if bool(f.get("has_video_presentation", False)) else 0.0, 0.03),
-        ]
-    )
+    trust_items = [
+        (float(f.get("completeness_score", 0.0)), 0.36),
+        (float(f.get("consistency_score", 0.0)), 0.30),
+        (float(f.get("evidence_count", 0.0)), 0.22),
+        (float(f.get("behavioral_completion_score", 0.0)), 0.12),
+    ]
+    if use_semantic_layer:
+        trust_items.append((float(f.get("semantic_authenticity_groundedness", 0.0)), 0.18))
+    trust_base = weighted_average_normalized(trust_items)
     trust_penalty = 0.0
     if bool(f.get("contradiction_flag", False)):
         trust_penalty += 0.15
@@ -242,14 +276,15 @@ def compute_scores(feature_map: dict[str, float | bool], authenticity_risk_raw: 
         [(value, CONFIG.weights.merit_breakdown[key]) for key, value in merit_breakdown_raw.items()]
     )
 
-    confidence_base = weighted_average_normalized(
-        [
-            (float(f.get("specificity_score", 0.0)), CONFIG.weights.confidence_components["specificity_score"]),
-            (float(f.get("evidence_count", 0.0)), CONFIG.weights.confidence_components["evidence_count"]),
-            (float(f.get("consistency_score", 0.0)), CONFIG.weights.confidence_components["consistency_score"]),
-            (float(f.get("completeness_score", 0.0)), CONFIG.weights.confidence_components["completeness_score"]),
-        ]
-    )
+    confidence_items = [
+        (float(f.get("specificity_score", 0.0)), CONFIG.weights.confidence_components["specificity_score"]),
+        (float(f.get("evidence_count", 0.0)), CONFIG.weights.confidence_components["evidence_count"]),
+        (float(f.get("consistency_score", 0.0)), CONFIG.weights.confidence_components["consistency_score"]),
+        (float(f.get("completeness_score", 0.0)), CONFIG.weights.confidence_components["completeness_score"]),
+    ]
+    if use_semantic_layer:
+        confidence_items.append((float(f.get("semantic_authenticity_groundedness", 0.0)), 0.22))
+    confidence_base = weighted_average_normalized(confidence_items)
 
     confidence_penalty = 0.0
     if bool(f.get("contradiction_flag", False)):

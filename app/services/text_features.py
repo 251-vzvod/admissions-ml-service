@@ -27,19 +27,71 @@ ACTION_TERMS = [
     "помог",
 ]
 
-ROLE_TERMS = ["team", "club", "leader", "captain", "mentor", "volunteer", "группа", "команда", "лидер"]
-OUTCOME_TERMS = ["result", "outcome", "improved", "increased", "saved", "won", "better", "результат", "улучш"]
-TEMPORAL_TERMS = ["last year", "during", "after", "before", "for months", "2 years", "когда", "после", "до"]
-CAUSE_EFFECT_TERMS = ["because", "therefore", "so that", "as a result", "because of", "потому", "поэтому", "в результате"]
-RESILIENCE_TERMS = ["difficult", "challenge", "failed", "setback", "tried again", "hard", "сложно", "трудно", "не сдался"]
-PROGRAM_FIT_TERMS = ["invision", "program", "interdisciplinary", "teamwork", "projects", "mission", "university"]
-GENERIC_TERMS = ["i am passionate", "i am motivated", "i want to grow", "dream", "best version", "change the world"]
+ROLE_TERMS = [
+    "team",
+    "club",
+    "leader",
+    "captain",
+    "mentor",
+    "volunteer",
+    "группа",
+    "команда",
+    "лидер",
+    "наставник",
+    "волонтер",
+]
+OUTCOME_TERMS = [
+    "result",
+    "outcome",
+    "improved",
+    "increased",
+    "saved",
+    "won",
+    "better",
+    "результат",
+    "улучш",
+    "добил",
+    "смог",
+]
+TEMPORAL_TERMS = ["last year", "during", "after", "before", "for months", "2 years", "когда", "после", "до", "сначала", "потом"]
+CAUSE_EFFECT_TERMS = ["because", "therefore", "so that", "as a result", "because of", "потому", "поэтому", "в результате", "чтобы"]
+RESILIENCE_TERMS = ["difficult", "challenge", "failed", "setback", "tried again", "hard", "сложно", "трудно", "не сдался", "ошиб", "не получилось"]
+PROGRAM_FIT_TERMS = [
+    "invision",
+    "program",
+    "interdisciplinary",
+    "teamwork",
+    "projects",
+    "mission",
+    "university",
+    "программа",
+    "университет",
+    "проект",
+    "команд",
+    "мисси",
+    "обучени",
+]
+GENERIC_TERMS = [
+    "i am passionate",
+    "i am motivated",
+    "i want to grow",
+    "dream",
+    "best version",
+    "change the world",
+    "я мотивирован",
+    "я очень мотивирован",
+    "хочу развиваться",
+    "мечтаю",
+    "изменить мир",
+]
 NUMERIC_TOKENS = [str(i) for i in range(10)]
 
 CONTRADICTION_PAIRS = [
     ("i never", "i always"),
     ("no experience", "i led"),
     ("do not know", "clear plan"),
+    ("никогда", "всегда"),
+    ("нет опыта", "я руководил"),
 ]
 
 

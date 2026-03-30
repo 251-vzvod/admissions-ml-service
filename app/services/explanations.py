@@ -87,6 +87,10 @@ def build_explanation(
         strengths.append("Motivation aligns with the program format and collaborative learning context.")
     if float(feature_map.get("evidence_count", 0.0)) >= 0.65:
         strengths.append("Evidence density is sufficient to support a comparatively reliable assessment.")
+    if float(feature_map.get("leadership_potential", feature_map.get("semantic_leadership_potential", 0.0))) >= 0.62:
+        strengths.append("Semantic rubric matching suggests credible leadership potential beyond surface polish.")
+    if float(feature_map.get("hidden_potential", feature_map.get("semantic_hidden_potential", 0.0))) >= 0.60:
+        strengths.append("Profile shows hidden-potential characteristics: growth and agency signals stronger than presentation quality.")
 
     if float(feature_map.get("specificity_score", 0.0)) < 0.45:
         gaps.append("Specificity is limited; more concrete examples and outcomes would improve reliability.")
@@ -96,6 +100,8 @@ def build_explanation(
         gaps.append("Potential internal inconsistency detected across sections.")
     if float(feature_map.get("completeness_score", 0.0)) < 0.5:
         gaps.append("Application completeness is moderate/low, which limits confidence in the assessment.")
+    if float(feature_map.get("motivation_authenticity", feature_map.get("semantic_motivation_authenticity", 0.0))) < 0.42:
+        gaps.append("Motivation appears under-grounded; committee should probe why this program specifically matters.")
 
     if float(feature_map.get("genericness_score", 0.0)) > 0.55:
         uncertainties.append("Some text appears generic; committee should verify authenticity of claims.")

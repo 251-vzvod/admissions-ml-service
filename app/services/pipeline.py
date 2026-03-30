@@ -16,6 +16,7 @@ from app.services.preprocessing import preprocess_text_inputs
 from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
 from app.services.scoring import build_score_trace, compute_scores
+from app.services.semantic_rubrics import extract_semantic_rubric_features
 from app.services.structured_features import extract_structured_features
 from app.services.text_features import extract_text_features
 from app.utils.ids import generate_scoring_run_id
@@ -65,10 +66,17 @@ class ScoringPipeline:
         merged_features.update(structured_result.features)
         merged_features.update(text_result.features)
 
+        semantic_result = extract_semantic_rubric_features(bundle=bundle, heuristic_features=merged_features)
+        merged_features.update(semantic_result.features)
+
         auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_result.diagnostics)
         merged_features["authenticity_risk_raw"] = auth_result.authenticity_risk_raw
 
-        scoring_result = compute_scores(feature_map=merged_features, authenticity_risk_raw=auth_result.authenticity_risk_raw)
+        scoring_result = compute_scores(
+            feature_map=merged_features,
+            authenticity_risk_raw=auth_result.authenticity_risk_raw,
+            use_semantic_layer=True,
+        )
 
         recommendation_result = map_recommendation(
             eligibility_status=eligibility.status,
@@ -101,12 +109,20 @@ class ScoringPipeline:
             "docs_count_score": round(float(merged_features.get("docs_count_score", 0.0)), 4),
             "portfolio_links_score": round(float(merged_features.get("portfolio_links_score", 0.0)), 4),
             "has_video_presentation": bool(merged_features.get("has_video_presentation", False)),
+            "logical_source_groups_present": int(bundle.stats.get("logical_source_groups_present", 0)),
             "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
             "contradiction_flag": bool(merged_features.get("contradiction_flag", False)),
             "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
             "cross_section_mismatch_score": round(float(merged_features.get("cross_section_mismatch_score", 0.0)), 4),
             "authenticity_risk_raw": round(float(merged_features.get("authenticity_risk_raw", 0.0)), 4),
             "excluded_sensitive_fields_count": len(excluded_hits),
+        }
+        semantic_snapshot = {
+            "leadership_potential": round(float(merged_features.get("semantic_leadership_potential", 0.0)), 4),
+            "growth_trajectory": round(float(merged_features.get("semantic_growth_trajectory", 0.0)), 4),
+            "motivation_authenticity": round(float(merged_features.get("semantic_motivation_authenticity", 0.0)), 4),
+            "authenticity_groundedness": round(float(merged_features.get("semantic_authenticity_groundedness", 0.0)), 4),
+            "hidden_potential": round(float(merged_features.get("semantic_hidden_potential", 0.0)), 4),
         }
 
         context.update(
@@ -116,16 +132,23 @@ class ScoringPipeline:
                 "text_result": text_result,
                 "merged_features": merged_features,
                 "auth_result": auth_result,
+                "semantic_result": semantic_result,
                 "scoring_result": scoring_result,
                 "recommendation_result": recommendation_result,
                 "recommendation_flags": recommendation_flags,
                 "merit_breakdown": merit_breakdown,
                 "snapshot": snapshot,
+                "semantic_snapshot": semantic_snapshot,
             }
         )
         return context
 
-    def score_candidate(self, candidate_payload: dict[str, Any], scoring_run_id: str | None = None) -> ScoreResponse:
+    def score_candidate(
+        self,
+        candidate_payload: dict[str, Any],
+        scoring_run_id: str | None = None,
+        enable_llm_explainability: bool = True,
+    ) -> ScoreResponse:
         """Run full scoring flow for a single candidate payload."""
         scoring_run_id = scoring_run_id or generate_scoring_run_id()
         context = self._prepare_scoring_context(candidate_payload)
@@ -189,9 +212,12 @@ class ScoringPipeline:
                     "trust_completeness": 0,
                 },
                 feature_snapshot={
-                    "completeness_score": bundle.stats.get("non_empty_text_sources", 0) / 3.0,
+                    "completeness_score": bundle.stats.get("logical_source_groups_present", 0)
+                    / max(bundle.stats.get("logical_source_groups_total", 3), 1),
+                    "logical_source_groups_present": int(bundle.stats.get("logical_source_groups_present", 0)),
                     "excluded_sensitive_fields_count": len(excluded_hits),
                 },
+                semantic_rubric_scores={},
                 top_strengths=explanation.top_strengths,
                 main_gaps=explanation.main_gaps,
                 uncertainties=explanation.uncertainties,
@@ -205,7 +231,9 @@ class ScoringPipeline:
         recommendation_flags = context["recommendation_flags"]
         merit_breakdown = context["merit_breakdown"]
         snapshot = context["snapshot"]
+        semantic_snapshot = context["semantic_snapshot"]
         text_result = context["text_result"]
+        semantic_result = context["semantic_result"]
 
         llm_metadata: dict[str, str | int | float] | None = None
         llm_strength_claims: list[dict[str, str]] | None = None
@@ -214,23 +242,24 @@ class ScoringPipeline:
         llm_evidence_spans: list[dict[str, str]] | None = None
         extractor_rationale: str | None = None
 
-        try:
-            llm_result = extract_explainability_with_llm(bundle=bundle, deterministic_signals=text_result.features)
-            llm_metadata = llm_result.llm_metadata
-            llm_strength_claims = llm_result.strength_claims
-            llm_gap_claims = llm_result.gap_claims
-            llm_uncertainty_claims = llm_result.uncertainty_claims
-            llm_evidence_spans = llm_result.evidence_spans
-            extractor_rationale = llm_result.rationale
-        except RuntimeError as exc:
-            llm_metadata = {
-                "provider": CONFIG.llm.provider,
-                "model": CONFIG.llm.model,
-                "fallback_reason": str(exc),
-            }
+        if enable_llm_explainability:
+            try:
+                llm_result = extract_explainability_with_llm(bundle=bundle, deterministic_signals=text_result.features)
+                llm_metadata = llm_result.llm_metadata
+                llm_strength_claims = llm_result.strength_claims
+                llm_gap_claims = llm_result.gap_claims
+                llm_uncertainty_claims = llm_result.uncertainty_claims
+                llm_evidence_spans = llm_result.evidence_spans
+                extractor_rationale = llm_result.rationale
+            except RuntimeError as exc:
+                llm_metadata = {
+                    "provider": CONFIG.llm.provider,
+                    "model": CONFIG.llm.model,
+                    "fallback_reason": str(exc),
+                }
 
         explanation_result = build_explanation(
-            feature_map=snapshot,
+            feature_map={**snapshot, **semantic_snapshot},
             merit_breakdown=merit_breakdown,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_result.review_flags,
@@ -242,7 +271,14 @@ class ScoringPipeline:
             provided_strength_claims=llm_strength_claims,
             provided_gap_claims=llm_gap_claims,
             provided_uncertainty_claims=llm_uncertainty_claims,
-            provided_evidence_spans=llm_evidence_spans,
+            provided_evidence_spans=llm_evidence_spans
+            or [
+                {
+                    "source": item.source,
+                    "snippet": item.snippet,
+                }
+                for item in list(semantic_result.evidence.values())[:2]
+            ],
             extractor_rationale=extractor_rationale,
         )
 
@@ -257,6 +293,9 @@ class ScoringPipeline:
             review_flags=recommendation_flags,
             merit_breakdown=merit_breakdown,
             feature_snapshot=snapshot,
+            semantic_rubric_scores={
+                key: to_display_score(value) for key, value in semantic_snapshot.items()
+            },
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,
@@ -285,7 +324,7 @@ class ScoringPipeline:
 
         merged_features = context["merged_features"]
         auth_result = context["auth_result"]
-        scoring_trace = build_score_trace(merged_features, auth_result.authenticity_risk_raw)
+        scoring_trace = build_score_trace(merged_features, auth_result.authenticity_risk_raw, use_semantic_layer=True)
 
         payload.update(
             {
@@ -297,15 +336,33 @@ class ScoringPipeline:
                     "authenticity_risk_raw": round(auth_result.authenticity_risk_raw, 6),
                     "review_flags": context["auth_result"].review_flags,
                 },
+                "semantic_features": context["semantic_result"].features,
+                "semantic_evidence": {
+                    key: {
+                        "source": value.source,
+                        "snippet": value.snippet,
+                        "similarity": value.similarity,
+                    }
+                    for key, value in context["semantic_result"].evidence.items()
+                },
                 "score_trace": scoring_trace,
             }
         )
         return payload
 
-    def score_candidate_model(self, model: Any, scoring_run_id: str | None = None) -> ScoreResponse:
+    def score_candidate_model(
+        self,
+        model: Any,
+        scoring_run_id: str | None = None,
+        enable_llm_explainability: bool = True,
+    ) -> ScoreResponse:
         """Helper for pydantic models accepted by API layer."""
         payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)
-        return self.score_candidate(payload, scoring_run_id=scoring_run_id)
+        return self.score_candidate(
+            payload,
+            scoring_run_id=scoring_run_id,
+            enable_llm_explainability=enable_llm_explainability,
+        )
 
     def score_candidate_trace_model(self, model: Any) -> dict[str, Any]:
         """Helper to build score trace from pydantic models in API layer."""

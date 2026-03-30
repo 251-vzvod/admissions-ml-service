@@ -86,12 +86,17 @@ def evaluate_eligibility(
     if CONFIG.thresholds.require_video_presentation and not has_video:
         reasons.append("missing_required_materials_video")
 
-    missing_count = sum(int(v) for v in bundle.missingness_map.values())
+    logical_groups_present = int(bundle.stats.get("logical_source_groups_present", 0))
+    logical_groups_total = int(bundle.stats.get("logical_source_groups_total", 3))
+    logical_groups_missing = max(logical_groups_total - logical_groups_present, 0)
 
     if word_count < 20:
         return EligibilityResult(status="incomplete_application", reasons=reasons or ["critical_text_missing"])
 
-    if missing_count >= 2 or reasons:
+    if logical_groups_present < 2:
+        reasons.append("insufficient_multi_source_evidence")
+
+    if logical_groups_missing >= 2 or reasons:
         return EligibilityResult(status="conditionally_eligible", reasons=reasons or ["high_missingness"])
 
     return EligibilityResult(status="eligible", reasons=[])

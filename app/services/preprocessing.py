@@ -74,12 +74,22 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
         "motivation_questions": len(non_empty_answers) == 0,
     }
 
+    present_logical_source_groups = sum(
+        [
+            int(bool(motivation_letter)),
+            int(len(non_empty_answers) > 0),
+            int(bool(interview_text or video_interview_transcript or video_presentation_transcript)),
+        ]
+    )
+
     stats = {
         "word_count": word_count(full_text),
         "char_count": char_count(full_text),
         "sentence_count": sentence_count(full_text),
         "avg_answer_length_words": safe_div(sum(answer_word_counts), len(answer_word_counts), default=0.0),
         "non_empty_answer_count": len(non_empty_answers),
+        "logical_source_groups_present": present_logical_source_groups,
+        "logical_source_groups_total": 3,
         "non_empty_text_sources": sum(
             [
                 int(bool(motivation_letter)),
