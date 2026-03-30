@@ -1,14 +1,26 @@
-"""Semantic rubric prototypes and lightweight embedding-based matching."""
+"""Semantic rubric prototypes and multilingual-friendly matching backends."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 import re
-from typing import Iterable
+from typing import Iterable, Protocol
 
+from app.config import CONFIG
 from app.services.preprocessing import NormalizedTextBundle
 from app.utils.math_utils import clamp01, weighted_average_normalized
+
+try:  # pragma: no cover - optional dependency
+    from sklearn.feature_extraction.text import TfidfVectorizer
+except Exception:  # pragma: no cover - optional dependency
+    TfidfVectorizer = None
+
+try:  # pragma: no cover - optional dependency
+    from sentence_transformers import SentenceTransformer
+except Exception:  # pragma: no cover - optional dependency
+    SentenceTransformer = None
 
 
 TOKEN_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
@@ -91,6 +103,13 @@ class SemanticRubricResult:
     diagnostics: dict[str, float | int | str]
 
 
+class SemanticEncoder(Protocol):
+    backend_name: str
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        ...
+
+
 def _tokenize(text: str) -> list[str]:
     return [token for token in TOKEN_RE.findall(text.lower()) if token]
 
@@ -105,14 +124,12 @@ def _char_ngrams(text: str, n: int = 3) -> Iterable[str]:
         yield compact[idx : idx + n]
 
 
-def _vectorize(text: str) -> list[float]:
+def _hash_vectorize(text: str) -> list[float]:
     vector = [0.0] * EMBEDDING_DIM
     for token in _tokenize(text):
-        index = hash(f"tok::{token}") % EMBEDDING_DIM
-        vector[index] += 1.0
+        vector[hash(f"tok::{token}") % EMBEDDING_DIM] += 1.0
     for gram in _char_ngrams(text):
-        index = hash(f"chr::{gram}") % EMBEDDING_DIM
-        vector[index] += 0.35
+        vector[hash(f"chr::{gram}") % EMBEDDING_DIM] += 0.35
 
     norm = math.sqrt(sum(value * value for value in vector))
     if norm == 0:
@@ -127,13 +144,72 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     return max(-1.0, min(1.0, dot))
 
 
-def _prototype_vector(texts: list[str]) -> list[float]:
-    if not texts:
-        return [0.0] * EMBEDDING_DIM
-    vectors = [_vectorize(text) for text in texts if text.strip()]
+class HashSemanticEncoder:
+    backend_name = "hash-embedding"
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        return [_hash_vectorize(text) for text in texts]
+
+
+class TfidfCharNgramEncoder:
+    backend_name = "tfidf-char-ngram"
+
+    def __init__(self) -> None:
+        if TfidfVectorizer is None:  # pragma: no cover - optional dependency
+            raise RuntimeError("sklearn_unavailable")
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        vectorizer = TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            lowercase=True,
+            min_df=1,
+            norm="l2",
+            sublinear_tf=True,
+        )
+        matrix = vectorizer.fit_transform(texts)
+        return matrix.toarray().tolist()
+
+
+class SentenceTransformerEncoder:
+    backend_name = "sentence-transformers"
+
+    def __init__(self, model_name: str) -> None:
+        if SentenceTransformer is None:  # pragma: no cover - optional dependency
+            raise RuntimeError("sentence_transformers_unavailable")
+        self.model = _load_sentence_transformer(model_name)
+        self.model_name = model_name
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        vectors = self.model.encode(texts, normalize_embeddings=True)
+        return [vector.tolist() for vector in vectors]
+
+
+@lru_cache(maxsize=2)
+def _load_sentence_transformer(model_name: str):  # pragma: no cover - optional dependency
+    return SentenceTransformer(model_name)
+
+
+def _build_encoder() -> tuple[SemanticEncoder, str | None]:
+    backend = CONFIG.semantic.backend.strip().lower()
+    if backend in {"sentence_transformer", "sentence-transformer", "sentence_transformers"}:
+        try:
+            return SentenceTransformerEncoder(CONFIG.semantic.model), None
+        except Exception as exc:  # pragma: no cover - optional dependency
+            return HashSemanticEncoder(), f"sentence_transformer_fallback:{type(exc).__name__}"
+    if backend in {"tfidf", "tfidf_char_ngram", "tfidf-char-ngram"}:
+        try:
+            return TfidfCharNgramEncoder(), None
+        except Exception as exc:  # pragma: no cover - optional dependency
+            return HashSemanticEncoder(), f"tfidf_fallback:{type(exc).__name__}"
+    return HashSemanticEncoder(), None if backend == "hash" else "unknown_backend_fallback"
+
+
+def _prototype_vector(vectors: list[list[float]]) -> list[float]:
     if not vectors:
-        return [0.0] * EMBEDDING_DIM
-    merged = [0.0] * EMBEDDING_DIM
+        return []
+    dim = len(vectors[0])
+    merged = [0.0] * dim
     for vector in vectors:
         for idx, value in enumerate(vector):
             merged[idx] += value
@@ -160,9 +236,11 @@ def extract_semantic_rubric_features(
     bundle: NormalizedTextBundle,
     heuristic_features: dict[str, float | bool] | None = None,
 ) -> SemanticRubricResult:
-    """Score candidate text against rubric prototypes using lightweight embeddings."""
+    """Score candidate text against rubric prototypes using configurable semantic backends."""
     heuristic_features = heuristic_features or {}
     chunks = _iter_candidate_chunks(bundle)
+    encoder, backend_note = _build_encoder()
+
     if not chunks:
         empty = {
             "semantic_leadership_potential": 0.0,
@@ -171,15 +249,32 @@ def extract_semantic_rubric_features(
             "semantic_authenticity_groundedness": 0.0,
             "semantic_hidden_potential": 0.0,
         }
-        return SemanticRubricResult(features=empty, evidence={}, diagnostics={"chunk_count": 0, "backend": "hash-embedding"})
+        diagnostics: dict[str, float | int | str] = {"chunk_count": 0, "backend": encoder.backend_name}
+        if backend_note:
+            diagnostics["backend_note"] = backend_note
+        return SemanticRubricResult(features=empty, evidence={}, diagnostics=diagnostics)
 
-    chunk_vectors = [(source, text, _vectorize(text)) for source, text in chunks]
+    candidate_chunks = [text for _, text in chunks]
+    all_texts = list(candidate_chunks)
+    prototype_index: dict[str, dict[str, list[int]]] = {}
+    for dimension, prototypes in RUBRIC_PROTOTYPES.items():
+        prototype_index[dimension] = {"positive": [], "negative": []}
+        for polarity in ("positive", "negative"):
+            for text in prototypes.get(polarity, []):
+                prototype_index[dimension][polarity].append(len(all_texts))
+                all_texts.append(text)
+
+    encoded = encoder.encode(all_texts)
+    chunk_vectors = [(source, text, encoded[idx]) for idx, (source, text) in enumerate(chunks)]
+
     features: dict[str, float] = {}
     evidence: dict[str, SemanticEvidence] = {}
 
-    for dimension, prototypes in RUBRIC_PROTOTYPES.items():
-        positive = _prototype_vector(prototypes.get("positive", []))
-        negative = _prototype_vector(prototypes.get("negative", []))
+    for dimension in RUBRIC_PROTOTYPES:
+        positive_vectors = [encoded[idx] for idx in prototype_index[dimension]["positive"]]
+        negative_vectors = [encoded[idx] for idx in prototype_index[dimension]["negative"]]
+        positive = _prototype_vector(positive_vectors)
+        negative = _prototype_vector(negative_vectors)
 
         best_delta = -1.0
         best_source = chunk_vectors[0][0]
@@ -203,8 +298,7 @@ def extract_semantic_rubric_features(
             default=0.0,
         )
 
-        feature_key = f"semantic_{dimension}"
-        features[feature_key] = dimension_score
+        features[f"semantic_{dimension}"] = dimension_score
         evidence[dimension] = SemanticEvidence(
             source=best_source,
             snippet=best_text[:220] + ("..." if len(best_text) > 220 else ""),
@@ -214,21 +308,25 @@ def extract_semantic_rubric_features(
     hidden_potential = weighted_average_normalized(
         [
             (features.get("semantic_growth_trajectory", 0.0), 0.30),
-            (features.get("semantic_leadership_potential", 0.0), 0.30),
-            (features.get("semantic_motivation_authenticity", 0.0), 0.20),
+            (features.get("semantic_leadership_potential", 0.0), 0.24),
+            (features.get("semantic_motivation_authenticity", 0.0), 0.16),
+            (features.get("semantic_authenticity_groundedness", 0.0), 0.10),
             (float(heuristic_features.get("resilience", 0.0)), 0.10),
-            (1.0 - float(heuristic_features.get("genericness_score", 0.0)), 0.10),
+            (float(heuristic_features.get("evidence_count", 0.0)), 0.05),
+            (1.0 - float(heuristic_features.get("genericness_score", 0.0)), 0.05),
         ],
         default=0.0,
     )
     features["semantic_hidden_potential"] = hidden_potential
 
-    return SemanticRubricResult(
-        features=features,
-        evidence=evidence,
-        diagnostics={
-            "chunk_count": len(chunks),
-            "backend": "hash-embedding",
-            "prototype_count": len(RUBRIC_PROTOTYPES),
-        },
-    )
+    diagnostics = {
+        "chunk_count": len(chunks),
+        "backend": encoder.backend_name,
+        "prototype_count": len(RUBRIC_PROTOTYPES),
+    }
+    if backend_note:
+        diagnostics["backend_note"] = backend_note
+    if encoder.backend_name == "sentence-transformers":
+        diagnostics["model"] = CONFIG.semantic.model
+
+    return SemanticRubricResult(features=features, evidence=evidence, diagnostics=diagnostics)

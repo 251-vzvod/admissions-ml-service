@@ -195,6 +195,23 @@ class LLMConfig:
 
 
 @dataclass(slots=True)
+class SemanticConfig:
+    """Configuration for semantic rubric backend selection."""
+
+    backend: str = "hash"
+    model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+
+    @classmethod
+    def from_env(cls) -> "SemanticConfig":
+        return cls(
+            backend=_strip_wrapping_quotes(os.getenv("SEMANTIC_BACKEND", "hash")),
+            model=_strip_wrapping_quotes(
+                os.getenv("SEMANTIC_MODEL", "sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
+            ),
+        )
+
+
+@dataclass(slots=True)
 class AppConfig:
     """Application configuration container."""
 
@@ -207,6 +224,7 @@ class AppConfig:
     thresholds: Thresholds = field(default_factory=Thresholds)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
     llm: LLMConfig = field(default_factory=LLMConfig.from_env)
+    semantic: SemanticConfig = field(default_factory=SemanticConfig.from_env)
 
 
 CONFIG = AppConfig()
@@ -240,5 +258,9 @@ def build_scoring_config_snapshot() -> dict[str, Any]:
             "retry_jitter_seconds": CONFIG.llm.retry_jitter_seconds,
             "fallback_to_baseline": CONFIG.llm.fallback_to_baseline,
             "extractor_version": CONFIG.llm.extractor_version,
+        },
+        "semantic": {
+            "backend": CONFIG.semantic.backend,
+            "model": CONFIG.semantic.model,
         },
     }
