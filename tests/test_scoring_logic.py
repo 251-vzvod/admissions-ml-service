@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+from app.schemas.decision import Recommendation
+from app.services.committee_guidance import build_committee_guidance
 from app.services.pipeline import ScoringPipeline
 
 
@@ -107,3 +109,35 @@ def test_hidden_potential_is_not_punished_below_polished_low_signal_profile() ->
     polished_result = pipeline.score_candidate(polished_low_signal_payload)
 
     assert hidden_result.merit_score >= polished_result.merit_score
+
+
+def test_committee_guidance_surfaces_hidden_potential_and_follow_up_question() -> None:
+    guidance = build_committee_guidance(
+        feature_map={
+            "growth_trajectory": 0.74,
+            "resilience": 0.68,
+            "initiative": 0.36,
+            "evidence_count": 0.57,
+            "specificity_score": 0.42,
+            "motivation_clarity": 0.58,
+            "genericness_score": 0.18,
+            "polished_but_empty_score": 0.16,
+            "consistency_score": 0.79,
+            "cross_section_mismatch_score": 0.04,
+        },
+        semantic_scores={
+            "hidden_potential": 0.64,
+            "leadership_potential": 0.60,
+            "growth_trajectory": 0.63,
+        },
+        merit_score=48,
+        confidence_score=44,
+        authenticity_risk=22,
+        recommendation=Recommendation.STANDARD_REVIEW,
+        review_flags=[],
+    )
+
+    assert any("Hidden potential" == cohort for cohort in guidance.cohorts)
+    assert any("Promising but needs support" == cohort for cohort in guidance.cohorts)
+    assert guidance.suggested_follow_up_question
+    assert guidance.why_candidate_surfaced

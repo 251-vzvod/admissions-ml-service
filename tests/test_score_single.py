@@ -45,6 +45,10 @@ def test_score_single_candidate() -> None:
         "incomplete_application",
         "invalid",
     }
+    assert isinstance(result["committee_cohorts"], list)
+    assert isinstance(result["why_candidate_surfaced"], list)
+    assert isinstance(result["what_to_verify_manually"], list)
+    assert isinstance(result["suggested_follow_up_question"], str)
 
 
 def test_score_single_candidate_with_video_transcript_only() -> None:

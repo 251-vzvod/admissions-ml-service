@@ -51,6 +51,10 @@ class ScoreResponse(BaseModel):
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
     uncertainties: list[str] = Field(default_factory=list)
+    committee_cohorts: list[str] = Field(default_factory=list)
+    why_candidate_surfaced: list[str] = Field(default_factory=list)
+    what_to_verify_manually: list[str] = Field(default_factory=list)
+    suggested_follow_up_question: str | None = None
     evidence_spans: list[EvidenceSpan] = Field(default_factory=list)
     explanation: ExplanationPayload
 

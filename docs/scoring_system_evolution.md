@@ -563,3 +563,46 @@ Replace or augment the current lightweight embedding backend with a stronger sen
 - dimension-level alignment with committee labels
 - top-k hidden-potential recall
 - robustness across RU and EN profiles
+
+## Phase 9. Committee-Facing Guidance Layer
+
+### Problem
+
+The scoring API already returned transparent scores and explanations, but the output was still more model-centric than committee-centric.
+
+The admissions team needs workflow guidance, not just numeric axes.
+
+### What was added
+
+- `committee_cohorts`
+- `why_candidate_surfaced`
+- `what_to_verify_manually`
+- `suggested_follow_up_question`
+
+### Why this matters
+
+This keeps the system aligned with the TЗ:
+
+- explainable AI
+- human-in-the-loop
+- decision support instead of autonomous admissions
+
+The output now tells the committee not only **what** the score is, but also:
+
+- why this candidate surfaced
+- what kind of case this is
+- what the committee should verify next
+- what question is most useful to ask in follow-up review
+
+### Design choice
+
+This layer stays deterministic and grounded in transparent feature signals.
+
+We did **not** turn follow-up guidance into an opaque LLM-only decision layer.
+
+### Practical effect
+
+The ML/NLP stack now supports two levels of explainability:
+
+1. scoring transparency
+2. committee-facing actionability

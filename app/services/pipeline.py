@@ -9,6 +9,7 @@ from app.config import CONFIG
 from app.schemas.decision import Recommendation, ReviewFlag
 from app.schemas.output import ScoreResponse
 from app.services.authenticity import estimate_authenticity_risk
+from app.services.committee_guidance import build_committee_guidance
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
 from app.services.llm_extractor import extract_explainability_with_llm
@@ -229,6 +230,10 @@ class ScoringPipeline:
                 top_strengths=explanation.top_strengths,
                 main_gaps=explanation.main_gaps,
                 uncertainties=explanation.uncertainties,
+                committee_cohorts=["Eligibility gate"],
+                why_candidate_surfaced=[],
+                what_to_verify_manually=["Complete the missing required materials before substantive committee review."],
+                suggested_follow_up_question="What prevented you from completing the required application materials, and can you provide them now?",
                 evidence_spans=explanation.evidence_spans,
                 explanation=explanation.explanation,
             )
@@ -289,6 +294,15 @@ class ScoringPipeline:
             ],
             extractor_rationale=extractor_rationale,
         )
+        committee_guidance = build_committee_guidance(
+            feature_map=snapshot,
+            semantic_scores=semantic_snapshot,
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
+            recommendation=recommendation_result.recommendation,
+            review_flags=recommendation_flags,
+        )
 
         base_response["llm_metadata"] = llm_metadata
 
@@ -307,6 +321,10 @@ class ScoringPipeline:
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,
+            committee_cohorts=committee_guidance.cohorts,
+            why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
+            what_to_verify_manually=committee_guidance.what_to_verify_manually,
+            suggested_follow_up_question=committee_guidance.suggested_follow_up_question,
             evidence_spans=explanation_result.evidence_spans,
             explanation=explanation_result.explanation,
         )

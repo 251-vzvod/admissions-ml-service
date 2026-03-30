@@ -96,6 +96,8 @@ Core response fields:
 - `merit_score`, `confidence_score`, `authenticity_risk`
 - `recommendation`, `review_flags`
 - `merit_breakdown`, `feature_snapshot`
+- `committee_cohorts`, `why_candidate_surfaced`
+- `what_to_verify_manually`, `suggested_follow_up_question`
 - `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
 
 Example response shape:
@@ -160,6 +162,16 @@ Example response shape:
   "uncertainties": [
     "..."
   ],
+  "committee_cohorts": [
+    "Promising but needs support"
+  ],
+  "why_candidate_surfaced": [
+    "Strong growth trajectory and reflection signals."
+  ],
+  "what_to_verify_manually": [
+    "Ask for one concrete example with actions, obstacles, and measurable outcome."
+  ],
+  "suggested_follow_up_question": "What is one example from your application that best shows how you create value for other people, not just for yourself?",
   "evidence_spans": [
     {
       "source": "motivation_letter_text",
@@ -182,6 +194,7 @@ Example response shape:
 Response notes:
 
 - `recommendation` and `review_flags` are deterministic backend routing outputs.
+- `committee_cohorts` and follow-up guidance are committee-facing assistive outputs, not final decisions.
 - `llm_metadata` can be `null` when LLM explainability is unavailable.
 - `feature_snapshot` values are normalized in `0..1` scale unless explicitly boolean/count.
 - `merit_score`, `confidence_score`, `authenticity_risk` are display scores in `0..100`.
