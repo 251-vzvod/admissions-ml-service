@@ -1,0 +1,30 @@
+{
+  "candidate_count": 80,
+  "hybrid_avg": {
+    "merit_score": 37.638,
+    "confidence_score": 49.837,
+    "authenticity_risk": 31.238,
+    "recommendation_distribution": {
+      "standard_review": 54,
+      "insufficient_evidence": 11,
+      "review_priority": 14,
+      "manual_review_required": 1
+    }
+  },
+  "deterministic_baseline_avg": {
+    "merit_score": 34.362,
+    "confidence_score": 50.263,
+    "authenticity_risk": 31.238,
+    "recommendation_distribution": {
+      "standard_review": 59,
+      "insufficient_evidence": 12,
+      "review_priority": 9
+    }
+  },
+  "delta_hybrid_minus_baseline": {
+    "merit_score_mean_delta": 3.275,
+    "confidence_score_mean_delta": -0.425,
+    "authenticity_risk_mean_delta": 0.0
+  },
+  "recommendation_agreement_rate": 0.912
+}
