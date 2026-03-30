@@ -115,6 +115,144 @@ This keeps:
 - explanations interpretable
 - future migration to stronger embedding models easy
 
+## Phase 4: Silver Annotation Triage
+
+### Why it was needed
+
+At this point, the system had a working scorer and a synthetic candidate set, but no trustworthy human-reviewed ranking target.
+
+We therefore introduced an intermediate annotation stage:
+
+- not final gold truth
+- not fully automatic labels
+- human-reviewable `silver draft`
+
+### What was added
+
+- rubric-driven annotation guide
+- candidate profile / input-format guide
+- draft annotation workflow over the synthetic candidate set
+- candidate quality audit
+- manual review batch builder
+
+### First silver-draft outcome
+
+On the current `52` synthetic candidate profiles, the draft review split was:
+
+- `42 usable`
+- `10 needs_edit`
+- `0 drop`
+
+The quality audit surfaced recurring issues:
+
+- polish-to-evidence mismatch
+- synthetic repetition of tutoring / volunteering motifs
+- uneven narrative consistency across sections
+- missing modalities such as video transcripts and portfolio proof
+
+### Why this mattered
+
+This stage made one thing explicit:
+
+the synthetic candidate set is useful for iteration, but it is not gold truth.
+
+That is why the next step is not "trust the draft labels".
+The next step is:
+
+- build a focused manual review batch
+- verify the highest-value cases by hand
+- promote those reviewed labels into `gold_v1`
+
+### Manual review batch policy
+
+The first manual batch is built from silver annotations using these rules:
+
+- `triage_status == needs_edit`
+- `authenticity_review_flag == true`
+- `hidden_potential_flag == true AND committee_priority >= 4`
+- `confidence == low`
+
+This creates a smaller review queue containing the most important cases:
+
+- strong upside candidates
+- suspicious / generic candidates
+- inconsistent profiles
+- low-confidence labels
+
+## Phase 5: Adjudication Proposal And Curated Gold Subset
+
+### Why it was needed
+
+Even after the silver-draft stage, there were too many uncertain or noisy labels to treat the full reviewed set as final gold truth.
+
+So the next step was split into two layers:
+
+- `gold_v1_proposed`: adjudicated review output over the manual batch
+- `gold_v1_curated`: a smaller, stricter subset used as the first stable gold anchor
+
+### Adjudication proposal outcome
+
+For the `33` candidates in the manual review batch:
+
+- `18` remained unchanged from silver
+- `15` were corrected
+
+The most common corrections were:
+
+- `authenticity_review_flag`
+- `evidence_strength`
+- `leadership_potential`
+- `committee_priority`
+
+This was important because it showed that the silver draft was useful for narrowing the search space, but still not trustworthy enough as final ground truth.
+
+### Curated gold subset policy
+
+The first curated gold subset keeps only:
+
+- high-confidence hidden-potential cases
+- stable one-field corrections judged strong enough to keep
+
+It excludes:
+
+- ambiguous holdouts
+- unresolved authenticity-review cases
+- low-confidence boundary cases
+
+### Current curated subset
+
+The first `gold_v1_curated` contains `12` candidates:
+
+- `cand_003`
+- `cand_008`
+- `cand_016`
+- `cand_023`
+- `cand_030`
+- `cand_034`
+- `cand_037`
+- `cand_039`
+- `cand_047`
+- `cand_014`
+- `cand_020`
+- `cand_045`
+
+### Why this matters for the demo
+
+This gives a much cleaner story:
+
+1. start from a synthetic candidate pool
+2. draft silver labels with rubric guidance
+3. isolate the highest-value review queue
+4. adjudicate that queue
+5. promote only the most stable cases into `gold_v1_curated`
+
+That is a credible hackathon workflow because it is:
+
+- transparent
+- iterative
+- realistic under time pressure
+- honest about label uncertainty
+
 ## Current Architecture
 
 ### Baseline

@@ -1,0 +1,277 @@
+{
+  "meta": {
+    "label_type": "gold_v1_curated",
+    "source_file": "data/gold_annotations_v1_proposed.json",
+    "selection_basis": "high_confidence_hidden_potential_plus_stable_one_field_corrections",
+    "selection_excludes": [
+      "ambiguous_cases",
+      "authenticity_review_holdouts",
+      "low_confidence_boundary_cases"
+    ]
+  },
+  "summary": {
+    "selected_candidate_count": 12,
+    "selected_candidate_ids": [
+      "cand_003",
+      "cand_008",
+      "cand_016",
+      "cand_023",
+      "cand_030",
+      "cand_034",
+      "cand_037",
+      "cand_039",
+      "cand_047",
+      "cand_014",
+      "cand_020",
+      "cand_045"
+    ]
+  },
+  "annotations": [
+    {
+      "candidate_id": "cand_003",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I tried to build a small water filter using sand and charcoal in a plastic bottle after reading about it online",
+        "I started a little weekend cleanup with friends",
+        "I sometimes help the old man across our street with grocery shopping when he can't go out, and sometimes we talk about what..."
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_008",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I saw that in our building, old people could not change their light bulbs in the entrance",
+        "with my cousin, we started juice selling and also had a small repair idea in our building",
+        "I help my neighbor, an old man, carry water and do small things in the yard"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_016",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I decided to test homemade compost to improve soil for our family's tomato field",
+        "I initiated a school library group to talk about farming innovations",
+        "I help my younger sister with her homework almost every night, especially when our parents are tired from work"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_023",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "В прошлом году я предложил(а) создать для нашей школьной библиотеки «стену отзывов», где ученики могли бы анонимно...",
+        "С книгами в библиотеке идея сработала — все откликнулись",
+        "Я помогал(а) девочке из параллели, у которой были проблемы с математикой"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_030",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I created a short video series explaining basic algebra in Kazakh for my younger cousin and her classmates",
+        "I organized a small science day for younger grades at my school",
+        "I tutored my younger cousin and her classmates in math every weekend"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_034",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I made a power bank from old phone batteries for my little brother",
+        "Я предложил сделать совместный ремонт старого компьютера в школьной библиотеке, потому что техника часто ломалась, и никто...",
+        "Я помогал пожилому соседу — ремонтировал ему розетки, когда у него начались проблемы с электричеством"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_037",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Last summer, I noticed children in my apartment complex sitting outside bored, especially during school holidays",
+        "Organizing the clothing swap was successful because we partnered with a local market and advertised in our neighborhood,...",
+        "Apart from the reading club, I sometimes help elderly neighbors by shopping for them or just visiting to talk"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_039",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "When the youth center's computers broke, I saw how some kids stopped coming",
+        "Организовала субботник и попыталась открыть English club",
+        "I often help younger girls in our block with homework or just talking"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_047",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I noticed that my phone's battery kept draining fast, especially during long power cuts in my area",
+        "Once tried to organize peer technical workshops at school",
+        "I helped a neighbor fix her broken heater last winter"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_014",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength"
+      ],
+      "evidence_bullets": [
+        "The murals on our light poles came completely from my initiative",
+        "the yard art day in our microdistrict",
+        "I helped my neighbor's grandson, who was struggling with reading"
+      ],
+      "review_notes": "Compared with silver, evidence strength was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_020",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "The idea with free English and Russian help club for younger students in our aul was mine",
+        "English club worked—kids came and improved",
+        "I helped my cousin study for the UNT, because he failed on the first try"
+      ],
+      "review_notes": "Compared with silver, authenticity review flag was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_045",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength"
+      ],
+      "evidence_bullets": [
+        "Я сам придумал акцию «День теплообмена» в своей школе: предложил собирать ненужную, но целую одежду и раздавать нуждающимся...",
+        "Организовывал мини-ярмарку, где мы продавали выпечку и сувениры, чтобы собрать средства для приюта животных",
+        "Однажды я помогал соседке-пенсионерке ухаживать за огородом, хотя никто меня не просил"
+      ],
+      "review_notes": "Compared with silver, evidence strength was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    }
+  ]
+}

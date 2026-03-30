@@ -1,0 +1,723 @@
+{
+  "meta": {
+    "label_type": "gold_v1_proposed",
+    "source_file": "data/manual_review_batch_v1.json",
+    "based_on": "data/annotation_pack_draft.json",
+    "annotation_method": "llm_adjudication_proposal"
+  },
+  "annotations": [
+    {
+      "candidate_id": "cand_020",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "The idea with free English and Russian help club for younger students in our aul was mine",
+        "English club worked—kids came and improved",
+        "I helped my cousin study for the UNT, because he failed on the first try"
+      ],
+      "review_notes": "Compared with silver, authenticity review flag was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_014",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength"
+      ],
+      "evidence_bullets": [
+        "The murals on our light poles came completely from my initiative",
+        "the yard art day in our microdistrict",
+        "I helped my neighbor's grandson, who was struggling with reading"
+      ],
+      "review_notes": "Compared with silver, evidence strength was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_015",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential"
+      ],
+      "evidence_bullets": [
+        "I started a tutoring circle for kids from nearby villages who would come to Aktobe every weekend",
+        "Co-founding the rural tutoring circle was the biggest",
+        "I spent a summer helping at a local orphanage, running English classes for kids"
+      ],
+      "review_notes": "Compared with silver, leadership potential was adjusted after closer review. The main concern remains narrative unevenness or mismatch across sections. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_024",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "adjudication_confidence": "low",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Last winter, I developed a plan for a low-cost air quality monitor for my neighborhood using sensors I ordered online",
+        "I led the effort to organize a small river clean-up with my friends in our town",
+        "I started helping an elderly neighbor shovel snow last winter because she was struggling, even though we barely knew each..."
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The main concern remains narrative unevenness or mismatch across sections. Examples are real but still small-scale or unevenly detailed. Confidence is low and this case still needs direct human verification."
+    },
+    {
+      "candidate_id": "cand_045",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength"
+      ],
+      "evidence_bullets": [
+        "Я сам придумал акцию «День теплообмена» в своей школе: предложил собирать ненужную, но целую одежду и раздавать нуждающимся...",
+        "Организовывал мини-ярмарку, где мы продавали выпечку и сувениры, чтобы собрать средства для приюта животных",
+        "Однажды я помогал соседке-пенсионерке ухаживать за огородом, хотя никто меня не просил"
+      ],
+      "review_notes": "Compared with silver, evidence strength was adjusted after closer review. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_004",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Я сама придумала провести микроопрос среди соседей, чтобы узнать, чего им не хватает во дворе",
+        "Пробовала запустить челлендж по сбору пластика среди знакомых — первые дни был интерес, потом затухло, потому что никто не...",
+        "Помогала подружке справиться с тревожностью перед экзаменами — пересматривали программы, разговаривали, я искала техники..."
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The main concern remains narrative unevenness or mismatch across sections. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_026",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "During the winter, I noticed our school yard was muddy and dangerous, and many students were slipping",
+        "I organized a small translation club at school",
+        "I volunteered at the city animal shelter with a few friends"
+      ],
+      "review_notes": "Compared with silver, authenticity review flag was adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_028",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "evidence_strength",
+        "committee_priority",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "I had the idea to invite young entrepreneurs from Shymkent to our school to share real stories, not just have teachers talk...",
+        "I organized a business game competition at my school",
+        "Last summer, I mentored my cousin who wanted to learn English and start a small baking business online"
+      ],
+      "review_notes": "Compared with silver, leadership potential, evidence strength, committee priority and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_031",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Я сделала серию коротких рассказов для детей о том, как белка и ёжик сортируют мусор в лесу",
+        "Пару раз организовывала субботники для соседей",
+        "Я часто помогаю девочке-соседке с домашкой по литературе"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The main concern remains narrative unevenness or mismatch across sections. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_043",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "evidence_strength",
+        "committee_priority",
+        "hidden_potential_flag",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "В прошлом году увидел, что наша спортплощадка совсем развалилась",
+        "Организовал обновление спортплощадки; работало то, что много лично говорил с людьми, привлекал друзей",
+        "Помогал ребятам младших классов научиться базовым вещам в футболе и баскетболе"
+      ],
+      "review_notes": "Compared with silver, leadership potential, evidence strength, committee priority, hidden potential flag and authenticity review flag were adjusted after closer review. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_003",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I tried to build a small water filter using sand and charcoal in a plastic bottle after reading about it online",
+        "I started a little weekend cleanup with friends",
+        "I sometimes help the old man across our street with grocery shopping when he can't go out, and sometimes we talk about what..."
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_005",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "evidence_strength",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "Проект «Общение без границ» родился из наблюдения, что в классе многие стесняются выступать и даже делиться своими мыслями",
+        "Я организовал цикл встреч по коммуникациям в школе",
+        "Я помогал новенькой девочке адаптироваться в классе — она сначала была очень закрыта, не могла найти друзей"
+      ],
+      "review_notes": "Compared with silver, leadership potential, evidence strength and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_006",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Я попробовал сделать простую солнечную батарею для зарядки мобильного телефона",
+        "Я не очень активен в организации событий, но один раз попробовал сделать кружок по электронике среди одноклассников",
+        "Один мальчик из младших классов не понимал математику"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_007",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "evidence_strength",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "I noticed that our class had never celebrated diversity or done anything to share about our cultures",
+        "I organized the Culture Swap in our class",
+        "I helped an elderly neighbor who struggled to carry groceries after her husband passed away"
+      ],
+      "review_notes": "Compared with silver, leadership potential, evidence strength and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_008",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I saw that in our building, old people could not change their light bulbs in the entrance",
+        "with my cousin, we started juice selling and also had a small repair idea in our building",
+        "I help my neighbor, an old man, carry water and do small things in the yard"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_012",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Last winter, I designed and printed labels for the school library books to make finding genres easier",
+        "We met after school in the library",
+        "I regularly help my neighbor, a retired engineer, set up her computer and explain new programs to her"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_016",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I decided to test homemade compost to improve soil for our family's tomato field",
+        "I initiated a school library group to talk about farming innovations",
+        "I help my younger sister with her homework almost every night, especially when our parents are tired from work"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_019",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I noticed that some first-year students were struggling with basic physics concepts, so I made a set of handwritten notes...",
+        "I tried to start a study group for physics in my school",
+        "I helped a neighbor's child who was struggling with math"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_021",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "growth_trajectory",
+        "evidence_strength",
+        "committee_priority",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "I came up with the \"Karaganda Speaks\" oral history project after talking with my grandmother one evening",
+        "\"Karaganda Speaks\" was my first real initiative",
+        "I helped my neighbor's child, who is in primary school, with English homework every week for three months"
+      ],
+      "review_notes": "Compared with silver, leadership potential, growth trajectory, evidence strength, committee priority and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_023",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "В прошлом году я предложил(а) создать для нашей школьной библиотеки «стену отзывов», где ученики могли бы анонимно...",
+        "С книгами в библиотеке идея сработала — все откликнулись",
+        "Я помогал(а) девочке из параллели, у которой были проблемы с математикой"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_025",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I made a small water filter at home by using layers of stones, sand, and charcoal",
+        "It worked because we worked as a group, but sometimes people did not listen or share ideas",
+        "I helped my neighbor's child, who is in primary school, with math and reading after school"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_029",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "В школе часто жалуются на горячую воду зимой (слишком долго идёт холодная, пока не станет горячей)",
+        "I tried to make a little eco-club for juniors at school, just after lessons once a week",
+        "In the summer, я помогал соседской бабушке с огородом и учил её внука считать дроби"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_030",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I created a short video series explaining basic algebra in Kazakh for my younger cousin and her classmates",
+        "I organized a small science day for younger grades at my school",
+        "I tutored my younger cousin and her classmates in math every weekend"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_033",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength",
+        "committee_priority",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "Моя идея — провести встречу для девочек на тему уверенности в себе, родилась случайно: я увидела, как подруга сомневается в...",
+        "Проводила встречу по развитию soft skills для девочек",
+        "Я часто помогаю пожилой соседке — покупаю продукты, общаюсь с ней, иногда просто захожу посидеть и выпить чаю"
+      ],
+      "review_notes": "Compared with silver, evidence strength, committee priority and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_034",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I made a power bank from old phone batteries for my little brother",
+        "Я предложил сделать совместный ремонт старого компьютера в школьной библиотеке, потому что техника часто ломалась, и никто...",
+        "Я помогал пожилому соседу — ремонтировал ему розетки, когда у него начались проблемы с электричеством"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_036",
+      "leadership_potential": 2,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 1,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "low",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential"
+      ],
+      "evidence_bullets": [
+        "when water was cut in the village for two days, I tried to organize with my friends to bring buckets from the well for old...",
+        "Maybe only the water buckets for neighbors",
+        "I try to help my grandmother often"
+      ],
+      "review_notes": "Compared with silver, leadership potential was adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Evidence remains thin enough for cautious ranking. Confidence is low and this case still needs direct human verification."
+    },
+    {
+      "candidate_id": "cand_037",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "Last summer, I noticed children in my apartment complex sitting outside bored, especially during school holidays",
+        "Organizing the clothing swap was successful because we partnered with a local market and advertised in our neighborhood,...",
+        "Apart from the reading club, I sometimes help elderly neighbors by shopping for them or just visiting to talk"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_039",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "When the youth center's computers broke, I saw how some kids stopped coming",
+        "Организовала субботник и попыталась открыть English club",
+        "I often help younger girls in our block with homework or just talking"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_040",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "evidence_strength",
+        "committee_priority",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "I started the 'Kindness Notes' project at school, where students left anonymous supportive messages for each other on...",
+        "I organized group discussion circles and the encouragement campaign at my school",
+        "I started helping a classmate who had trouble speaking in public"
+      ],
+      "review_notes": "Compared with silver, leadership potential, evidence strength, committee priority and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_041",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I saw my brother's friend struggling with times tables, so I made simple flashcards from old cardboard and started...",
+        "I started an informal math club for neighbours' children, just practicing together",
+        "As I wrote earlier, I helped my brother's friend with math, and later a few others joined"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_046",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "evidence_strength",
+        "committee_priority",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "I once started a digital gratitude board on Instagram Stories, where classmates could anonymously thank someone in our...",
+        "I co-managed a school climate challenge campaign online",
+        "I tutored my younger neighbor in English last summer when he was struggling"
+      ],
+      "review_notes": "Compared with silver, evidence strength, committee priority and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    },
+    {
+      "candidate_id": "cand_047",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "high",
+      "changed_from_silver": false,
+      "changed_fields": [],
+      "evidence_bullets": [
+        "I noticed that my phone's battery kept draining fast, especially during long power cuts in my area",
+        "Once tried to organize peer technical workshops at school",
+        "I helped a neighbor fix her broken heater last winter"
+      ],
+      "review_notes": "Silver draft was retained after adjudication. The file still looks stronger than its self-presentation. Examples are concrete across sections and include real actions or outcomes. Confidence is high because the rubric signal is consistent."
+    },
+    {
+      "candidate_id": "cand_050",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "adjudication_confidence": "medium",
+      "changed_from_silver": true,
+      "changed_fields": [
+        "leadership_potential",
+        "authenticity_review_flag"
+      ],
+      "evidence_bullets": [
+        "Я предложила провести в школе игровую акцию «День без мусора» среди младших классов, чтобы показать им, как важно убирать за...",
+        "Организовывала вместе с друзьями благотворительный сбор вещей для детского дома",
+        "Я участвовала в уборке дворов во время весеннего субботника"
+      ],
+      "review_notes": "Compared with silver, leadership potential and authenticity review flag were adjusted after closer review. The main limitation is scale or follow-through, not authenticity risk. Examples are real but still small-scale or unevenly detailed. Confidence is medium because some dimensions are still close calls."
+    }
+  ]
+}
