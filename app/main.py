@@ -9,7 +9,7 @@ from app.api.routes import router
 
 app = FastAPI(
     title="inVision U Scoring Service",
-    version="1.1.0",
+    version="v1.4.0",
     description=(
         "Explainable scoring service: deterministic feature extraction, semantic rubric matching, and optional LLM explainability. "
         "This service does not make autonomous admission decisions."

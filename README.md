@@ -7,8 +7,8 @@ This is a decision-support tool. It does not make autonomous admission decisions
 ## Core Docs
 
 - [FEATURE_DICTIONARY.md](FEATURE_DICTIONARY.md): meaning of public scores and signals
-- [docs/ML_SERVICE_V2_ARCHITECTURE.md](docs/ML_SERVICE_V2_ARCHITECTURE.md): runtime architecture and signal boundaries
-- [docs/fairness_note.md](docs/fairness_note.md): fairness posture and known limits
+- [guides/ML_SERVICE_V2_ARCHITECTURE.md](guides/ML_SERVICE_V2_ARCHITECTURE.md): runtime architecture and signal boundaries
+- [guides/fairness_note.md](guides/fairness_note.md): fairness posture and known limits
 
 ## Public API
 
@@ -170,5 +170,6 @@ Recommended Railway posture:
 - `app/services/`: scoring, explainability, authenticity, privacy, semantic features
 - `app/assets/`: runtime artifacts such as shortlist ranker weights
 - `app/config.py`: environment and scoring config
-- `research/`: offline evaluation, calibration, and ranker training
+- `guides/`: lightweight tracked project documentation
+- `.local/`: ignored local workspace for research, scripts, and archive docs
 - `tests/`: API and scoring tests

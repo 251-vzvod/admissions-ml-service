@@ -8,7 +8,6 @@ __pycache__/
 data_ver2/
 .vercel
 .tmp/
+.local/
 data/external/
 data/archive/external/raw/
-research/reports/*
-!research/reports/README.md
