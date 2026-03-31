@@ -24,3 +24,5 @@ def test_scoring_config_contains_extraction_strategy_fields() -> None:
     assert "llm_provider" in payload
     assert "llm_model" in payload
     assert "llm_fallback_to_deterministic_extractor_on_failure" in payload
+    assert "ai_detector_enabled" in payload
+    assert "ai_detector_model" in payload

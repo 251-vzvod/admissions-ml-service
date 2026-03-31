@@ -25,6 +25,16 @@ class ExplanationPayload(BaseModel):
     scoring_notes: ExplanationNotes
 
 
+class AIDetectorPayload(BaseModel):
+    enabled: bool
+    applicable: bool
+    language: str | None = None
+    probability_ai_generated: float | None = None
+    provider: str
+    model: str
+    note: str | None = None
+
+
 class ScoreResponse(BaseModel):
     candidate_id: str
     scoring_run_id: str
@@ -45,12 +55,14 @@ class ScoreResponse(BaseModel):
     review_flags: list[ReviewFlag] = Field(default_factory=list)
 
     merit_breakdown: dict[str, int] = Field(default_factory=dict)
-    feature_snapshot: dict[str, float | bool | int] = Field(default_factory=dict)
+    feature_snapshot: dict[str, float | bool | int | None] = Field(default_factory=dict)
     semantic_rubric_scores: dict[str, int] = Field(default_factory=dict)
 
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
     uncertainties: list[str] = Field(default_factory=list)
+    authenticity_review_reasons: list[str] = Field(default_factory=list)
+    ai_detector: AIDetectorPayload | None = None
     committee_cohorts: list[str] = Field(default_factory=list)
     why_candidate_surfaced: list[str] = Field(default_factory=list)
     what_to_verify_manually: list[str] = Field(default_factory=list)

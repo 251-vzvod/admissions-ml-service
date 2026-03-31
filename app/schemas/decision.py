@@ -28,4 +28,5 @@ class ReviewFlag(StrEnum):
     HIGH_GENERICNESS = "high_genericness"
     CROSS_SECTION_MISMATCH = "cross_section_mismatch"
     SECTION_MISMATCH = "section_mismatch"
+    AUXILIARY_AI_GENERATION_SIGNAL = "auxiliary_ai_generation_signal"
     MISSING_REQUIRED_MATERIALS = "missing_required_materials"

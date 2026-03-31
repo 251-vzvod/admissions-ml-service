@@ -96,6 +96,7 @@ Core response fields:
 - `merit_score`, `confidence_score`, `authenticity_risk`
 - `recommendation`, `review_flags`
 - `merit_breakdown`, `feature_snapshot`
+- `authenticity_review_reasons`, `ai_detector`
 - `committee_cohorts`, `why_candidate_surfaced`
 - `what_to_verify_manually`, `suggested_follow_up_question`
 - `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
@@ -162,6 +163,18 @@ Example response shape:
   "uncertainties": [
     "..."
   ],
+  "authenticity_review_reasons": [
+    "Claims are under-supported by concrete actions, examples, or outcomes."
+  ],
+  "ai_detector": {
+    "enabled": false,
+    "applicable": false,
+    "language": null,
+    "probability_ai_generated": null,
+    "provider": "huggingface-local",
+    "model": "desklib/ai-text-detector-v1.01",
+    "note": "disabled"
+  },
   "committee_cohorts": [
     "Promising but needs support"
   ],
@@ -194,6 +207,8 @@ Example response shape:
 Response notes:
 
 - `recommendation` and `review_flags` are deterministic backend routing outputs.
+- `authenticity_review_reasons` summarize why a profile was routed toward authenticity review.
+- `ai_detector` is an auxiliary detector payload, not a final cheating verdict.
 - `committee_cohorts` and follow-up guidance are committee-facing assistive outputs, not final decisions.
 - `llm_metadata` can be `null` when LLM explainability is unavailable.
 - `feature_snapshot` values are normalized in `0..1` scale unless explicitly boolean/count.
@@ -212,6 +227,7 @@ Trace fields:
 - Structured features: rule-based extraction from structured data and process signals.
 - Text features: rule-based extraction from all available text sources (letter, Q/A, interview, transcripts).
 - Authenticity risk: deterministic heuristic from genericness/evidence/consistency signals.
+- Optional auxiliary AI detector: English-only weak signal that can raise review risk but never drives merit.
 - Final scores: deterministic formulas and fixed weights.
 
 ### Explainability path
@@ -244,6 +260,36 @@ Formal material reasons (when configured):
 
 These are routing labels for committee workflow, not admission decisions.
 
+## Optional AI Detector
+
+The service supports an optional auxiliary AI-generated text detector based on:
+
+- `desklib/ai-text-detector-v1.01`
+
+This detector is used conservatively:
+
+- English only by default
+- weak signal only
+- never affects `merit_score`
+- never auto-rejects a candidate
+- only contributes to `authenticity_risk`, `review_flags`, and review guidance
+
+Install optional dependencies:
+
+```bash
+pip install -r requirements-ai-detector.txt
+```
+
+Enable in `.env`:
+
+```env
+AI_DETECTOR_ENABLED=true
+AI_DETECTOR_MODEL=desklib/ai-text-detector-v1.01
+AI_DETECTOR_ENGLISH_ONLY=true
+AI_DETECTOR_MIN_WORDS=60
+AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD=0.80
+```
+
 ## Contract Constants
 
 Source of truth for API decision labels:
@@ -273,6 +319,7 @@ Canonical `review_flags` values:
 - `high_polished_but_empty`
 - `high_genericness`
 - `cross_section_mismatch`
+- `auxiliary_ai_generation_signal`
 - `section_mismatch`
 - `missing_required_materials`
 

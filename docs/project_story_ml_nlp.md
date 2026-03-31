@@ -215,7 +215,54 @@ Even though the first semantic backend was lightweight, this was still a major a
 
 It let the system begin reasoning in terms of rubric-aligned evidence rather than only text density or lexical overlap.
 
-## 9. Another Hard Truth: The Model Still Wasn't Aligned
+Very quickly, however, another nuance became clear.
+
+Adding a semantic layer is not the same thing as proving semantic improvement.
+
+So we treated the semantic backend itself as an experimental component.
+We refactored it into a configurable layer with multiple backend options:
+
+- `hash`
+- `tfidf_char_ngram`
+- `sentence_transformer`
+
+This was not just an engineering cleanup.
+It was a methodological decision:
+
+**if multilingual fairness is one of the biggest open problems, then semantic matching has to become something we can test honestly, not something we hardcode once and assume is good enough.**
+
+## 9. Semantic Backend Experiment: Useful Infrastructure, No Metric Win Yet
+
+Once the configurable semantic layer existed, we ran the first stronger backend experiment using `tfidf_char_ngram`.
+
+The hypothesis was reasonable:
+
+- character-level multilingual matching might reduce English-shaped lexical dependence
+- semantic rubric alignment might improve
+- Russian fairness might move in the right direction
+
+The result was important precisely because it was not a clean success.
+
+The experiment produced a useful platform improvement, but not a clear evaluation win.
+
+Compared with the calibrated baseline setup, `tfidf_char_ngram`:
+
+- did not improve overall shortlist alignment enough
+- did not improve hidden-potential recall meaningfully
+- did not improve Russian fairness enough to justify becoming the default backend
+
+That led to a disciplined decision:
+
+- keep the backend abstraction
+- keep `tfidf_char_ngram` and `sentence_transformer` as switchable experimental modes
+- return the default backend to `hash`
+
+This was one of the more mature decisions in the project.
+
+We did not pretend an experiment worked just because it was technically more advanced.
+We kept the useful infrastructure and rejected the inflated claim.
+
+## 10. Another Hard Truth: The Model Still Wasn't Aligned
 
 Once we finally had a merged final annotation set over the expanded candidate pool, we ran the full evaluation loop.
 
@@ -237,7 +284,7 @@ Instead of hiding the result, we used it.
 It told us that the bottleneck was no longer data collection.
 The bottleneck was the scoring logic itself.
 
-## 10. Calibrating The Scorer
+## 11. Calibrating The Scorer
 
 This became the next major phase.
 
@@ -260,7 +307,7 @@ This gave us a new transparent, traceable, calibrated scoring layer.
 
 And for the first time, the evaluation moved in the right direction in a measurable way.
 
-## 11. The Result Of Calibration
+## 12. The Result Of Calibration
 
 After calibration, the system showed a meaningful improvement on the final hackathon benchmark.
 
@@ -280,7 +327,42 @@ After calibration, it became something we could honestly present as:
 
 **a measurable, explainable ranking engine aligned with the benchmark we designed for the task.**
 
-## 12. Dealing With Synthetic Leakage Risk
+## 13. A Failed Shortcut: Naive Hidden-Potential Uplift
+
+Once calibration worked, it was tempting to push the system even harder toward the main product thesis:
+
+**surface hidden-potential candidates more aggressively.**
+
+So we tried a more explicit uplift logic based on the gap between:
+
+- underlying signal
+- and presentation quality
+
+In theory, this sounded exactly right.
+If someone has strong growth, real effort, and real evidence, but presents themselves weakly, the system should pull them upward.
+
+But in practice, the first implementation was too broad.
+
+It did not just boost the candidates we wanted.
+It also boosted candidates who were already strong, and in some cases it amplified the wrong profiles.
+
+The measurable outcome was clear:
+
+- overall pairwise ranking quality dropped
+- hidden-potential recall did not move enough
+- fairness did not improve in a convincing way
+
+So we rolled that change back.
+
+This was another useful moment in the project.
+
+It reminded us that:
+
+**product intuition is not enough; every uplift has to survive evaluation.**
+
+That rollback made the system better, not worse, because it protected the integrity of the benchmark story.
+
+## 14. Dealing With Synthetic Leakage Risk
 
 Another issue appeared once the dataset included counterfactual variants.
 
@@ -310,7 +392,88 @@ The answer was good enough to strengthen the story:
 
 That gave us a much more credible validation narrative for the judges.
 
-## 13. Where The System Is Strong Now
+## 15. Moving From Model Transparency To Committee Actionability
+
+By this point, the numeric scoring layer had become much stronger.
+
+But there was still one product gap:
+
+the output explained the score,
+yet it still did not fully explain what the committee should do next.
+
+This led to the next layer of improvement:
+
+- `committee_cohorts`
+- `why_candidate_surfaced`
+- `what_to_verify_manually`
+- `suggested_follow_up_question`
+
+This changed the product from:
+
+"a system that returns a score and some explanation"
+
+into:
+
+**a system that returns a review-ready candidate card.**
+
+This was important because it pushed explainability one step further.
+
+Now the output was not just technically interpretable.
+It became operationally useful for a real admissions workflow.
+
+That is also much closer to what the TЗ actually asks for:
+
+- transparency
+- human-in-the-loop
+- decision support
+- reduced manual load
+
+## 16. Adding AI Detection Without Turning It Into A False Verdict
+
+One of the tensions in the project was obvious:
+
+the problem statement explicitly mentions generative AI,
+but most "AI detector" stories become misleading very quickly.
+
+If we simply attached one probability like:
+
+"this text is 87% AI-generated"
+
+we would create a dangerous illusion of certainty.
+
+So when we decided to add a detector-based signal, we did it under strict constraints.
+
+We integrated an auxiliary detector based on `desklib/ai-text-detector-v1.01`, but only as:
+
+- an English-first signal
+- a weak review feature
+- a component of `authenticity_risk`
+- a source of review reasons
+
+and explicitly **not** as:
+
+- proof of cheating
+- proof of dishonesty
+- a merit penalty
+- an auto-rejection trigger
+
+This design choice mattered a lot.
+
+It let us say:
+
+**yes, we address the GenAI problem from the TЗ**
+
+without claiming something we cannot honestly prove.
+
+The detector now helps answer the right operational question:
+
+"Should the committee read this profile more carefully for groundedness and consistency?"
+
+instead of the wrong question:
+
+"Did the system prove that this candidate used AI?"
+
+## 17. Where The System Is Strong Now
 
 At this stage, the project is strong in several ways.
 
@@ -336,7 +499,18 @@ Third, it has a strong product story:
 
 That is the right differentiation for this track.
 
-## 14. Where The System Is Still Weak
+And now it also has a much stronger committee-facing interface contract:
+
+- score
+- evidence
+- review routing
+- cohorts
+- manual verification prompts
+- follow-up interview question
+
+That combination is much more compelling than a plain ranking output.
+
+## 18. Where The System Is Still Weak
 
 The biggest unresolved weakness is fairness across language groups.
 
@@ -356,7 +530,22 @@ And finally, synthetic multimodal evidence is still cleaner and more structured 
 These are not reasons to hide the system.
 They are reasons to present it honestly.
 
-## 15. What The System Ultimately Became
+Another unresolved point is that the semantic layer is still in an intermediate state.
+
+The backend abstraction is now ready for stronger multilingual encoders,
+but the default production-like mode still relies on the lightweight hash backend because the first stronger experiment did not yet justify a switch.
+
+That should be framed as:
+
+- not a failure of direction
+- but an honest intermediate engineering state
+
+Another limitation is that the new AI detector layer is still only a cautious auxiliary signal.
+
+That is deliberate.
+It is a better product decision for this track than pretending to have perfect AI-use detection.
+
+## 19. What The System Ultimately Became
 
 The system started as a transparent heuristic scorer.
 
@@ -381,7 +570,7 @@ It is:
 
 **an explainable AI support system that helps the committee identify hidden-potential applicants, understand why they surfaced, and review them more fairly and efficiently.**
 
-## 16. Final One-Sentence Summary
+## 20. Final One-Sentence Summary
 
 If this entire project has to be reduced to one sentence, it should be this:
 

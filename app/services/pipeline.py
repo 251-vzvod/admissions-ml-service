@@ -8,6 +8,7 @@ from typing import Any
 from app.config import CONFIG
 from app.schemas.decision import Recommendation, ReviewFlag
 from app.schemas.output import ScoreResponse
+from app.services.ai_detector import detect_ai_generated_text
 from app.services.authenticity import estimate_authenticity_risk
 from app.services.committee_guidance import build_committee_guidance
 from app.services.eligibility import evaluate_eligibility
@@ -70,7 +71,16 @@ class ScoringPipeline:
         semantic_result = extract_semantic_rubric_features(bundle=bundle, heuristic_features=merged_features)
         merged_features.update(semantic_result.features)
 
-        auth_result = estimate_authenticity_risk(features=merged_features, diagnostics=text_result.diagnostics)
+        ai_detector_result = detect_ai_generated_text(bundle=bundle)
+        if ai_detector_result.probability_ai_generated is not None:
+            merged_features["ai_detector_probability"] = ai_detector_result.probability_ai_generated
+        merged_features["ai_detector_applicable"] = ai_detector_result.applicable
+
+        auth_result = estimate_authenticity_risk(
+            features=merged_features,
+            diagnostics=text_result.diagnostics,
+            ai_detector_result=ai_detector_result,
+        )
         merged_features["authenticity_risk_raw"] = auth_result.authenticity_risk_raw
 
         scoring_result = compute_scores(
@@ -124,6 +134,10 @@ class ScoringPipeline:
             "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
             "cross_section_mismatch_score": round(float(merged_features.get("cross_section_mismatch_score", 0.0)), 4),
             "authenticity_risk_raw": round(float(merged_features.get("authenticity_risk_raw", 0.0)), 4),
+            "ai_detector_probability": round(float(merged_features.get("ai_detector_probability", 0.0)), 4)
+            if ai_detector_result.probability_ai_generated is not None
+            else None,
+            "ai_detector_applicable": bool(ai_detector_result.applicable),
             "excluded_sensitive_fields_count": len(excluded_hits),
         }
         semantic_snapshot = {
@@ -141,6 +155,7 @@ class ScoringPipeline:
                 "text_result": text_result,
                 "merged_features": merged_features,
                 "auth_result": auth_result,
+                "ai_detector_result": ai_detector_result,
                 "semantic_result": semantic_result,
                 "scoring_result": scoring_result,
                 "recommendation_result": recommendation_result,
@@ -230,6 +245,8 @@ class ScoringPipeline:
                 top_strengths=explanation.top_strengths,
                 main_gaps=explanation.main_gaps,
                 uncertainties=explanation.uncertainties,
+                authenticity_review_reasons=[],
+                ai_detector=None,
                 committee_cohorts=["Eligibility gate"],
                 why_candidate_surfaced=[],
                 what_to_verify_manually=["Complete the missing required materials before substantive committee review."],
@@ -247,6 +264,8 @@ class ScoringPipeline:
         semantic_snapshot = context["semantic_snapshot"]
         text_result = context["text_result"]
         semantic_result = context["semantic_result"]
+        auth_result = context["auth_result"]
+        ai_detector_result = context["ai_detector_result"]
 
         llm_metadata: dict[str, str | int | float] | None = None
         llm_strength_claims: list[dict[str, str]] | None = None
@@ -321,6 +340,18 @@ class ScoringPipeline:
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,
+            authenticity_review_reasons=auth_result.review_reasons,
+            ai_detector={
+                "enabled": ai_detector_result.enabled,
+                "applicable": ai_detector_result.applicable,
+                "language": ai_detector_result.language,
+                "probability_ai_generated": round(ai_detector_result.probability_ai_generated, 4)
+                if ai_detector_result.probability_ai_generated is not None
+                else None,
+                "provider": ai_detector_result.provider,
+                "model": ai_detector_result.model,
+                "note": ai_detector_result.note,
+            },
             committee_cohorts=committee_guidance.cohorts,
             why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
             what_to_verify_manually=committee_guidance.what_to_verify_manually,
@@ -361,6 +392,18 @@ class ScoringPipeline:
                 "authenticity": {
                     "authenticity_risk_raw": round(auth_result.authenticity_risk_raw, 6),
                     "review_flags": context["auth_result"].review_flags,
+                    "review_reasons": context["auth_result"].review_reasons,
+                    "ai_detector": {
+                        "enabled": context["ai_detector_result"].enabled,
+                        "applicable": context["ai_detector_result"].applicable,
+                        "language": context["ai_detector_result"].language,
+                        "probability_ai_generated": round(context["ai_detector_result"].probability_ai_generated, 6)
+                        if context["ai_detector_result"].probability_ai_generated is not None
+                        else None,
+                        "provider": context["ai_detector_result"].provider,
+                        "model": context["ai_detector_result"].model,
+                        "note": context["ai_detector_result"].note,
+                    },
                 },
                 "semantic_features": context["semantic_result"].features,
                 "semantic_evidence": {

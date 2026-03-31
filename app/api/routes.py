@@ -47,6 +47,9 @@ def get_scoring_config() -> dict[str, Any]:
         "llm_provider": CONFIG.llm.provider,
         "llm_model": CONFIG.llm.model,
         "llm_fallback_to_deterministic_extractor_on_failure": CONFIG.llm.fallback_to_baseline,
+        "ai_detector_enabled": CONFIG.ai_detector.enabled,
+        "ai_detector_model": CONFIG.ai_detector.model,
+        "ai_detector_english_only": CONFIG.ai_detector.english_only,
     }
 
 

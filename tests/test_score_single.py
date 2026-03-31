@@ -49,6 +49,8 @@ def test_score_single_candidate() -> None:
     assert isinstance(result["why_candidate_surfaced"], list)
     assert isinstance(result["what_to_verify_manually"], list)
     assert isinstance(result["suggested_follow_up_question"], str)
+    assert isinstance(result["authenticity_review_reasons"], list)
+    assert "ai_detector" in result
 
 
 def test_score_single_candidate_with_video_transcript_only() -> None:

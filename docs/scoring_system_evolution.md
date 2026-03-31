@@ -564,6 +564,87 @@ Replace or augment the current lightweight embedding backend with a stronger sen
 - top-k hidden-potential recall
 - robustness across RU and EN profiles
 
+## Phase 8.5. Configurable Semantic Backend Experiment
+
+### Why this experiment was needed
+
+After calibration and family-aware validation, the biggest remaining ML weakness was still multilingual fairness, especially for Russian-language candidates.
+
+The existing semantic rubric layer used a lightweight local hash embedding backend.
+That backend was transparent and fast, but it was still too weak to confidently claim that semantic matching was robust across `RU/EN`.
+
+### What was implemented
+
+The semantic layer was refactored into a configurable backend abstraction.
+
+Added backend options:
+
+- `hash`
+- `tfidf_char_ngram`
+- `sentence_transformer`
+
+Configuration was exposed through environment variables and included in the scoring snapshot:
+
+- `SEMANTIC_BACKEND`
+- `SEMANTIC_MODEL`
+
+This made it possible to run controlled experiments without rewriting the scoring pipeline.
+
+### What was tested
+
+A first multilingual-oriented experiment switched the semantic layer from `hash` to `tfidf_char_ngram`.
+
+The idea was:
+
+- reduce English-shaped lexical dependence
+- strengthen character-level multilingual matching
+- improve semantic rubric alignment with the final hackathon labels
+
+### What happened in evaluation
+
+The result was honest but not strong enough to keep as the default.
+
+Compared with the calibrated `v3` setup, the `tfidf_char_ngram` experiment:
+
+- slightly reduced overall rank alignment
+- did not improve hidden-potential recall
+- did not improve Russian fairness enough
+
+Observed direction of change:
+
+- `spearman_merit_vs_labels`: `0.3798 -> 0.371`
+- `pairwise_accuracy`: `0.6710 -> 0.6662`
+- `hidden_potential_recall@k`: no meaningful gain
+- Russian fairness metrics remained weak and in some places became slightly worse
+
+### Decision
+
+The backend abstraction was kept, but the default backend was switched back to `hash`.
+
+This was an intentional product decision:
+
+- keep the useful infrastructure
+- do not claim improvement where there is none
+- leave stronger backends available as controlled experimental modes
+
+### Final outcome of this phase
+
+What stayed in the repo:
+
+- configurable semantic backend infrastructure
+- `hash` / `tfidf_char_ngram` / `sentence_transformer` switchability
+- semantic backend settings in config snapshots
+
+What did **not** become the new default:
+
+- `tfidf_char_ngram`
+
+### Honest takeaway
+
+This phase did not produce a metric win, but it was still valuable.
+
+It converted the semantic layer from a fixed implementation into an experimental platform, so future multilingual upgrades can be tested honestly and reproducibly instead of being hardcoded into the pipeline.
+
 ## Phase 9. Committee-Facing Guidance Layer
 
 ### Problem
@@ -606,3 +687,63 @@ The ML/NLP stack now supports two levels of explainability:
 
 1. scoring transparency
 2. committee-facing actionability
+
+## Phase 10. Auxiliary AI-Generation Detector
+
+### Why this was added
+
+The TЗ explicitly highlights the problem of generative AI reducing trust in essays.
+
+At the same time, a raw "AI-generated probability" is too weak and too risky to use as a final decision signal.
+
+So the detector was added as a constrained auxiliary feature, not as a standalone verdict engine.
+
+### What was implemented
+
+An optional authenticity sublayer based on:
+
+- `desklib/ai-text-detector-v1.01`
+
+with strict guardrails:
+
+- English-only by default
+- weak signal only
+- never affects `merit_score`
+- never auto-rejects a candidate
+- contributes only to authenticity review routing
+
+### New output fields
+
+- `authenticity_review_reasons`
+- `ai_detector`
+
+The API now returns:
+
+- whether the detector was enabled
+- whether it was applicable
+- detected language
+- probability of AI-generated text
+- detector note / fallback note
+
+### Why this design is safer
+
+This keeps the system aligned with the project's explainability principles.
+
+The detector is not treated as truth.
+It is treated as one more weak signal alongside:
+
+- genericness
+- evidence density
+- cross-section mismatch
+- contradiction risk
+- groundedness
+
+### Practical interpretation
+
+The correct committee-facing interpretation is:
+
+"This profile should be reviewed more carefully for authenticity."
+
+not:
+
+"This profile was proven to be AI-generated."

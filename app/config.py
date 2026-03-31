@@ -21,6 +21,13 @@ def _strip_wrapping_quotes(value: str) -> str:
     return value
 
 
+def parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return _strip_wrapping_quotes(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _load_dotenv() -> None:
     """Load .env values into process environment when not already set."""
     root = Path(__file__).resolve().parents[1]
@@ -212,6 +219,27 @@ class SemanticConfig:
 
 
 @dataclass(slots=True)
+class AIDetectorConfig:
+    """Configuration for optional auxiliary AI-generated text detector."""
+
+    enabled: bool = False
+    model: str = "desklib/ai-text-detector-v1.01"
+    min_words: int = 60
+    english_only: bool = True
+    elevated_probability_threshold: float = 0.80
+
+    @classmethod
+    def from_env(cls) -> "AIDetectorConfig":
+        return cls(
+            enabled=parse_bool_env("AI_DETECTOR_ENABLED", default=False),
+            model=_strip_wrapping_quotes(os.getenv("AI_DETECTOR_MODEL", "desklib/ai-text-detector-v1.01")),
+            min_words=int(os.getenv("AI_DETECTOR_MIN_WORDS", "60")),
+            english_only=parse_bool_env("AI_DETECTOR_ENGLISH_ONLY", default=True),
+            elevated_probability_threshold=float(os.getenv("AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD", "0.80")),
+        )
+
+
+@dataclass(slots=True)
 class AppConfig:
     """Application configuration container."""
 
@@ -225,6 +253,7 @@ class AppConfig:
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
     llm: LLMConfig = field(default_factory=LLMConfig.from_env)
     semantic: SemanticConfig = field(default_factory=SemanticConfig.from_env)
+    ai_detector: AIDetectorConfig = field(default_factory=AIDetectorConfig.from_env)
 
 
 CONFIG = AppConfig()
@@ -262,5 +291,12 @@ def build_scoring_config_snapshot() -> dict[str, Any]:
         "semantic": {
             "backend": CONFIG.semantic.backend,
             "model": CONFIG.semantic.model,
+        },
+        "ai_detector": {
+            "enabled": CONFIG.ai_detector.enabled,
+            "model": CONFIG.ai_detector.model,
+            "min_words": CONFIG.ai_detector.min_words,
+            "english_only": CONFIG.ai_detector.english_only,
+            "elevated_probability_threshold": CONFIG.ai_detector.elevated_probability_threshold,
         },
     }
