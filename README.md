@@ -351,22 +351,30 @@ Primary env vars:
 - `LLM_BASE_URL`
 - `LLM_API_KEY`
 
-Example:
+Universal example:
 
 ```env
-LLM_PROVIDER=openai
-LLM_MODEL=gpt-4o
-LLM_TIMEOUT_SECONDS=20
+ENABLE_LLM=true
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=llama-3.1-8b-instant
+LLM_TIMEOUT_SECONDS=45
 LLM_TEMPERATURE=0
 LLM_MAX_RETRIES=1
 LLM_RETRY_BACKOFF_SECONDS=0.6
 LLM_RETRY_JITTER_SECONDS=0.2
 LLM_FALLBACK_TO_BASELINE=true
-LLM_BASE_URL=https://api.openai.com/v1
+LLM_BASE_URL=https://api.groq.com/openai/v1
 LLM_API_KEY=your_api_key_here
 ```
 
-### Switching Between OpenAI, Groq, And Ollama
+Use the same 4 fields to switch providers:
+
+- `LLM_PROVIDER`
+- `LLM_MODEL`
+- `LLM_BASE_URL`
+- `LLM_API_KEY`
+
+### Provider Presets
 
 The LLM explainability layer uses an OpenAI-compatible client, so you can switch providers without changing application code.
 
@@ -393,36 +401,36 @@ Ollama example:
 
 ```env
 LLM_PROVIDER=openai-compatible
-LLM_MODEL=qwen2.5:3b-instruct
+LLM_MODEL=llama3.1:8b
 LLM_BASE_URL=http://localhost:11434/v1
 LLM_API_KEY=ollama
 ```
 
 Quick switch workflow:
 
-1. Run Ollama locally and pull a model, for example:
+1. Copy the universal env template into `.env`:
 
 ```bash
-ollama pull qwen2.5:3b-instruct
+copy .env.example .env
 ```
 
-2. Copy one of the example env files into `.env`:
+2. Edit the provider-specific values:
 
-```bash
-copy .env.ollama.example .env
-```
-
-or:
-
-```bash
-copy .env.openai.example .env
-```
-
-or:
-
-```bash
-copy .env.groq.example .env
-```
+- OpenAI:
+  - `LLM_PROVIDER=openai`
+  - `LLM_MODEL=gpt-4o`
+  - `LLM_BASE_URL=https://api.openai.com/v1`
+  - `LLM_API_KEY=...`
+- Groq:
+  - `LLM_PROVIDER=openai-compatible`
+  - `LLM_MODEL=llama-3.1-8b-instant`
+  - `LLM_BASE_URL=https://api.groq.com/openai/v1`
+  - `LLM_API_KEY=...`
+- Ollama:
+  - `LLM_PROVIDER=openai-compatible`
+  - `LLM_MODEL=llama3.1:8b`
+  - `LLM_BASE_URL=http://localhost:11434/v1`
+  - `LLM_API_KEY=ollama`
 
 3. Restart the API process after changing `.env`.
 
@@ -432,6 +440,7 @@ Notes:
 - if you want fully credit-free scoring, you can also set `ENABLE_LLM=false`
 - Ollama is intended here for local explainability output, not for final benchmark claims
 - Groq is a good middle ground for faster remote open-source inference with the same OpenAI-compatible client
+- `/config/scoring` shows the active `llm_provider`, `llm_model`, `llm_base_url`, and `llm_timeout_seconds`
 
 Recommended Groq starting models for this service:
 

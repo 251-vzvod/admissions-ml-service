@@ -46,6 +46,8 @@ def get_scoring_config() -> dict[str, Any]:
         "extraction_strategy": "deterministic_features_plus_semantic_rubrics_plus_optional_llm_explainability",
         "llm_provider": CONFIG.llm.provider,
         "llm_model": CONFIG.llm.model,
+        "llm_base_url": CONFIG.llm.base_url,
+        "llm_timeout_seconds": CONFIG.llm.timeout_seconds,
         "llm_fallback_to_deterministic_extractor_on_failure": CONFIG.llm.fallback_to_baseline,
         "ai_detector_enabled": CONFIG.ai_detector.enabled,
         "ai_detector_model": CONFIG.ai_detector.model,
