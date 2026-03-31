@@ -80,7 +80,17 @@ SEMANTIC_BACKEND=hash
 AI_DETECTOR_ENABLED=false
 ```
 
-Optional local LLM mode:
+Optional remote LLM mode:
+
+```env
+ENABLE_LLM=true
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=glm-4.6:cloud
+LLM_BASE_URL=https://ollama.com/v1
+LLM_API_KEY=your_ollama_api_key_here
+```
+
+Optional local Ollama mode:
 
 ```env
 ENABLE_LLM=true
@@ -168,6 +178,12 @@ Recommended Railway posture:
 - keep `SEMANTIC_BACKEND=hash`
 - do not install `requirements-semantic.txt`
 - keep `AI_DETECTOR_ENABLED=false`
+- if enabling LLM in deploy, use an OpenAI-compatible remote endpoint such as Ollama Cloud:
+  - `ENABLE_LLM=true`
+  - `LLM_PROVIDER=openai-compatible`
+  - `LLM_MODEL=glm-4.6:cloud`
+  - `LLM_BASE_URL=https://ollama.com/v1`
+  - `LLM_API_KEY=<your_ollama_api_key>`
 
 ## Project Structure
 
