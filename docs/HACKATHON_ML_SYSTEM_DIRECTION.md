@@ -69,6 +69,7 @@ Status:
 - claim-evidence extraction is now active
 - pairwise ranking is now the most valuable next ML step
 - stronger multilingual encoder is optional future work, not a core hackathon priority anymore
+- experimental learned ranking should only survive if it beats current shortlist logic on held-out family-aware validation
 
 ## ML / NLP Priorities
 
@@ -149,7 +150,8 @@ Status:
 2. Improve claim-to-evidence grounding
 3. Add transparent pairwise shortlist reranking
 4. Continue fairness work through English-first slice-based checks, not multilingual expansion by default
-5. Keep the shortlist-first narrative tightly aligned with the actual product behavior
+5. Add stress-test robustness checks for English-first candidates
+6. Keep the shortlist-first narrative tightly aligned with the actual product behavior
 
 ## Guardrails
 

@@ -1247,3 +1247,127 @@ The system is now better instrumented to answer:
 - "Are we overvaluing polished English?"
 
 That is a more useful and defensible hackathon question than just keeping multilingual fairness as a generic open issue.
+
+## Phase 19. English-First Stress Testing
+
+### Why this was needed
+
+Slice metrics alone do not answer a different but important question:
+
+- how stable is the shortlist when the same candidate is presented differently?
+
+This matters because the hackathon thesis is explicitly about not losing strong candidates just because they present themselves imperfectly.
+
+### What changed
+
+A stress-test script was added:
+
+- `scripts/english_first_stress_test.py`
+
+Artifacts:
+
+- `data/evaluation_pack_final_hackathon_v3/english_first_stress_test.json`
+- `docs/english_first_stress_test.md`
+
+The current perturbations are:
+
+- `concise`
+- `polished_wrapper`
+- `evidence_removed`
+- `transcript_removed`
+
+### What the first report showed
+
+The first stress-test pass produced a useful pattern:
+
+- a generic polished wrapper alone barely changes ranking
+- removing evidence strongly reduces shortlist priority and confidence, which is desirable
+- removing transcript has only a modest average effect, which is healthy
+- making profiles much more concise currently hurts them too strongly
+
+### Honest takeaway
+
+This phase strengthens the generalization story because it tests presentation robustness directly.
+
+It also exposed a current weakness:
+
+- the scorer is still too sensitive when a candidate becomes much shorter and less detailed
+
+That is a real and useful product finding.
+
+## Phase 20. Experimental Learned Pairwise Ranker
+
+### Why this was needed
+
+One major unresolved weakness of the system is that the core still has a strong heuristic backbone.
+
+To test whether that could be reduced without making the service opaque, an offline learned pairwise ranker was added on top of transparent features.
+
+### What changed
+
+An experiment script was added:
+
+- `scripts/pairwise_ranker_experiment.py`
+
+Artifacts:
+
+- `data/evaluation_pack_final_hackathon_v3/pairwise_ranker_experiment.json`
+- `docs/pairwise_ranker_experiment.md`
+
+The experiment:
+
+- uses only transparent candidate-level features
+- uses a deterministic family-aware train/test split
+- trains an offline linear pairwise model
+- compares learned ordering against the current baseline on the held-out split
+
+### What happened
+
+The result was mixed:
+
+- `spearman` improved on the held-out split
+- `pairwise_accuracy` got materially worse
+- `precision@k_priority` and hidden-potential recall stayed flat
+
+### Decision
+
+This experiment should **not** replace the current runtime ranking.
+
+It is useful as validation evidence, but not as a default model upgrade.
+
+### Honest takeaway
+
+This is exactly the kind of experiment that should exist in the project:
+
+- it tests a reasonable next-step hypothesis
+- it does not overclaim success
+- it shows that reducing heuristic backbone will require a better ranker design than a simple linear pairwise layer
+
+## Phase 21. Repository Hygiene Pass
+
+Why this step happened:
+
+- By this point the service surface was already much cleaner than the early MVP, but the repository still carried some runtime and local-development clutter.
+- The goal of this pass was not to change model behavior, but to reduce noise, remove obviously obsolete files, and keep deploy/runtime assumptions aligned with the actual public API.
+
+What was cleaned:
+
+- Removed the obsolete helper script:
+  - `scripts/probe_llm_openai.py`
+- Removed the unused runtime dependency:
+  - `python-multipart`
+- Cleared local cache directories that should never be treated as project artifacts:
+  - `.pytest_cache/`
+  - project-level `__pycache__/`
+
+Why these removals were safe:
+
+- The public API no longer exposes file-upload routes, so `python-multipart` was no longer part of the real runtime contract.
+- `probe_llm_openai.py` belonged to an earlier provider-debugging phase and was not referenced by the service, tests, or current docs.
+- Cache directories were already ignorable local state, not reproducible project outputs.
+
+Result:
+
+- Leaner runtime dependency set.
+- Less local repo noise during development and review.
+- Cleaner separation between production code, offline research scripts, and temporary debugging artifacts.

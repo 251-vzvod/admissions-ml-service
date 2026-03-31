@@ -276,6 +276,8 @@ This directly addresses the restrictions in the TЗ. We treat privacy, transpare
 
 - stronger shortlist validation on English-first slices
 - further fairness calibration for polished vs plain English
+- stress-test robustness against concise / evidence-removed / transcript-removed variants
+- stronger ranker experiment only if it beats current shortlist logic on held-out validation
 - stronger claim-evidence coverage across more candidate types
 - richer committee feedback loop
 - real pilot with consented candidate data

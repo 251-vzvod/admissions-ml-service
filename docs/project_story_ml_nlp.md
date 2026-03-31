@@ -578,6 +578,45 @@ That is why we added an English-first slice validation layer over:
 This was a useful methodological shift.
 It gave us a more realistic fairness and validation story for the actual product direction.
 
+We then pushed that logic one step further with perturbation-based stress tests.
+
+Instead of only evaluating fixed profiles, we asked:
+
+- what happens if the same candidate becomes shorter?
+- what happens if we remove evidence?
+- what happens if we add a polished wrapper?
+- what happens if transcripts disappear?
+
+That gave us a much more honest view of robustness.
+
+The results were mixed in a useful way:
+
+- the system does not seem overly vulnerable to generic polish added on top
+- it reacts strongly when evidence is removed, which is correct
+- transcript removal is not catastrophic on average
+- but concise variants still get punished too hard
+
+That is a real product weakness, and exactly the kind of weakness that should be discovered before a demo, not after.
+
+We also tested a more ambitious next step: an offline learned pairwise ranker on transparent features.
+
+This experiment mattered because one of the standing concerns about the system is that it still contains a lot of heuristic backbone.
+
+So we asked a direct question:
+
+**Can a learned pairwise layer over transparent features outperform the current shortlist logic on a family-aware split?**
+
+The answer was not cleanly positive.
+
+The learned ranker improved one correlation metric, but it worsened pairwise ranking accuracy materially and did not improve the most important shortlist outcomes enough to justify replacing the current runtime logic.
+
+That was still a valuable result.
+
+It means the project now has:
+
+- not just a better scorer
+- but also a clearer sense of which next-step model ideas are actually worth keeping
+
 ## 19. What The System Ultimately Became
 
 The system started as a transparent heuristic scorer.
@@ -591,6 +630,8 @@ It evolved into:
 - with benchmark-based calibration
 - with leakage-aware validation
 - with English-first shortlist slice validation
+- with English-first stress-test robustness checks
+- with an offline learned-ranker experiment that was tested honestly and not promoted prematurely
 
 That is a much stronger end state than what we had at the beginning.
 

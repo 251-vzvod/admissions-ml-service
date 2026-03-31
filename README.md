@@ -25,6 +25,11 @@ For the current English-first shortlist validation slices:
 
 - [docs/english_first_validation.md](docs/english_first_validation.md)
 
+For current robustness stress tests and the offline pairwise-ranker experiment:
+
+- [docs/english_first_stress_test.md](docs/english_first_stress_test.md)
+- [docs/pairwise_ranker_experiment.md](docs/pairwise_ranker_experiment.md)
+
 ## What The Service Does
 
 The API accepts one or more candidate profiles and returns:
