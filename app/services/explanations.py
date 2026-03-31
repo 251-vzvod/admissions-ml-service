@@ -28,11 +28,11 @@ def _format_claim_with_evidence(item: dict[str, str]) -> str:
     snippet = _pick_snippet(item.get("snippet") or "", max_len=120)
 
     if claim and snippet:
-        return f"{claim} [evidence: {source} -> \"{snippet}\"]"
+        return f'{claim} [evidence: {source} -> "{snippet}"]'
     if claim:
         return claim
     if snippet:
-        return f"evidence-only [{source}: \"{snippet}\"]"
+        return f'evidence-only [{source}: "{snippet}"]'
     return ""
 
 
@@ -45,8 +45,6 @@ def _normalize_uncertainty_claim(item: dict[str, str]) -> dict[str, str]:
         "capability",
         "will",
         "may become",
-        "сможет",
-        "потенциал",
     ]
     if claim and any(marker in lowered for marker in predictive_markers) and "evidence" not in lowered:
         claim = f"insufficient evidence to confirm: {claim}"
@@ -56,7 +54,7 @@ def _normalize_uncertainty_claim(item: dict[str, str]) -> dict[str, str]:
 
 
 def build_explanation(
-    feature_map: dict[str, float | bool],
+    review_signals: dict[str, float],
     merit_breakdown: dict[str, int],
     recommendation: Recommendation | str,
     review_flags: list[ReviewFlag | str],
@@ -79,39 +77,50 @@ def build_explanation(
     gaps: list[str] = []
     uncertainties: list[str] = []
 
-    if float(feature_map.get("growth_trajectory", 0.0)) >= 0.65:
+    growth = float(review_signals.get("growth_signal", 0.0))
+    agency = float(review_signals.get("agency_signal", 0.0))
+    motivation = float(review_signals.get("motivation_signal", 0.0))
+    community = float(review_signals.get("community_signal", 0.0))
+    evidence = float(review_signals.get("evidence_signal", 0.0))
+    authenticity = float(review_signals.get("authenticity_signal", 0.0))
+    polish_risk = float(review_signals.get("polish_risk_signal", 0.0))
+    hidden = float(review_signals.get("hidden_signal", 0.0))
+
+    if growth >= 0.62:
         strengths.append("Strong growth trajectory signals supported by temporal and reflective evidence.")
-    if float(feature_map.get("initiative", 0.0)) >= 0.60:
+    if agency >= 0.56:
         strengths.append("Clear initiative and agency markers in self-driven actions.")
-    if float(feature_map.get("program_fit", 0.0)) >= 0.60:
+    if motivation >= 0.58:
         strengths.append("Motivation aligns with the program format and collaborative learning context.")
-    if float(feature_map.get("evidence_count", 0.0)) >= 0.65:
+    if community >= 0.52:
+        strengths.append("Profile shows community-oriented motivation grounded in responsibility toward other people.")
+    if evidence >= 0.60:
         strengths.append("Evidence density is sufficient to support a comparatively reliable assessment.")
-    if float(feature_map.get("leadership_potential", feature_map.get("semantic_leadership_potential", 0.0))) >= 0.62:
-        strengths.append("Semantic rubric matching suggests credible leadership potential beyond surface polish.")
-    if float(feature_map.get("hidden_potential", feature_map.get("semantic_hidden_potential", 0.0))) >= 0.60:
+    if hidden >= 0.58:
         strengths.append("Profile shows hidden-potential characteristics: growth and agency signals stronger than presentation quality.")
 
-    if float(feature_map.get("specificity_score", 0.0)) < 0.45:
+    if evidence < 0.45:
         gaps.append("Specificity is limited; more concrete examples and outcomes would improve reliability.")
-    if float(feature_map.get("evidence_count", 0.0)) < 0.40:
+    if evidence < 0.38:
         gaps.append("Evidence density is low relative to answer length.")
-    if bool(feature_map.get("contradiction_flag", False)):
+    if authenticity < 0.44:
         gaps.append("Potential internal inconsistency detected across sections.")
-    if float(feature_map.get("completeness_score", 0.0)) < 0.5:
+    if evidence < 0.40:
         gaps.append("Application completeness is moderate/low, which limits confidence in the assessment.")
-    if float(feature_map.get("motivation_authenticity", feature_map.get("semantic_motivation_authenticity", 0.0))) < 0.42:
+    if motivation < 0.42:
         gaps.append("Motivation appears under-grounded; committee should probe why this program specifically matters.")
+    if community < 0.35:
+        gaps.append("Contribution to other people or a real community problem is still under-evidenced.")
 
-    if float(feature_map.get("genericness_score", 0.0)) > 0.55:
+    if polish_risk > 0.55:
         uncertainties.append("Some text appears generic; committee should verify authenticity of claims.")
     if ReviewFlag.SECTION_MISMATCH in review_flags:
         uncertainties.append("Section mismatch risk: claims may not be consistently supported across sources.")
     if recommendation in {Recommendation.MANUAL_REVIEW_REQUIRED, Recommendation.INSUFFICIENT_EVIDENCE}:
         uncertainties.append("Human review is recommended before high-confidence prioritization.")
-    if float(feature_map.get("specificity_score", 0.0)) < 0.5 or float(feature_map.get("evidence_count", 0.0)) < 0.5:
+    if evidence < 0.50:
         uncertainties.append("Some claims are directionally promising but under-supported by concrete examples.")
-    if float(feature_map.get("authenticity_risk_raw", 0.0)) >= 0.45:
+    if authenticity < 0.52:
         uncertainties.append("Authenticity risk signals are elevated enough to warrant closer manual reading.")
 
     evidence_spans: list[EvidenceSpan] = []

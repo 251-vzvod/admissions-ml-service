@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from app.config import CONFIG
 from app.schemas.decision import Recommendation, ReviewFlag
+from app.services.policy import RoutingPolicySnapshot
 
 
 @dataclass(slots=True)
@@ -24,6 +25,7 @@ def map_recommendation(
     authenticity_risk_raw: float,
     feature_map: dict[str, float | bool],
     prior_flags: list[ReviewFlag],
+    policy: RoutingPolicySnapshot | None = None,
 ) -> RecommendationResult:
     """Map scores + eligibility into workflow recommendation categories."""
     flags = list(prior_flags)
@@ -39,13 +41,24 @@ def map_recommendation(
 
     evidence_count = float(feature_map.get("evidence_count", 0.0))
 
+    if policy and policy.insufficient_evidence_band:
+        if ReviewFlag.INSUFFICIENT_EVIDENCE not in flags:
+            flags.append(ReviewFlag.INSUFFICIENT_EVIDENCE)
+        return RecommendationResult(recommendation=Recommendation.INSUFFICIENT_EVIDENCE, review_flags=flags)
+
     if confidence_raw < CONFIG.thresholds.very_low_confidence and evidence_count < CONFIG.thresholds.low_evidence:
         if ReviewFlag.INSUFFICIENT_EVIDENCE not in flags:
             flags.append(ReviewFlag.INSUFFICIENT_EVIDENCE)
         return RecommendationResult(recommendation=Recommendation.INSUFFICIENT_EVIDENCE, review_flags=flags)
 
+    if policy and policy.priority_band:
+        return RecommendationResult(recommendation=Recommendation.REVIEW_PRIORITY, review_flags=flags)
+
     if merit_raw >= CONFIG.thresholds.high_merit and confidence_raw >= CONFIG.thresholds.acceptable_confidence and authenticity_risk_raw < 0.45:
         return RecommendationResult(recommendation=Recommendation.REVIEW_PRIORITY, review_flags=flags)
+
+    if policy and policy.authenticity_review_band:
+        return RecommendationResult(recommendation=Recommendation.MANUAL_REVIEW_REQUIRED, review_flags=flags)
 
     if merit_raw >= CONFIG.thresholds.medium_merit:
         if confidence_raw < CONFIG.thresholds.acceptable_confidence or authenticity_risk_raw >= CONFIG.thresholds.elevated_risk:

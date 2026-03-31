@@ -1,4 +1,4 @@
-"""Validation and parsing for LLM explainability outputs."""
+"""Validation and parsing for LLM calibration and explainability outputs."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import json
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
+from app.schemas.decision import Recommendation
 
 
 ALLOWED_SOURCES = {
@@ -29,6 +31,8 @@ SOURCE_ALIASES = {
     "presentation": "video_presentation_transcript_text",
 }
 
+ALLOWED_RECOMMENDATIONS = {item.value for item in Recommendation}
+
 
 def _normalize_source(raw: Any) -> str:
     value = "" if raw is None else str(raw).strip().lower()
@@ -36,6 +40,35 @@ def _normalize_source(raw: Any) -> str:
     if value not in ALLOWED_SOURCES:
         return "motivation_letter_text"
     return value
+
+
+def _normalize_text(raw: Any) -> str:
+    if raw is None:
+        return ""
+    return " ".join(str(raw).split()).strip()
+
+
+def _normalize_bool(raw: Any) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    value = _normalize_text(raw).lower()
+    if value in {"true", "1", "yes", "y"}:
+        return True
+    if value in {"false", "0", "no", "n", ""}:
+        return False
+    if value in {"medium", "high"}:
+        return True
+    if value == "low":
+        return False
+    return False
+
+
+def _normalize_bounded_score(raw: Any) -> int | None:
+    try:
+        value_int = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return max(1, min(5, value_int))
 
 
 class LLMClaimEvidence(BaseModel):
@@ -46,9 +79,7 @@ class LLMClaimEvidence(BaseModel):
     @field_validator("claim", "snippet", mode="before")
     @classmethod
     def normalize_text(cls, value: Any) -> str:
-        if value is None:
-            return ""
-        return " ".join(str(value).split()).strip()
+        return _normalize_text(value)
 
     @field_validator("source", mode="before")
     @classmethod
@@ -67,7 +98,6 @@ class LLMEvidenceSpan(BaseModel):
         if not isinstance(data, dict):
             return data
         normalized = dict(data)
-        # Some models return snippet/quote instead of text.
         if "text" not in normalized:
             normalized["text"] = normalized.get("snippet") or normalized.get("quote") or ""
         if "dimension" not in normalized:
@@ -77,9 +107,7 @@ class LLMEvidenceSpan(BaseModel):
     @field_validator("dimension", "text", mode="before")
     @classmethod
     def normalize_text(cls, value: Any) -> str:
-        if value is None:
-            return ""
-        return " ".join(str(value).split()).strip()
+        return _normalize_text(value)
 
     @field_validator("source", mode="before")
     @classmethod
@@ -87,12 +115,66 @@ class LLMEvidenceSpan(BaseModel):
         return _normalize_source(value)
 
 
+class LLMHumanReview(BaseModel):
+    recommendation: str = ""
+    shortlist_band: bool = False
+    hidden_potential_band: bool = False
+    support_needed_band: bool = False
+    authenticity_review_band: bool = False
+    notes: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_root(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        if "support_needed_band" not in normalized:
+            normalized["support_needed_band"] = normalized.get("needs_support_band", normalized.get("needs_support_flag"))
+        if "authenticity_review_band" not in normalized:
+            normalized["authenticity_review_band"] = normalized.get(
+                "authenticity_review_needed",
+                normalized.get("authenticity_review"),
+            )
+        return normalized
+
+    @field_validator("recommendation", mode="before")
+    @classmethod
+    def normalize_recommendation(cls, value: Any) -> str:
+        lowered = _normalize_text(value).lower()
+        return lowered if lowered in ALLOWED_RECOMMENDATIONS else ""
+
+    @field_validator(
+        "shortlist_band",
+        "hidden_potential_band",
+        "support_needed_band",
+        "authenticity_review_band",
+        mode="before",
+    )
+    @classmethod
+    def normalize_bool(cls, value: Any) -> bool:
+        return _normalize_bool(value)
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def normalize_notes(cls, value: Any) -> str:
+        return _normalize_text(value)
+
+
 class LLMExplainabilityOutput(BaseModel):
+    candidate_id: str = ""
+    human_review: LLMHumanReview | None = None
+    rubric: dict[str, Any] = Field(default_factory=dict)
+    evidence_bullets: list[str] = Field(default_factory=list)
+    uncertainties: list[str] = Field(default_factory=list)
+
     top_strength_signals: list[LLMClaimEvidence] = Field(default_factory=list)
     main_gap_signals: list[LLMClaimEvidence] = Field(default_factory=list)
-    uncertainties: list[LLMClaimEvidence] = Field(default_factory=list)
+    uncertainty_signals: list[LLMClaimEvidence] = Field(default_factory=list)
     evidence_spans: list[LLMEvidenceSpan] = Field(default_factory=list)
     extractor_rationale: str = ""
+    rubric_assessment: dict[str, Any] = Field(default_factory=dict)
+    committee_follow_up_question: str = ""
 
     @model_validator(mode="before")
     @classmethod
@@ -106,21 +188,125 @@ class LLMExplainabilityOutput(BaseModel):
             normalized["top_strength_signals"] = normalized.get("top_strengths") or normalized.get("strengths") or []
         if "main_gap_signals" not in normalized:
             normalized["main_gap_signals"] = normalized.get("main_gaps") or normalized.get("gaps") or []
-        if "uncertainties" not in normalized:
-            normalized["uncertainties"] = normalized.get("uncertainty_signals") or normalized.get("risks") or []
         if "evidence_spans" not in normalized:
             normalized["evidence_spans"] = normalized.get("evidence") or normalized.get("spans") or []
         if "extractor_rationale" not in normalized:
             normalized["extractor_rationale"] = normalized.get("rationale") or ""
+        if "rubric_assessment" not in normalized:
+            normalized["rubric_assessment"] = normalized.get("llm_rubric_assessment") or normalized.get("rubric") or {}
+        if "committee_follow_up_question" not in normalized:
+            normalized["committee_follow_up_question"] = normalized.get("follow_up_question") or ""
+        if "human_review" not in normalized and isinstance(normalized.get("review"), dict):
+            normalized["human_review"] = normalized["review"]
 
+        raw_uncertainties = normalized.get("uncertainties")
+        if isinstance(raw_uncertainties, list) and raw_uncertainties and all(isinstance(item, dict) for item in raw_uncertainties):
+            normalized["uncertainty_signals"] = raw_uncertainties
+            normalized["uncertainties"] = []
+        elif "uncertainty_signals" not in normalized:
+            normalized["uncertainty_signals"] = normalized.get("uncertainty_signals") or normalized.get("uncertainty_claims") or normalized.get("risks") or []
+            if raw_uncertainties is None:
+                normalized["uncertainties"] = []
+
+        return normalized
+
+    @field_validator("candidate_id", mode="before")
+    @classmethod
+    def normalize_candidate_id(cls, value: Any) -> str:
+        return _normalize_text(value)
+
+    @field_validator("evidence_bullets", "uncertainties", mode="before")
+    @classmethod
+    def normalize_string_list(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        normalized: list[str] = []
+        for item in value:
+            text = _normalize_text(item)
+            if text:
+                normalized.append(text)
         return normalized
 
     @field_validator("extractor_rationale", mode="before")
     @classmethod
     def normalize_rationale(cls, value: Any) -> str:
-        if value is None:
-            return ""
-        return " ".join(str(value).split()).strip()
+        return _normalize_text(value)
+
+    @field_validator("committee_follow_up_question", mode="before")
+    @classmethod
+    def normalize_follow_up(cls, value: Any) -> str:
+        return _normalize_text(value)
+
+    @field_validator("rubric", mode="before")
+    @classmethod
+    def normalize_calibration_rubric(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            return {}
+
+        normalized = dict(value)
+        aliases = {
+            "leadership": "leadership_through_action",
+            "leadership_potential": "leadership_through_action",
+            "readiness": "project_based_readiness",
+            "motivation": "motivation_groundedness",
+            "motivation_authenticity": "motivation_groundedness",
+        }
+        for old_key, new_key in aliases.items():
+            if old_key in normalized and new_key not in normalized:
+                normalized[new_key] = normalized[old_key]
+
+        bounded_scores = [
+            "leadership_through_action",
+            "growth_trajectory",
+            "community_orientation",
+            "project_based_readiness",
+            "motivation_groundedness",
+            "evidence_strength",
+            "shortlist_priority",
+        ]
+        output: dict[str, Any] = {}
+        for key in bounded_scores:
+            normalized_value = _normalize_bounded_score(normalized.get(key))
+            if normalized_value is not None:
+                output[key] = normalized_value
+        return output
+
+    @field_validator("rubric_assessment", mode="before")
+    @classmethod
+    def normalize_rubric_assessment(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            return {}
+
+        normalized = dict(value)
+        aliases = {
+            "leadership": "leadership_potential",
+            "growth": "growth_trajectory",
+            "motivation": "motivation_authenticity",
+            "evidence": "evidence_strength",
+            "hidden_potential": "hidden_potential_hint",
+            "authenticity_review": "authenticity_review_needed",
+        }
+        for old_key, new_key in aliases.items():
+            if old_key in normalized and new_key not in normalized:
+                normalized[new_key] = normalized[old_key]
+
+        bounded_scores = [
+            "leadership_potential",
+            "growth_trajectory",
+            "motivation_authenticity",
+            "evidence_strength",
+            "hidden_potential_hint",
+        ]
+        output: dict[str, Any] = {}
+        for key in bounded_scores:
+            normalized_value = _normalize_bounded_score(normalized.get(key))
+            if normalized_value is not None:
+                output[key] = normalized_value
+
+        review_signal = normalized.get("authenticity_review_needed")
+        lowered = _normalize_text(review_signal).lower()
+        output["authenticity_review_needed"] = lowered if lowered in {"low", "medium", "high"} else ""
+        return output
 
 
 class LLMParseError(RuntimeError):
@@ -171,7 +357,7 @@ def _extract_first_json_object(raw_text: str) -> dict[str, Any] | None:
 
 
 def parse_llm_extraction_json(raw_text: str) -> LLMExplainabilityOutput:
-    """Parse and validate LLM JSON output into explainability schema."""
+    """Parse and validate LLM JSON output into calibration/explainability schema."""
     try:
         payload = json.loads(raw_text)
     except json.JSONDecodeError as exc:

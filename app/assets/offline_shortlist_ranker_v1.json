@@ -1,0 +1,17 @@
+{
+  "version": "offline-shortlist-ranker-v1",
+  "bias": 0.0,
+  "feature_weights": {
+    "shortlist_priority_score": 0.30,
+    "hidden_potential_score": 0.18,
+    "trajectory_score": 0.12,
+    "evidence_coverage_score": 0.10,
+    "merit_score": 0.10,
+    "confidence_score": 0.06,
+    "authenticity_risk_neg": 0.08,
+    "community_values_axis": 0.12,
+    "leadership_axis": 0.08,
+    "potential_axis": 0.10,
+    "trust_axis": 0.06
+  }
+}

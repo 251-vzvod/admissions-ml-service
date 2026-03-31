@@ -50,7 +50,7 @@ def test_score_batch() -> None:
     assert all("recommendation" in item for item in result["results"])
 
 
-def test_batch_pairwise_ranking_prefers_growth_signal_over_polished_thin_profile() -> None:
+def test_batch_offline_ranking_prefers_growth_signal_over_polished_thin_profile() -> None:
     payload = {
         "candidates": [
             {

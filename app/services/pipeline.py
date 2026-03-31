@@ -7,6 +7,7 @@ from typing import Any
 
 from app.config import CONFIG
 from app.schemas.decision import Recommendation, ReviewFlag
+from app.schemas.input import normalize_candidate_payload
 from app.schemas.output import ScoreResponse
 from app.services.ai_detector import detect_ai_generated_text
 from app.services.authenticity import estimate_authenticity_risk
@@ -15,9 +16,11 @@ from app.services.committee_guidance import build_committee_guidance
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
 from app.services.llm_extractor import extract_explainability_with_llm
+from app.services.policy import build_policy_snapshot
 from app.services.preprocessing import preprocess_text_inputs
 from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
+from app.services.reviewer_signals import build_reviewer_signals
 from app.services.scoring import build_score_trace, compute_scores
 from app.services.semantic_rubrics import extract_semantic_rubric_features
 from app.services.shortlist import build_shortlist_signals
@@ -31,7 +34,8 @@ class ScoringPipeline:
     """Deterministic scoring pipeline with optional LLM explainability."""
 
     def _prepare_scoring_context(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
-        projected, excluded_hits = merit_safe_projection(candidate_payload)
+        normalized_payload = normalize_candidate_payload(candidate_payload)
+        projected, excluded_hits = merit_safe_projection(normalized_payload)
 
         text_inputs = projected.get("text_inputs") if isinstance(projected, dict) else {}
         if not isinstance(text_inputs, dict):
@@ -69,10 +73,6 @@ class ScoringPipeline:
         merged_features: dict[str, float | bool] = {}
         merged_features.update(structured_result.features)
         merged_features.update(text_result.features)
-        merged_features["cyrillic_text_share"] = float(bundle.stats.get("cyrillic_text_share", 0.0))
-        merged_features["latin_text_share"] = float(bundle.stats.get("latin_text_share", 0.0))
-        merged_features["mixed_script_flag"] = bool(bundle.stats.get("mixed_script_flag", 0))
-
         semantic_result = extract_semantic_rubric_features(bundle=bundle, heuristic_features=merged_features)
         merged_features.update(semantic_result.features)
 
@@ -94,6 +94,47 @@ class ScoringPipeline:
             use_semantic_layer=True,
         )
 
+        snapshot = {
+            "motivation_clarity": round(float(merged_features.get("motivation_clarity", 0.0)), 4),
+            "initiative": round(float(merged_features.get("initiative", 0.0)), 4),
+            "growth_trajectory": round(float(merged_features.get("growth_trajectory", 0.0)), 4),
+            "community_value_orientation": round(float(merged_features.get("community_value_orientation", 0.0)), 4),
+            "evidence_count": round(float(merged_features.get("evidence_count", 0.0)), 4),
+            "specificity_score": round(float(merged_features.get("specificity_score", 0.0)), 4),
+            "consistency_score": round(float(merged_features.get("consistency_score", 0.0)), 4),
+            "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
+            "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
+            "cross_section_mismatch_score": round(float(merged_features.get("cross_section_mismatch_score", 0.0)), 4),
+            "authenticity_risk_raw": round(float(merged_features.get("authenticity_risk_raw", 0.0)), 4),
+        }
+        semantic_snapshot = {
+            "leadership_potential": round(float(merged_features.get("semantic_leadership_potential", 0.0)), 4),
+            "growth_trajectory": round(float(merged_features.get("semantic_growth_trajectory", 0.0)), 4),
+            "motivation_authenticity": round(float(merged_features.get("semantic_motivation_authenticity", 0.0)), 4),
+            "authenticity_groundedness": round(float(merged_features.get("semantic_authenticity_groundedness", 0.0)), 4),
+            "community_orientation": round(float(merged_features.get("semantic_community_orientation", 0.0)), 4),
+            "hidden_potential": round(float(merged_features.get("semantic_hidden_potential", 0.0)), 4),
+        }
+        reviewer_signals = build_reviewer_signals(merged_features)
+        merit_breakdown = {k: to_display_score(v) for k, v in scoring_result.merit_breakdown_raw.items()}
+        provisional_shortlist_signals = build_shortlist_signals(
+            feature_map={**merged_features, **snapshot},
+            semantic_scores={key: to_display_score(value) for key, value in semantic_snapshot.items()},
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
+            recommendation=Recommendation.STANDARD_REVIEW,
+        )
+        policy = build_policy_snapshot(
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
+            hidden_potential_score=provisional_shortlist_signals.hidden_potential_score,
+            support_needed_score=provisional_shortlist_signals.support_needed_score,
+            shortlist_priority_score=provisional_shortlist_signals.shortlist_priority_score,
+            evidence_coverage_score=provisional_shortlist_signals.evidence_coverage_score,
+            trajectory_score=provisional_shortlist_signals.trajectory_score,
+        )
         recommendation_result = map_recommendation(
             eligibility_status=eligibility.status,
             merit_raw=scoring_result.merit_raw,
@@ -101,6 +142,7 @@ class ScoringPipeline:
             authenticity_risk_raw=scoring_result.authenticity_risk_raw,
             feature_map=merged_features,
             prior_flags=auth_result.review_flags,
+            policy=policy,
         )
 
         merged_flags = list(recommendation_result.review_flags)
@@ -108,50 +150,6 @@ class ScoringPipeline:
             merged_flags.append(ReviewFlag.MISSING_REQUIRED_MATERIALS)
 
         recommendation_flags = sorted(set(merged_flags))
-        merit_breakdown = {k: to_display_score(v) for k, v in scoring_result.merit_breakdown_raw.items()}
-
-        snapshot = {
-            "motivation_clarity": round(float(merged_features.get("motivation_clarity", 0.0)), 4),
-            "initiative": round(float(merged_features.get("initiative", 0.0)), 4),
-            "leadership_impact": round(float(merged_features.get("leadership_impact", 0.0)), 4),
-            "growth_trajectory": round(float(merged_features.get("growth_trajectory", 0.0)), 4),
-            "resilience": round(float(merged_features.get("resilience", 0.0)), 4),
-            "program_fit": round(float(merged_features.get("program_fit", 0.0)), 4),
-            "evidence_richness": round(float(merged_features.get("evidence_richness", 0.0)), 4),
-            "specificity_score": round(float(merged_features.get("specificity_score", 0.0)), 4),
-            "evidence_count": round(float(merged_features.get("evidence_count", 0.0)), 4),
-            "consistency_score": round(float(merged_features.get("consistency_score", 0.0)), 4),
-            "completeness_score": round(float(merged_features.get("completeness_score", 0.0)), 4),
-            "docs_count_score": round(float(merged_features.get("docs_count_score", 0.0)), 4),
-            "portfolio_links_score": round(float(merged_features.get("portfolio_links_score", 0.0)), 4),
-            "has_video_presentation": bool(merged_features.get("has_video_presentation", False)),
-            "logical_source_groups_present": int(bundle.stats.get("logical_source_groups_present", 0)),
-            "material_support_score": round(
-                (
-                    (float(merged_features.get("docs_count_score", 0.0)) * 0.50)
-                    + (float(merged_features.get("portfolio_links_score", 0.0)) * 0.15)
-                    + ((1.0 if bool(merged_features.get("has_video_presentation", False)) else 0.0) * 0.35)
-                ),
-                4,
-            ),
-            "genericness_score": round(float(merged_features.get("genericness_score", 0.0)), 4),
-            "contradiction_flag": bool(merged_features.get("contradiction_flag", False)),
-            "polished_but_empty_score": round(float(merged_features.get("polished_but_empty_score", 0.0)), 4),
-            "cross_section_mismatch_score": round(float(merged_features.get("cross_section_mismatch_score", 0.0)), 4),
-            "authenticity_risk_raw": round(float(merged_features.get("authenticity_risk_raw", 0.0)), 4),
-            "ai_detector_probability": round(float(merged_features.get("ai_detector_probability", 0.0)), 4)
-            if ai_detector_result.probability_ai_generated is not None
-            else None,
-            "ai_detector_applicable": bool(ai_detector_result.applicable),
-            "excluded_sensitive_fields_count": len(excluded_hits),
-        }
-        semantic_snapshot = {
-            "leadership_potential": round(float(merged_features.get("semantic_leadership_potential", 0.0)), 4),
-            "growth_trajectory": round(float(merged_features.get("semantic_growth_trajectory", 0.0)), 4),
-            "motivation_authenticity": round(float(merged_features.get("semantic_motivation_authenticity", 0.0)), 4),
-            "authenticity_groundedness": round(float(merged_features.get("semantic_authenticity_groundedness", 0.0)), 4),
-            "hidden_potential": round(float(merged_features.get("semantic_hidden_potential", 0.0)), 4),
-        }
 
         context.update(
             {
@@ -168,6 +166,8 @@ class ScoringPipeline:
                 "merit_breakdown": merit_breakdown,
                 "snapshot": snapshot,
                 "semantic_snapshot": semantic_snapshot,
+                "reviewer_signals": reviewer_signals,
+                "policy": policy,
             }
         )
         return context
@@ -176,10 +176,12 @@ class ScoringPipeline:
         self,
         candidate_payload: dict[str, Any],
         scoring_run_id: str | None = None,
-        enable_llm_explainability: bool = True,
+        enable_llm_explainability: bool | None = None,
     ) -> ScoreResponse:
         """Run full scoring flow for a single candidate payload."""
         scoring_run_id = scoring_run_id or generate_scoring_run_id()
+        if enable_llm_explainability is None:
+            enable_llm_explainability = CONFIG.llm.enabled
         context = self._prepare_scoring_context(candidate_payload)
 
         projected = context["projected"]
@@ -207,11 +209,12 @@ class ScoringPipeline:
                 early_flags.append(ReviewFlag.MISSING_REQUIRED_MATERIALS)
 
             explanation = build_explanation(
-                feature_map={},
+                review_signals={},
                 merit_breakdown={
                     "potential": 0,
                     "motivation": 0,
                     "leadership_agency": 0,
+                    "community_values": 0,
                     "experience_skills": 0,
                     "trust_completeness": 0,
                 },
@@ -231,10 +234,12 @@ class ScoringPipeline:
                 authenticity_risk=0,
                 recommendation=recommendation,
                 review_flags=early_flags,
+                llm_rubric_assessment=None,
                 merit_breakdown={
                     "potential": 0,
                     "motivation": 0,
                     "leadership_agency": 0,
+                    "community_values": 0,
                     "experience_skills": 0,
                     "trust_completeness": 0,
                 },
@@ -244,6 +249,7 @@ class ScoringPipeline:
                 shortlist_priority_score=0,
                 evidence_coverage_score=0,
                 trajectory_score=0,
+                evidence_highlights=[],
                 supported_claims=[],
                 weakly_supported_claims=[],
                 top_strengths=explanation.top_strengths,
@@ -266,6 +272,8 @@ class ScoringPipeline:
         merit_breakdown = context["merit_breakdown"]
         snapshot = context["snapshot"]
         semantic_snapshot = context["semantic_snapshot"]
+        reviewer_signals = context["reviewer_signals"]
+        policy = context["policy"]
         text_result = context["text_result"]
         semantic_result = context["semantic_result"]
         auth_result = context["auth_result"]
@@ -277,16 +285,23 @@ class ScoringPipeline:
         llm_uncertainty_claims: list[dict[str, str]] | None = None
         llm_evidence_spans: list[dict[str, str]] | None = None
         extractor_rationale: str | None = None
+        llm_rubric_assessment: dict[str, int | str] | None = None
+        llm_follow_up_question: str | None = None
 
         if enable_llm_explainability:
             try:
-                llm_result = extract_explainability_with_llm(bundle=bundle, deterministic_signals=text_result.features)
+                llm_result = extract_explainability_with_llm(
+                    bundle=bundle,
+                    deterministic_signals=text_result.features,
+                )
                 llm_metadata = llm_result.llm_metadata
                 llm_strength_claims = llm_result.strength_claims
                 llm_gap_claims = llm_result.gap_claims
                 llm_uncertainty_claims = llm_result.uncertainty_claims
                 llm_evidence_spans = llm_result.evidence_spans
                 extractor_rationale = llm_result.rationale
+                llm_rubric_assessment = llm_result.rubric_assessment or None
+                llm_follow_up_question = llm_result.committee_follow_up_question or None
             except RuntimeError as exc:
                 llm_metadata = {
                     "provider": CONFIG.llm.provider,
@@ -295,7 +310,7 @@ class ScoringPipeline:
                 }
 
         explanation_result = build_explanation(
-            feature_map={**snapshot, **semantic_snapshot},
+            review_signals=reviewer_signals,
             merit_breakdown=merit_breakdown,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_result.review_flags,
@@ -326,26 +341,30 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
         )
         committee_guidance = build_committee_guidance(
-            feature_map=snapshot,
-            semantic_scores=semantic_snapshot,
+            review_signals=reviewer_signals,
+            policy=policy,
             hidden_potential_score=shortlist_signals.hidden_potential_score,
             support_needed_score=shortlist_signals.support_needed_score,
             trajectory_score=shortlist_signals.trajectory_score,
             evidence_coverage_score=shortlist_signals.evidence_coverage_score,
             merit_score=scoring_result.merit_score,
-            confidence_score=scoring_result.confidence_score,
             authenticity_risk=scoring_result.authenticity_risk,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
         )
         claim_evidence = build_claim_evidence_map(
             bundle=bundle,
-            feature_map={**merged_features, **snapshot},
+            review_signals=reviewer_signals,
             semantic_result=semantic_result,
             hidden_potential_score=shortlist_signals.hidden_potential_score,
             evidence_coverage_score=shortlist_signals.evidence_coverage_score,
             trajectory_score=shortlist_signals.trajectory_score,
         )
+        supported_claim_dicts = [asdict(item) for item in claim_evidence.supported_claims]
+        weak_claim_dicts = [asdict(item) for item in claim_evidence.weakly_supported_claims]
+        evidence_highlights = supported_claim_dicts[:2]
+        if len(evidence_highlights) < 3:
+            evidence_highlights.extend(weak_claim_dicts[: 3 - len(evidence_highlights)])
 
         base_response["llm_metadata"] = llm_metadata
 
@@ -356,6 +375,7 @@ class ScoringPipeline:
             authenticity_risk=scoring_result.authenticity_risk,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
+            llm_rubric_assessment=llm_rubric_assessment,
             merit_breakdown=merit_breakdown,
             semantic_rubric_scores={
                 key: to_display_score(value) for key, value in semantic_snapshot.items()
@@ -365,8 +385,9 @@ class ScoringPipeline:
             shortlist_priority_score=shortlist_signals.shortlist_priority_score,
             evidence_coverage_score=shortlist_signals.evidence_coverage_score,
             trajectory_score=shortlist_signals.trajectory_score,
-            supported_claims=[asdict(item) for item in claim_evidence.supported_claims],
-            weakly_supported_claims=[asdict(item) for item in claim_evidence.weakly_supported_claims],
+            evidence_highlights=evidence_highlights,
+            supported_claims=supported_claim_dicts,
+            weakly_supported_claims=weak_claim_dicts,
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,
@@ -385,7 +406,7 @@ class ScoringPipeline:
             committee_cohorts=committee_guidance.cohorts,
             why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
             what_to_verify_manually=committee_guidance.what_to_verify_manually,
-            suggested_follow_up_question=committee_guidance.suggested_follow_up_question,
+            suggested_follow_up_question=llm_follow_up_question or committee_guidance.suggested_follow_up_question,
             evidence_spans=explanation_result.evidence_spans,
             explanation=explanation_result.explanation,
         )
@@ -436,6 +457,15 @@ class ScoringPipeline:
                     },
                 },
                 "semantic_features": context["semantic_result"].features,
+                "reviewer_signals": context["reviewer_signals"],
+                "policy": {
+                    "priority_band": context["policy"].priority_band,
+                    "shortlist_band": context["policy"].shortlist_band,
+                    "hidden_potential_band": context["policy"].hidden_potential_band,
+                    "support_needed_band": context["policy"].support_needed_band,
+                    "authenticity_review_band": context["policy"].authenticity_review_band,
+                    "insufficient_evidence_band": context["policy"].insufficient_evidence_band,
+                },
                 "semantic_evidence": {
                     key: {
                         "source": value.source,
@@ -453,7 +483,7 @@ class ScoringPipeline:
         self,
         model: Any,
         scoring_run_id: str | None = None,
-        enable_llm_explainability: bool = True,
+        enable_llm_explainability: bool | None = None,
     ) -> ScoreResponse:
         """Helper for pydantic models accepted by API layer."""
         payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)

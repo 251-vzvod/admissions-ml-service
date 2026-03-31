@@ -44,12 +44,19 @@ class AIDetectorPayload(BaseModel):
     note: str | None = None
 
 
+class LLMRubricAssessmentPayload(BaseModel):
+    leadership_potential: int | None = None
+    growth_trajectory: int | None = None
+    motivation_authenticity: int | None = None
+    evidence_strength: int | None = None
+    hidden_potential_hint: int | None = None
+    authenticity_review_needed: str | None = None
+
+
 class ScoreResponse(BaseModel):
     candidate_id: str
     scoring_run_id: str
     scoring_version: str
-    extraction_mode: str = "hybrid"
-    llm_metadata: dict[str, str | int | float] | None = None
 
     eligibility_status: str
     eligibility_reasons: list[str] = Field(default_factory=list)
@@ -61,27 +68,32 @@ class ScoreResponse(BaseModel):
     recommendation: Recommendation
     review_flags: list[ReviewFlag] = Field(default_factory=list)
 
-    merit_breakdown: dict[str, int] = Field(default_factory=dict)
-    semantic_rubric_scores: dict[str, int] = Field(default_factory=dict)
     hidden_potential_score: int
     support_needed_score: int
     shortlist_priority_score: int
     evidence_coverage_score: int
     trajectory_score: int
 
-    supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list)
-    weakly_supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list)
-    top_strengths: list[str] = Field(default_factory=list)
-    main_gaps: list[str] = Field(default_factory=list)
-    uncertainties: list[str] = Field(default_factory=list)
-    authenticity_review_reasons: list[str] = Field(default_factory=list)
-    ai_detector: AIDetectorPayload | None = None
     committee_cohorts: list[str] = Field(default_factory=list)
     why_candidate_surfaced: list[str] = Field(default_factory=list)
     what_to_verify_manually: list[str] = Field(default_factory=list)
     suggested_follow_up_question: str | None = None
-    evidence_spans: list[EvidenceSpan] = Field(default_factory=list)
+    evidence_highlights: list[ClaimEvidenceItem] = Field(default_factory=list)
+    top_strengths: list[str] = Field(default_factory=list)
+    main_gaps: list[str] = Field(default_factory=list)
     explanation: ExplanationPayload
+
+    extraction_mode: str = Field(default="hybrid", exclude=True)
+    llm_metadata: dict[str, str | int | float] | None = Field(default=None, exclude=True)
+    llm_rubric_assessment: LLMRubricAssessmentPayload | None = Field(default=None, exclude=True)
+    merit_breakdown: dict[str, int] = Field(default_factory=dict, exclude=True)
+    semantic_rubric_scores: dict[str, int] = Field(default_factory=dict, exclude=True)
+    supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list, exclude=True)
+    weakly_supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list, exclude=True)
+    uncertainties: list[str] = Field(default_factory=list, exclude=True)
+    authenticity_review_reasons: list[str] = Field(default_factory=list, exclude=True)
+    ai_detector: AIDetectorPayload | None = Field(default=None, exclude=True)
+    evidence_spans: list[EvidenceSpan] = Field(default_factory=list, exclude=True)
 
 
 class BatchScoreResponse(BaseModel):

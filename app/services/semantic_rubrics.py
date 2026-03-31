@@ -1,4 +1,4 @@
-"""Semantic rubric prototypes and lightweight multilingual matching backends."""
+"""Semantic rubric prototypes and English semantic matching backends."""
 
 from __future__ import annotations
 
@@ -31,156 +31,95 @@ EMBEDDING_DIM = 512
 RUBRIC_PROTOTYPES: dict[str, dict[str, list[str]]] = {
     "leadership_potential": {
         "positive": [
-            "organized people around a problem and took responsibility for the outcome",
+            "organized other people around a real problem and took responsibility for the outcome",
             "started an initiative, coordinated others, and improved something for a group",
             "stood up for someone, influenced peers, and acted despite discomfort",
-            "организовал людей вокруг проблемы и взял ответственность за результат",
-            "запустил инициативу, координировал других и улучшил что-то для группы",
-            "заступился за другого, повлиял на людей и действовал несмотря на дискомфорт",
         ],
         "negative": [
-            "mostly talks about wanting to be a leader without concrete actions or impact",
+            "talks about leadership in abstract terms without concrete actions or impact",
             "focuses only on personal success and gives no evidence of initiative with others",
-            "только говорит о лидерстве без конкретных действий и результата",
-            "описывает только личный успех без инициативы и влияния на других",
         ],
     },
     "growth_trajectory": {
         "positive": [
-            "describes a difficult period, specific setback, reflection, and what changed afterwards",
+            "describes a difficult period, a specific setback, reflection, and what changed afterwards",
             "shows progress over time through repeated effort, learning, and adaptation",
-            "описывает сложный период, конкретную неудачу, рефлексию и что изменилось потом",
-            "показывает прогресс во времени через усилия, обучение и адаптацию",
         ],
         "negative": [
             "lists hardships without reflection or learning",
-            "describes success as static talent rather than growth through effort",
-            "перечисляет трудности без рефлексии и без того, чему научился",
-            "описывает успех как врожденный талант, а не как рост через усилие",
+            "describes success as fixed talent rather than growth through effort",
         ],
     },
     "motivation_authenticity": {
         "positive": [
-            "explains why this program matters with concrete reasons, values, and real future direction",
+            "explains why this program matters with concrete reasons, values, and future direction",
             "connects personal experience to mission, community, and learning goals",
-            "объясняет зачем нужна программа через конкретные причины, ценности и реальное направление",
-            "связывает личный опыт с миссией, сообществом и учебными целями",
         ],
         "negative": [
-            "generic dream statement without grounded reasons or examples",
-            "polished but empty motivation with vague impact claims",
-            "общая мотивация без приземленных причин и примеров",
-            "гладкий, но пустой текст с расплывчатыми заявлениями о влиянии",
+            "uses generic dream statements without grounded reasons or examples",
+            "sounds polished but empty and vague about real contribution",
         ],
     },
     "authenticity_groundedness": {
         "positive": [
             "uses concrete scenes, people, tradeoffs, and believable small details",
-            "consistent voice across sections with specific examples and limits",
-            "использует конкретные сцены, людей, компромиссы и правдоподобные детали",
-            "сохраняет единый голос в разных секциях и приводит конкретные примеры с ограничениями",
+            "keeps a consistent voice across sections with specific examples and real constraints",
         ],
         "negative": [
-            "overly generic, polished, and abstract writing with little concrete evidence",
-            "claims impact without names, situations, numbers, or real constraints",
-            "слишком общий и гладкий текст без конкретных деталей",
-            "заявляет о влиянии без ситуаций, чисел, ограничений и реального контекста",
+            "uses overly generic, polished, and abstract writing with little concrete evidence",
+            "claims impact without names, situations, numbers, or practical limits",
+        ],
+    },
+    "community_orientation": {
+        "positive": [
+            "noticed that younger students or other people lacked opportunities and tried to help them in a practical way",
+            "shares notes, teaches, mentors, or supports other people and wants to bring that experience back to the city or community",
+            "connects personal growth with usefulness, responsibility, fairness, giving back, and improving opportunities for others",
+        ],
+        "negative": [
+            "wants the program mainly for credentials, status, networks, or personal success without helping other people",
+            "focuses on maximizing own opportunities, standing out, and becoming impressive without concrete contribution",
+            "talks about impact in abstract terms without showing care for a real group or local problem",
         ],
     },
 }
 
 
-MULTILINGUAL_CONCEPTS: dict[str, list[str]] = {
-    "leadership": [
-        "leader",
-        "leadership",
-        "organize",
-        "organized",
-        "coordinate",
-        "initiative",
-        "лидер",
-        "организ",
-        "координ",
-        "инициатив",
-    ],
-    "growth": [
-        "growth",
-        "adapt",
-        "adapted",
-        "improve",
-        "improved",
-        "learned",
-        "reflection",
-        "рост",
-        "адапт",
-        "улучш",
-        "науч",
-        "рефлекс",
-    ],
-    "motivation": [
-        "mission",
-        "purpose",
+ENGLISH_CONCEPTS: dict[str, list[str]] = {
+    "leadership": ["leader", "leadership", "organize", "organized", "coordinate", "initiative", "responsibility"],
+    "growth": ["growth", "adapt", "adapted", "improve", "improved", "learned", "reflection", "feedback"],
+    "motivation": ["mission", "purpose", "community", "future", "program", "why", "goal"],
+    "groundedness": ["example", "details", "specific", "evidence", "outcome", "timeline", "result"],
+    "community": [
         "community",
-        "future",
-        "program",
-        "мисси",
-        "цель",
-        "сообществ",
-        "будущ",
-        "програм",
+        "city",
+        "school",
+        "students",
+        "teachers",
+        "people",
+        "others",
+        "younger",
+        "neighborhood",
+        "local",
+        "opportunity",
+        "opportunities",
+        "give back",
+        "bring back",
     ],
-    "groundedness": [
-        "example",
-        "details",
-        "specific",
-        "evidence",
-        "outcome",
-        "пример",
-        "детал",
-        "конкрет",
-        "доказ",
-        "результ",
+    "contribution": ["share", "sharing", "teach", "teaching", "mentor", "mentoring", "support", "help", "helping"],
+    "self_advancement": [
+        "successful",
+        "competitive",
+        "impressive",
+        "credentials",
+        "network",
+        "networks",
+        "maximize",
+        "stand out",
+        "personal future",
+        "own opportunities",
     ],
-    "responsibility": [
-        "responsibility",
-        "responsible",
-        "accountable",
-        "ответствен",
-        "обязан",
-    ],
-    "challenge": [
-        "difficulty",
-        "setback",
-        "failure",
-        "problem",
-        "challenge",
-        "сложн",
-        "неудач",
-        "проблем",
-        "трудн",
-    ],
-    "adaptation": [
-        "changed",
-        "change",
-        "feedback",
-        "adjusted",
-        "adapted",
-        "измен",
-        "обратн",
-        "адапт",
-        "скоррект",
-    ],
-    "impact": [
-        "impact",
-        "improved",
-        "helped",
-        "result",
-        "outcome",
-        "влияни",
-        "помог",
-        "улучш",
-        "результ",
-    ],
+    "values": ["responsibility", "fairness", "honesty", "kindness", "support", "care", "respect"],
 }
 
 
@@ -219,10 +158,10 @@ def _char_ngrams(text: str, n: int = 3) -> Iterable[str]:
         yield compact[idx : idx + n]
 
 
-def _multilingual_semantic_expand(text: str) -> str:
+def _semantic_expand(text: str) -> str:
     lowered = normalize_unicode_text(text).lower()
     concept_tokens: list[str] = []
-    for concept, stems in MULTILINGUAL_CONCEPTS.items():
+    for concept, stems in ENGLISH_CONCEPTS.items():
         if any(stem in lowered for stem in stems):
             concept_tokens.append(f"concept_{concept}")
     if not concept_tokens:
@@ -231,7 +170,7 @@ def _multilingual_semantic_expand(text: str) -> str:
 
 
 def _hash_vectorize(text: str) -> list[float]:
-    expanded = _multilingual_semantic_expand(text)
+    expanded = _semantic_expand(text)
     vector = [0.0] * EMBEDDING_DIM
     for token in _tokenize(expanded):
         vector[hash(f"tok::{token}") % EMBEDDING_DIM] += 1.0
@@ -252,21 +191,21 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
 
 
 class HashSemanticEncoder:
-    backend_name = "hash-embedding-multilingual-bridge"
+    backend_name = "hash-embedding-english-fallback"
 
     def encode(self, texts: list[str]) -> list[list[float]]:
         return [_hash_vectorize(text) for text in texts]
 
 
 class TfidfCharNgramEncoder:
-    backend_name = "tfidf-char-ngram-multilingual-bridge"
+    backend_name = "tfidf-char-ngram-english"
 
     def __init__(self) -> None:
         if TfidfVectorizer is None:  # pragma: no cover - optional dependency
             raise RuntimeError("sklearn_unavailable")
 
     def encode(self, texts: list[str]) -> list[list[float]]:
-        expanded_texts = [_multilingual_semantic_expand(text) for text in texts]
+        expanded_texts = [_semantic_expand(text) for text in texts]
         vectorizer = TfidfVectorizer(
             analyzer="char_wb",
             ngram_range=(3, 5),
@@ -289,7 +228,7 @@ class SentenceTransformerEncoder:
         self.model_name = model_name
 
     def encode(self, texts: list[str]) -> list[list[float]]:
-        expanded_texts = [_multilingual_semantic_expand(text) for text in texts]
+        expanded_texts = [_semantic_expand(text) for text in texts]
         vectors = self.model.encode(expanded_texts, normalize_embeddings=True)
         return [vector.tolist() for vector in vectors]
 
@@ -356,6 +295,7 @@ def extract_semantic_rubric_features(
             "semantic_growth_trajectory": 0.0,
             "semantic_motivation_authenticity": 0.0,
             "semantic_authenticity_groundedness": 0.0,
+            "semantic_community_orientation": 0.0,
             "semantic_hidden_potential": 0.0,
         }
         diagnostics: dict[str, float | int | str] = {"chunk_count": 0, "backend": encoder.backend_name}
@@ -416,13 +356,13 @@ def extract_semantic_rubric_features(
 
     hidden_potential = weighted_average_normalized(
         [
-            (features.get("semantic_growth_trajectory", 0.0), 0.30),
-            (features.get("semantic_leadership_potential", 0.0), 0.24),
+            (features.get("semantic_growth_trajectory", 0.0), 0.28),
+            (features.get("semantic_leadership_potential", 0.0), 0.22),
             (features.get("semantic_motivation_authenticity", 0.0), 0.16),
             (features.get("semantic_authenticity_groundedness", 0.0), 0.10),
-            (float(heuristic_features.get("resilience", 0.0)), 0.10),
-            (float(heuristic_features.get("evidence_count", 0.0)), 0.05),
-            (1.0 - float(heuristic_features.get("genericness_score", 0.0)), 0.05),
+            (features.get("semantic_community_orientation", 0.0), 0.08),
+            (float(heuristic_features.get("resilience", 0.0)), 0.08),
+            (float(heuristic_features.get("community_value_orientation", 0.0)), 0.08),
         ],
         default=0.0,
     )

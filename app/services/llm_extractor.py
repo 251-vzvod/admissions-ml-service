@@ -18,6 +18,8 @@ class LLMExplainabilityResult:
     uncertainty_claims: list[dict[str, str]]
     evidence_spans: list[dict[str, str]]
     rationale: str
+    rubric_assessment: dict[str, int | str]
+    committee_follow_up_question: str
     llm_metadata: dict[str, str | int | float]
 
 
@@ -34,7 +36,27 @@ def _claim_to_dict(item: dict[str, str] | object) -> dict[str, str]:
 def _to_result(extraction: LLMExplainabilityOutput, llm_metadata: dict[str, str | int | float]) -> LLMExplainabilityResult:
     strength_claims = [_claim_to_dict(item.model_dump()) for item in extraction.top_strength_signals[:3]]
     gap_claims = [_claim_to_dict(item.model_dump()) for item in extraction.main_gap_signals[:3]]
-    uncertainty_claims = [_claim_to_dict(item.model_dump()) for item in extraction.uncertainties[:3]]
+    uncertainty_claims = [_claim_to_dict(item.model_dump()) for item in extraction.uncertainty_signals[:3]]
+
+    if not strength_claims and extraction.evidence_bullets:
+        strength_claims = [
+            {
+                "claim": bullet,
+                "source": "motivation_letter_text",
+                "snippet": "",
+            }
+            for bullet in extraction.evidence_bullets[:3]
+        ]
+
+    if not uncertainty_claims and extraction.uncertainties:
+        uncertainty_claims = [
+            {
+                "claim": item,
+                "source": "motivation_letter_text",
+                "snippet": "",
+            }
+            for item in extraction.uncertainties[:3]
+        ]
 
     evidence_spans = [
         {
@@ -67,7 +89,9 @@ def _to_result(extraction: LLMExplainabilityOutput, llm_metadata: dict[str, str 
         gap_claims=gap_claims,
         uncertainty_claims=uncertainty_claims,
         evidence_spans=evidence_spans,
-        rationale=extraction.extractor_rationale,
+        rationale=extraction.extractor_rationale or (extraction.human_review.notes if extraction.human_review else ""),
+        rubric_assessment=dict(extraction.rubric_assessment),
+        committee_follow_up_question=extraction.committee_follow_up_question,
         llm_metadata=llm_metadata,
     )
 
@@ -82,7 +106,10 @@ def extract_explainability_with_llm(
 
     request = LLMRequest(
         system_prompt=SYSTEM_PROMPT,
-        user_prompt=build_extraction_user_prompt(bundle, deterministic_signals=deterministic_signals),
+        user_prompt=build_extraction_user_prompt(
+            bundle=bundle,
+            deterministic_signals=deterministic_signals,
+        ),
         model=llm_cfg.model,
         temperature=llm_cfg.temperature,
         timeout_seconds=llm_cfg.timeout_seconds,
@@ -116,4 +143,7 @@ def extract_text_features_with_llm(
     deterministic_signals: dict[str, float | bool] | None = None,
 ) -> LLMExplainabilityResult:
     """Backward-compatible alias to explainability-only extraction."""
-    return extract_explainability_with_llm(bundle=bundle, deterministic_signals=deterministic_signals)
+    return extract_explainability_with_llm(
+        bundle=bundle,
+        deterministic_signals=deterministic_signals,
+    )

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 
-SCORING_VERSION = "v1.2.0"
-SCORING_CONFIG_VERSION = "cfg-v1.3.0"
+SCORING_VERSION = "v1.4.0"
+SCORING_CONFIG_VERSION = "cfg-v1.5.0"
 WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v3"
 PROMPT_VERSION: str | None = None
 
@@ -77,11 +77,12 @@ class ScoringWeights:
 
     merit_breakdown: dict[str, float] = field(
         default_factory=lambda: {
-            "potential": 0.24,
-            "motivation": 0.16,
-            "leadership_agency": 0.20,
-            "experience_skills": 0.24,
-            "trust_completeness": 0.16,
+            "potential": 0.22,
+            "motivation": 0.15,
+            "leadership_agency": 0.18,
+            "community_values": 0.18,
+            "experience_skills": 0.15,
+            "trust_completeness": 0.12,
         }
     )
     confidence_components: dict[str, float] = field(
@@ -116,6 +117,33 @@ class Thresholds:
     require_video_presentation: bool = False
     min_required_documents: int = 0
     min_portfolio_links: int = 0
+
+
+@dataclass(slots=True)
+class PolicyConfig:
+    """Committee routing and shortlist policy thresholds."""
+
+    insufficient_evidence_confidence_max: int = 31
+    insufficient_evidence_coverage_max: int = 27
+
+    authenticity_review_risk_min: int = 45
+
+    hidden_potential_score_min: int = 24
+    hidden_potential_trajectory_min: int = 22
+    hidden_potential_coverage_min: int = 24
+
+    support_needed_score_min: int = 55
+    support_needed_merit_min: int = 28
+
+    priority_merit_min: int = 56
+    priority_confidence_min: int = 42
+    priority_authenticity_risk_max: int = 44
+    priority_coverage_min: int = 36
+
+    shortlist_priority_min: int = 40
+    shortlist_merit_min: int = 28
+    shortlist_coverage_min: int = 24
+    shortlist_authenticity_risk_max: int = 64
 
 
 @dataclass(slots=True)
@@ -173,7 +201,7 @@ def _env_int(name: str, default: int) -> int:
 class LLMConfig:
     """Configuration for LLM-assisted extraction."""
 
-    enabled: bool = True
+    enabled: bool = False
     provider: str = "openai"
     model: str = "gpt-4o-mini"
     timeout_seconds: float = 20.0
@@ -189,7 +217,7 @@ class LLMConfig:
     @classmethod
     def from_env(cls) -> "LLMConfig":
         return cls(
-            enabled=parse_bool_env("ENABLE_LLM", default=True),
+            enabled=parse_bool_env("ENABLE_LLM", default=False),
             provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "openai")),
             model=_strip_wrapping_quotes(os.getenv("LLM_MODEL", "gpt-4o-mini")),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
@@ -208,13 +236,13 @@ class SemanticConfig:
     """Configuration for semantic rubric backend selection."""
 
     backend: str = "hash"
-    model: str = "intfloat/multilingual-e5-base"
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     @classmethod
     def from_env(cls) -> "SemanticConfig":
         return cls(
             backend=_strip_wrapping_quotes(os.getenv("SEMANTIC_BACKEND", "hash")),
-            model=_strip_wrapping_quotes(os.getenv("SEMANTIC_MODEL", "intfloat/multilingual-e5-base")),
+            model=_strip_wrapping_quotes(os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")),
         )
 
 
@@ -250,6 +278,7 @@ class AppConfig:
     excluded_fields: list[str] = field(default_factory=lambda: EXCLUDED_FIELDS.copy())
     weights: ScoringWeights = field(default_factory=ScoringWeights)
     thresholds: Thresholds = field(default_factory=Thresholds)
+    policy: PolicyConfig = field(default_factory=PolicyConfig)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
     llm: LLMConfig = field(default_factory=LLMConfig.from_env)
     semantic: SemanticConfig = field(default_factory=SemanticConfig.from_env)
@@ -272,6 +301,7 @@ def build_scoring_config_snapshot() -> dict[str, Any]:
             "confidence_components": CONFIG.weights.confidence_components,
         },
         "thresholds": asdict(CONFIG.thresholds),
+        "policy": asdict(CONFIG.policy),
         "normalization": {
             "english_scale_max": CONFIG.normalization.english_scale_max,
             "certificate_scale_max": CONFIG.normalization.certificate_scale_max,

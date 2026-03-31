@@ -82,7 +82,7 @@ def test_llm_parser_accepts_alias_keys_and_source_values() -> None:
     parsed = parse_llm_extraction_json(json.dumps(payload))
     assert parsed.top_strength_signals[0].source == "interview_text"
     assert parsed.main_gap_signals[0].source == "motivation_questions"
-    assert parsed.uncertainties[0].source == "motivation_letter_text"
+    assert parsed.uncertainty_signals[0].source == "motivation_letter_text"
     assert parsed.evidence_spans[0].source == "video_interview_transcript_text"
     assert parsed.evidence_spans[0].text.startswith("We assigned roles")
 

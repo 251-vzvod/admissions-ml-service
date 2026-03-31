@@ -2,6 +2,7 @@ from copy import deepcopy
 
 from app.schemas.decision import Recommendation
 from app.services.committee_guidance import build_committee_guidance
+from app.services.policy import build_policy_snapshot
 from app.services.pipeline import ScoringPipeline
 
 
@@ -161,29 +162,31 @@ def test_hidden_potential_is_not_punished_below_polished_low_signal_profile() ->
 
 def test_committee_guidance_surfaces_hidden_potential_and_follow_up_question() -> None:
     guidance = build_committee_guidance(
-        feature_map={
-            "growth_trajectory": 0.74,
-            "resilience": 0.68,
-            "initiative": 0.36,
-            "evidence_count": 0.57,
-            "specificity_score": 0.42,
-            "motivation_clarity": 0.58,
-            "genericness_score": 0.18,
-            "polished_but_empty_score": 0.16,
-            "consistency_score": 0.79,
-            "cross_section_mismatch_score": 0.04,
+        review_signals={
+            "growth_signal": 0.74,
+            "agency_signal": 0.48,
+            "motivation_signal": 0.58,
+            "community_signal": 0.54,
+            "evidence_signal": 0.57,
+            "authenticity_signal": 0.79,
+            "polish_risk_signal": 0.18,
+            "hidden_signal": 0.64,
         },
-        semantic_scores={
-            "hidden_potential": 0.64,
-            "leadership_potential": 0.60,
-            "growth_trajectory": 0.63,
-        },
+        policy=build_policy_snapshot(
+            merit_score=48,
+            confidence_score=44,
+            authenticity_risk=22,
+            hidden_potential_score=38,
+            support_needed_score=61,
+            shortlist_priority_score=57,
+            evidence_coverage_score=49,
+            trajectory_score=52,
+        ),
         hidden_potential_score=38,
         support_needed_score=61,
         trajectory_score=52,
         evidence_coverage_score=49,
         merit_score=48,
-        confidence_score=44,
         authenticity_risk=22,
         recommendation=Recommendation.STANDARD_REVIEW,
         review_flags=[],
@@ -191,6 +194,7 @@ def test_committee_guidance_surfaces_hidden_potential_and_follow_up_question() -
 
     assert any("Hidden potential" == cohort for cohort in guidance.cohorts)
     assert any("Promising but needs support" == cohort for cohort in guidance.cohorts)
+    assert any("Community-oriented builder" == cohort for cohort in guidance.cohorts)
     assert guidance.suggested_follow_up_question
     assert guidance.why_candidate_surfaced
 
@@ -224,3 +228,50 @@ def test_claim_evidence_extraction_returns_supported_or_weak_claims() -> None:
         assert first.source
         assert first.snippet
         assert 0 <= first.support_score <= 100
+
+
+def test_community_oriented_candidate_outscores_self_advancement_only_motivation() -> None:
+    pipeline = ScoringPipeline()
+
+    community_payload = {
+        "candidate_id": "cand_community_signal",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "In my city many younger students stop trying because they think extra learning is only for richer families. "
+                "I started sharing my notes, helping them after class, and asking teachers what confused them most."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this program?",
+                    "answer": (
+                        "I want to learn how to build projects that solve real problems in my city and then bring that experience back."
+                    ),
+                }
+            ],
+            "interview_text": (
+                "What matters to me is not only my future, but whether I can improve opportunities for other young people around me."
+            ),
+        },
+    }
+
+    self_advancement_payload = {
+        "candidate_id": "cand_self_advancement_signal",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I want to join this program because it will help me become more successful, more competitive, and more impressive."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this program?",
+                    "answer": "I want stronger credentials, better networks, and a better personal future.",
+                }
+            ],
+            "interview_text": "My main goal is to maximize my own opportunities and stand out.",
+        },
+    }
+
+    community_result = pipeline.score_candidate(community_payload)
+    self_advancement_result = pipeline.score_candidate(self_advancement_payload)
+
+    assert community_result.merit_score >= self_advancement_result.merit_score
+    assert community_result.semantic_rubric_scores["community_orientation"] >= self_advancement_result.semantic_rubric_scores["community_orientation"]

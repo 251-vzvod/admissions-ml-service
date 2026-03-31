@@ -30,6 +30,7 @@ DIMENSION_LABELS = {
     "growth_trajectory": "Candidate demonstrates growth through challenge, adaptation, and reflection.",
     "motivation_authenticity": "Candidate's motivation is grounded in concrete reasons, values, and future direction.",
     "authenticity_groundedness": "Candidate's story is supported by specific details rather than only abstract statements.",
+    "community_orientation": "Candidate connects learning and initiative with usefulness for other people or a real community problem.",
 }
 
 
@@ -38,6 +39,7 @@ DIMENSION_RATIONALES = {
     "growth_trajectory": "Supported by challenge-response and reflection signals across sections.",
     "motivation_authenticity": "Supported by program-fit and grounded motivation signals rather than polish alone.",
     "authenticity_groundedness": "Supported by concrete details, consistency, and non-generic evidence.",
+    "community_orientation": "Supported by concrete contribution, responsibility, or community-problem framing in the candidate text.",
 }
 
 
@@ -46,6 +48,7 @@ WEAK_DIMENSION_LABELS = {
     "growth_trajectory": "Growth trajectory signal exists, but concrete outcomes are still thin.",
     "motivation_authenticity": "Motivation seems genuine, but the case for why this program matters is not yet fully grounded.",
     "authenticity_groundedness": "Some parts of the story are plausible, but the grounding is still weaker than ideal.",
+    "community_orientation": "Community-oriented intent exists, but the concrete contribution to other people is still under-supported.",
 }
 
 
@@ -59,18 +62,17 @@ def _snippet(text: str, max_len: int = 160) -> str:
 def _dimension_support_raw(
     *,
     dimension_score: float,
-    feature_map: dict[str, float | bool | int | None],
+    review_signals: dict[str, float],
     bundle: NormalizedTextBundle,
 ) -> float:
     source_groups = clamp01(float(bundle.stats.get("logical_source_groups_present", 0)) / 3.0)
     return weighted_average_normalized(
         [
             (dimension_score, 0.38),
-            (float(feature_map.get("evidence_count", 0.0)), 0.18),
-            (float(feature_map.get("specificity_score", 0.0)), 0.16),
-            (float(feature_map.get("consistency_score", 0.0)), 0.16),
+            (float(review_signals.get("evidence_signal", 0.0)), 0.28),
+            (float(review_signals.get("authenticity_signal", 0.0)), 0.22),
             (source_groups, 0.06),
-            (1.0 - float(feature_map.get("genericness_score", 0.0)), 0.06),
+            (1.0 - float(review_signals.get("polish_risk_signal", 0.0)), 0.06),
         ]
     )
 
@@ -96,7 +98,7 @@ def _build_item(
 def build_claim_evidence_map(
     *,
     bundle: NormalizedTextBundle,
-    feature_map: dict[str, float | bool | int | None],
+    review_signals: dict[str, float],
     semantic_result: SemanticRubricResult,
     hidden_potential_score: int,
     evidence_coverage_score: int,
@@ -111,7 +113,7 @@ def build_claim_evidence_map(
         score = float(semantic_result.features.get(f"semantic_{dimension}", 0.0))
         support_raw = _dimension_support_raw(
             dimension_score=score,
-            feature_map=feature_map,
+            review_signals=review_signals,
             bundle=bundle,
         )
         dimension_candidates.append((dimension, score, support_raw))
@@ -152,7 +154,7 @@ def build_claim_evidence_map(
             (hidden_potential_score / 100.0, 0.44),
             (trajectory_score / 100.0, 0.26),
             (evidence_coverage_score / 100.0, 0.20),
-            (float(feature_map.get("consistency_score", 0.0)), 0.10),
+            (float(review_signals.get("authenticity_signal", 0.0)), 0.10),
         ]
     )
     if hidden_potential_score >= 35 and evidence_coverage_score >= 24:

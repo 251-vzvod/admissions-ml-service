@@ -26,14 +26,6 @@ ACTION_TERMS = [
     "helped",
     "initiated",
     "organized",
-    "инициировал",
-    "организовал",
-    "создал",
-    "запустил",
-    "улучшил",
-    "помог",
-    "собрал",
-    "изменил",
 ]
 
 ROLE_TERMS = [
@@ -47,14 +39,6 @@ ROLE_TERMS = [
     "community",
     "classmates",
     "students",
-    "группа",
-    "команда",
-    "лидер",
-    "наставник",
-    "волонтер",
-    "сообщество",
-    "одноклассники",
-    "ученики",
 ]
 
 OUTCOME_TERMS = [
@@ -67,11 +51,6 @@ OUTCOME_TERMS = [
     "better",
     "changed",
     "resulted",
-    "результат",
-    "улучш",
-    "добил",
-    "смог",
-    "измен",
 ]
 
 TEMPORAL_TERMS = [
@@ -85,13 +64,6 @@ TEMPORAL_TERMS = [
     "at first",
     "then",
     "when",
-    "когда",
-    "после",
-    "до",
-    "сначала",
-    "потом",
-    "позже",
-    "несколько месяцев",
 ]
 
 CAUSE_EFFECT_TERMS = [
@@ -102,10 +74,6 @@ CAUSE_EFFECT_TERMS = [
     "because of",
     "which meant",
     "so i",
-    "потому",
-    "поэтому",
-    "в результате",
-    "чтобы",
 ]
 
 RESILIENCE_TERMS = [
@@ -117,13 +85,6 @@ RESILIENCE_TERMS = [
     "hard",
     "uncertainty",
     "struggle",
-    "сложно",
-    "трудно",
-    "не сдался",
-    "ошиб",
-    "не получилось",
-    "тяжело",
-    "трудност",
 ]
 
 ADAPTATION_TERMS = [
@@ -137,12 +98,6 @@ ADAPTATION_TERMS = [
     "after that i",
     "learned how",
     "feedback",
-    "изменил",
-    "переделал",
-    "адаптировал",
-    "улучшил",
-    "обратная связь",
-    "скорректировал",
 ]
 
 REFLECTION_TERMS = [
@@ -155,12 +110,6 @@ REFLECTION_TERMS = [
     "i became",
     "what changed in me",
     "i noticed",
-    "я понял",
-    "я осознал",
-    "я научился",
-    "это изменило меня",
-    "я заметил",
-    "я стал",
 ]
 
 PROGRAM_FIT_TERMS = [
@@ -174,13 +123,91 @@ PROGRAM_FIT_TERMS = [
     "community",
     "education",
     "program-based",
-    "программа",
-    "университет",
-    "проект",
-    "команд",
-    "мисси",
-    "обучени",
-    "сообщество",
+]
+
+COMMUNITY_TERMS = [
+    "community",
+    "neighborhood",
+    "neighbourhood",
+    "classmates",
+    "students",
+    "school",
+    "city",
+    "local",
+    "people",
+    "others",
+    "younger students",
+    "neighbor",
+    "family",
+    "brother",
+    "sister",
+    "community",
+]
+
+CONTRIBUTION_TERMS = [
+    "helped",
+    "support",
+    "supported",
+    "shared",
+    "taught",
+    "teach",
+    "volunteer",
+    "cared",
+    "care",
+    "responsible",
+    "responsibility",
+    "honest",
+    "honesty",
+    "fair",
+    "fairness",
+    "kind",
+    "kindness",
+    "help people",
+    "give back",
+    "help my city",
+]
+
+LOCAL_PROBLEM_TERMS = [
+    "problem",
+    "issue",
+    "lack",
+    "need",
+    "not enough",
+    "resources",
+    "opportunities",
+    "jobs",
+    "troubles me",
+    "worries me",
+    "problem in my city",
+    "problem in my community",
+]
+
+FUTURE_CONTRIBUTION_TERMS = [
+    "help others",
+    "help my city",
+    "help my community",
+    "improve my city",
+    "improve my community",
+    "give back",
+    "bring back",
+    "create value",
+    "contribute",
+    "make my city better",
+]
+
+VALUES_TERMS = [
+    "honesty",
+    "honest",
+    "kindness",
+    "kind",
+    "responsibility",
+    "responsible",
+    "fair",
+    "fairness",
+    "right thing",
+    "respect",
+    "care",
+    "truth",
 ]
 
 GENERIC_TERMS = [
@@ -192,11 +219,6 @@ GENERIC_TERMS = [
     "change the world",
     "unlock my potential",
     "meaningful impact",
-    "я мотивирован",
-    "я очень мотивирован",
-    "хочу развиваться",
-    "мечтаю",
-    "изменить мир",
 ]
 
 NUMERIC_TOKENS = [str(i) for i in range(10)]
@@ -205,8 +227,6 @@ CONTRADICTION_PAIRS = [
     ("i never", "i always"),
     ("no experience", "i led"),
     ("do not know", "clear plan"),
-    ("никогда", "всегда"),
-    ("нет опыта", "я руководил"),
 ]
 
 STOPWORDS = {
@@ -237,25 +257,6 @@ STOPWORDS = {
     "you",
     "our",
     "but",
-    "или",
-    "как",
-    "что",
-    "это",
-    "когда",
-    "потом",
-    "после",
-    "перед",
-    "для",
-    "его",
-    "ее",
-    "они",
-    "она",
-    "оно",
-    "мне",
-    "меня",
-    "свои",
-    "свою",
-    "своих",
 }
 
 
@@ -324,9 +325,6 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             full_text.count(" i ")
             + full_text.count(" my ")
             + full_text.count(" me ")
-            + full_text.count(" я ")
-            + full_text.count(" мой ")
-            + full_text.count(" меня ")
         )
         / 40.0
     )
@@ -339,6 +337,11 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
     adaptation_density = _density_score(full_text, ADAPTATION_TERMS, denominator=12.0)
     reflection_density = _density_score(full_text, REFLECTION_TERMS, denominator=12.0)
     program_fit_density = _density_score(full_text, PROGRAM_FIT_TERMS, denominator=10.0)
+    community_density = _density_score(full_text, COMMUNITY_TERMS, denominator=16.0)
+    contribution_density = _density_score(full_text, CONTRIBUTION_TERMS, denominator=18.0)
+    local_problem_density = _density_score(full_text, LOCAL_PROBLEM_TERMS, denominator=16.0)
+    future_contribution_density = _density_score(full_text, FUTURE_CONTRIBUTION_TERMS, denominator=10.0)
+    values_density = _density_score(full_text, VALUES_TERMS, denominator=14.0)
 
     number_density = clamp01(sum(full_text.count(d) for d in NUMERIC_TOKENS) / 20.0)
     generic_density = _density_score(full_text, GENERIC_TERMS, denominator=10.0)
@@ -411,6 +414,16 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             (float(structured.get("evidence_count_estimate", 0.0)), 0.20),
             (number_density, 0.15),
             (float(structured.get("linked_examples_count", 0.0)), 0.10),
+        ]
+    )
+    community_value_orientation = weighted_average_normalized(
+        [
+            (community_density, 0.22),
+            (contribution_density, 0.28),
+            (local_problem_density, 0.14),
+            (future_contribution_density, 0.14),
+            (values_density, 0.16),
+            (role_density, 0.06),
         ]
     )
 
@@ -589,6 +602,7 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "resilience": resilience,
             "program_fit": program_fit,
             "evidence_richness": evidence_richness,
+            "community_value_orientation": community_value_orientation,
             "specificity_score": specificity_score,
             "evidence_count": evidence_count,
             "trajectory_challenge_score": trajectory_challenge_score,
@@ -612,5 +626,7 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "generic_density": generic_density,
             "long_but_thin": long_but_thin,
             "section_pair_count": len(lexical_overlaps),
+            "community_density": community_density,
+            "contribution_density": contribution_density,
         },
     )

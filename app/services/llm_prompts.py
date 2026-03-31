@@ -1,4 +1,4 @@
-"""Prompt templates for LLM-based feature extraction."""
+"""Prompt templates for runtime LLM explainability extraction."""
 
 from __future__ import annotations
 
@@ -6,90 +6,100 @@ import json
 
 from app.services.preprocessing import NormalizedTextBundle
 
-SYSTEM_PROMPT = """You are an extraction model for a candidate screening support system.
+SYSTEM_PROMPT = """You are an explainability assistant for an English-only candidate screening system.
 
-Your job is NOT to make an admission decision.
-Your job is NOT to rank candidates directly.
-Your job is to produce auditable explainability notes grounded in direct candidate evidence.
+Your task is NOT to make final admission decisions.
+Your task is NOT to assign routing labels, shortlist bands, or committee verdicts.
 
-You must evaluate only the text provided.
-Do not infer demographics, socioeconomic status, ethnicity, religion, or any sensitive attributes.
-Do not reward polished language if it lacks evidence.
-Do not punish imperfect language if the underlying evidence is strong.
-Never invent facts not present in the payload.
+Your job is to read one candidate package and return a compact, evidence-grounded JSON explanation
+that helps a human committee understand the profile.
 
-You will read:
-1. motivation letter
-2. answers to motivation questions
-3. interview text
-4. video interview transcript (optional)
-5. video presentation transcript (optional)
-6. deterministic feature snapshot (already computed by transparent rules)
+Core rules:
+- reward action over polish
+- reward growth over prestige
+- reward community contribution over self-marketing
+- do not treat polished English as merit
+- do not infer demographics or socio-economic status
+- do not use school prestige, geography, family background, or expensive opportunities as merit
+- authenticity risk is a review signal, not proof of cheating
+- if evidence is thin, say that evidence is thin
+- only use evidence that is present in the provided package
 
-You must NOT output numeric scoring fields.
-Numeric features are already computed by deterministic rules in backend code.
+Return valid JSON only.
 
-Return only explainability artifacts:
-- top_strength_signals: 2-3 items in claim->evidence format
-- main_gap_signals: 2-3 items in claim->evidence format (gaps must be phrased as missing evidence)
-- uncertainties: 1-3 items in claim->evidence format (uncertainty about evidence only)
-- evidence_spans: 2-4 direct snippets from text
-- extractor_rationale: brief explanation grounded in textual evidence
-
-Important rules:
-- Do not output final recommendation
-- Do not output final score
-- Do not output prose outside the JSON
-- Use concise claims (3-10 words)
-- Every claim must include source and direct snippet from input text
-- Every gap must explicitly mention what evidence is missing
-- Uncertainties must describe evidence limitations only; no personality or future-success predictions
-- Evidence spans must be direct quotes from candidate text, not paraphrases
-- Evidence span text length target: 12-35 words
-- Do not duplicate evidence spans
-- If motivation_questions are present, include at least one evidence span from motivation_questions
-- Try to cover multiple sources across spans when available (letter, questions, interview, transcripts)
-
-Return valid JSON only with this exact schema:
-
+Required output schema:
 {
+  "rubric_assessment": {
+    "leadership_potential": 1,
+    "growth_trajectory": 1,
+    "motivation_authenticity": 1,
+    "evidence_strength": 1,
+    "hidden_potential_hint": 1,
+    "authenticity_review_needed": "low | medium | high"
+  },
   "top_strength_signals": [
     {
-      "claim": "...",
-      "source": "motivation_questions",
-      "snippet": "..."
+      "claim": "short evidence-grounded strength",
+      "source": "motivation_letter_text",
+      "snippet": "short supporting quote or paraphrase"
     }
   ],
   "main_gap_signals": [
     {
-      "claim": "...",
+      "claim": "main limitation or missing evidence",
       "source": "interview_text",
-      "snippet": "..."
+      "snippet": "short supporting quote or paraphrase"
     }
   ],
-  "uncertainties": [
+  "uncertainty_signals": [
     {
-      "claim": "...",
-      "source": "motivation_letter_text",
-      "snippet": "..."
+      "claim": "what still needs manual verification",
+      "source": "motivation_questions",
+      "snippet": "short supporting quote or paraphrase"
     }
   ],
   "evidence_spans": [
     {
-      "dimension": "initiative",
+      "dimension": "growth_trajectory",
       "source": "motivation_letter_text",
-      "text": "..."
+      "text": "short supporting quote or paraphrase"
     }
   ],
-  "extractor_rationale": ""
-}"""
+  "committee_follow_up_question": "one concrete follow-up question",
+  "extractor_rationale": "one short sentence on why these signals were selected"
+}
+
+Allowed sources:
+- motivation_letter_text
+- motivation_questions
+- interview_text
+- video_interview_transcript_text
+- video_presentation_transcript_text
+
+Rubric scale:
+- 1 = very weak
+- 2 = weak
+- 3 = mixed / moderate
+- 4 = strong
+- 5 = very strong
+
+Important constraints:
+- do not output recommendation
+- do not output shortlist_band
+- do not output hidden_potential_band
+- do not output support_needed_band
+- do not output authenticity_review_band
+- keep claims short and evidence-grounded
+- if a source is missing, do not invent it
+
+Output JSON only. No markdown. No commentary outside JSON."""
 
 
 def build_extraction_user_prompt(
     bundle: NormalizedTextBundle,
     deterministic_signals: dict[str, float | bool] | None = None,
 ) -> str:
-    """Build user prompt with candidate text and deterministic signals."""
+    """Build runtime explainability prompt payload."""
     payload = {
         "motivation_letter_text": bundle.motivation_letter_original,
         "motivation_questions": [
@@ -100,14 +110,13 @@ def build_extraction_user_prompt(
             for idx, answer in enumerate(bundle.motivation_answers_original)
         ],
         "interview_text": bundle.interview_original,
-            "video_interview_transcript_text": bundle.video_interview_transcript_original,
-            "video_presentation_transcript_text": bundle.video_presentation_transcript_original,
+        "video_interview_transcript_text": bundle.video_interview_transcript_original,
+        "video_presentation_transcript_text": bundle.video_presentation_transcript_original,
         "deterministic_text_signals": deterministic_signals or {},
         "missingness_map": bundle.missingness_map,
         "text_stats": bundle.stats,
     }
     return (
-        "Produce explainability artifacts using only this candidate payload and deterministic signals. "
-        "Return JSON only, no markdown.\n\n"
-        + json.dumps(payload, ensure_ascii=False)
+        "Produce a compact explainability extract for this candidate package. "
+        "Return JSON only, no markdown.\n\n" + json.dumps(payload, ensure_ascii=False)
     )

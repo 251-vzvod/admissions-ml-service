@@ -28,6 +28,7 @@ def test_semantic_rubrics_extract_dimension_scores() -> None:
     assert result.features["semantic_leadership_potential"] > 0
     assert result.features["semantic_growth_trajectory"] > 0
     assert result.features["semantic_motivation_authenticity"] > 0
+    assert result.features["semantic_community_orientation"] > 0
     assert "leadership_potential" in result.evidence
 
 
@@ -53,31 +54,4 @@ def test_pipeline_returns_semantic_scores() -> None:
 
     assert result.semantic_rubric_scores["leadership_potential"] > 0
     assert result.semantic_rubric_scores["growth_trajectory"] > 0
-
-
-def test_semantic_rubrics_support_russian_text() -> None:
-    bundle = preprocess_text_inputs(
-        {
-            "motivation_letter_text": (
-                "Я организовал небольшую группу поддержки для младших школьников, когда увидел, что они боятся математики. "
-                "Сначала формат не сработал, поэтому я изменил задания, собрал обратную связь и продолжил встречи каждую неделю."
-            ),
-            "motivation_questions": [
-                {
-                    "question": "Почему вам важна эта программа?",
-                    "answer": (
-                        "Мне важно учиться там, где ценят инициативу, рост и проекты для сообщества, а не только оценки."
-                    ),
-                }
-            ],
-            "interview_text": (
-                "Я могу объяснить, что именно не получилось сначала, как я адаптировал план и что изменилось у ребят потом."
-            ),
-        }
-    )
-
-    result = extract_semantic_rubric_features(bundle)
-
-    assert result.features["semantic_leadership_potential"] > 0
-    assert result.features["semantic_growth_trajectory"] > 0
-    assert result.features["semantic_motivation_authenticity"] > 0
+    assert result.semantic_rubric_scores["community_orientation"] > 0

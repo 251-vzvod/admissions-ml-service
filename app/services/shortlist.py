@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.services.policy import build_policy_snapshot
+from app.services.offline_ranker import rank_results_with_offline_ranker
 from app.schemas.decision import Recommendation
 from app.utils.math_utils import clamp01, to_display_score, weighted_average_normalized
 
@@ -26,51 +28,28 @@ class BatchShortlistSummary:
     authenticity_review_candidate_ids: list[str]
 
 
-def _pairwise_preference_score(left: object, right: object) -> float:
-    """Transparent head-to-head comparison for shortlist ordering."""
-    score = 0.0
-    score += (getattr(left, "shortlist_priority_score", 0) - getattr(right, "shortlist_priority_score", 0)) * 0.42
-    score += (getattr(left, "hidden_potential_score", 0) - getattr(right, "hidden_potential_score", 0)) * 0.18
-    score += (getattr(left, "trajectory_score", 0) - getattr(right, "trajectory_score", 0)) * 0.12
-    score += (getattr(left, "evidence_coverage_score", 0) - getattr(right, "evidence_coverage_score", 0)) * 0.11
-    score += (getattr(left, "merit_score", 0) - getattr(right, "merit_score", 0)) * 0.09
-    score += (getattr(left, "confidence_score", 0) - getattr(right, "confidence_score", 0)) * 0.05
-    score += (getattr(right, "authenticity_risk", 100) - getattr(left, "authenticity_risk", 100)) * 0.08
-    return score
+@dataclass(slots=True)
+class HiddenPotentialDiagnostics:
+    underlying_signal: float
+    trajectory_signal: float
+    self_presentation: float
+    overstatement_risk: float
+    evidence_floor: float
+    credible_action_signal: float
+    understatement_gap: float
+    modest_presentation: float
 
 
-def _pairwise_rank_results(results: list[object]) -> list[object]:
-    if len(results) <= 1:
-        return list(results)
-
-    pairwise_totals: dict[str, float] = {getattr(item, "candidate_id", ""): 0.0 for item in results}
-    for idx, left in enumerate(results):
-        for jdx, right in enumerate(results):
-            if idx >= jdx:
-                continue
-            preference = _pairwise_preference_score(left, right)
-            left_id = getattr(left, "candidate_id", "")
-            right_id = getattr(right, "candidate_id", "")
-            if preference > 0:
-                pairwise_totals[left_id] += 1.0 + min(0.5, preference / 100.0)
-                pairwise_totals[right_id] -= min(0.5, preference / 120.0)
-            elif preference < 0:
-                magnitude = abs(preference)
-                pairwise_totals[right_id] += 1.0 + min(0.5, magnitude / 100.0)
-                pairwise_totals[left_id] -= min(0.5, magnitude / 120.0)
-
-    return sorted(
-        results,
-        key=lambda item: (
-            pairwise_totals.get(getattr(item, "candidate_id", ""), 0.0),
-            getattr(item, "shortlist_priority_score", 0),
-            getattr(item, "hidden_potential_score", 0),
-            getattr(item, "trajectory_score", 0),
-            getattr(item, "merit_score", 0),
-            -getattr(item, "authenticity_risk", 100),
-            getattr(item, "confidence_score", 0),
-        ),
-        reverse=True,
+def _practical_action_raw(feature_map: dict[str, float | bool | int | None]) -> float:
+    return weighted_average_normalized(
+        [
+            (float(feature_map.get("initiative", 0.0)), 0.24),
+            (float(feature_map.get("leadership_impact", 0.0)), 0.18),
+            (float(feature_map.get("evidence_count", 0.0)), 0.18),
+            (float(feature_map.get("project_mentions_count", 0.0)), 0.14),
+            (float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.14),
+            (float(feature_map.get("trajectory_outcome_score", 0.0)), 0.12),
+        ]
     )
 
 
@@ -118,15 +97,15 @@ def _self_presentation_raw(
     )
 
 
-def _hidden_potential_raw(
+def _hidden_potential_diagnostics(
     *,
     feature_map: dict[str, float | bool | int | None],
     semantic_scores: dict[str, float | int],
-    authenticity_risk: int,
-) -> float:
+) -> HiddenPotentialDiagnostics:
     underlying_signal = _underlying_signal_raw(feature_map=feature_map, semantic_scores=semantic_scores)
     trajectory_signal = _trajectory_raw(feature_map=feature_map, semantic_scores=semantic_scores)
     self_presentation = _self_presentation_raw(feature_map=feature_map, semantic_scores=semantic_scores)
+    practical_action_signal = _practical_action_raw(feature_map)
     overstatement_risk = weighted_average_normalized(
         [
             (float(feature_map.get("genericness_score", 0.0)), 0.18),
@@ -146,27 +125,61 @@ def _hidden_potential_raw(
     )
     credible_action_signal = weighted_average_normalized(
         [
-            (float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.28),
-            (float(feature_map.get("trajectory_reflection_score", 0.0)), 0.24),
+            (practical_action_signal, 0.42),
+            (float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.18),
+            (float(feature_map.get("trajectory_reflection_score", 0.0)), 0.16),
             (float(feature_map.get("trajectory_outcome_score", 0.0)), 0.12),
-            (float(feature_map.get("evidence_count", 0.0)), 0.22),
-            (float(feature_map.get("initiative", 0.0)), 0.14),
+            (float(feature_map.get("evidence_count", 0.0)), 0.12),
         ]
     )
     understatement_gap = clamp01(underlying_signal - self_presentation)
     modest_presentation = clamp01(0.62 - self_presentation)
+    return HiddenPotentialDiagnostics(
+        underlying_signal=underlying_signal,
+        trajectory_signal=trajectory_signal,
+        self_presentation=self_presentation,
+        overstatement_risk=overstatement_risk,
+        evidence_floor=evidence_floor,
+        credible_action_signal=credible_action_signal,
+        understatement_gap=understatement_gap,
+        modest_presentation=modest_presentation,
+    )
+
+
+def _hidden_potential_raw(
+    *,
+    feature_map: dict[str, float | bool | int | None],
+    semantic_scores: dict[str, float | int],
+    authenticity_risk: int,
+) -> float:
+    diagnostics = _hidden_potential_diagnostics(feature_map=feature_map, semantic_scores=semantic_scores)
     low_evidence_penalty = max(0.0, 0.22 - float(feature_map.get("evidence_count", 0.0)))
+    inflated_presentation_penalty = 0.0
+    if diagnostics.self_presentation >= 0.58 and diagnostics.overstatement_risk >= 0.48:
+        inflated_presentation_penalty += 0.10
+    if diagnostics.understatement_gap <= 0.08:
+        inflated_presentation_penalty += 0.07
+    if diagnostics.credible_action_signal < 0.16 and diagnostics.self_presentation >= 0.52:
+        inflated_presentation_penalty += 0.10
+    if (
+        diagnostics.evidence_floor < 0.32
+        and diagnostics.overstatement_risk >= 0.45
+        and diagnostics.credible_action_signal < 0.18
+    ):
+        inflated_presentation_penalty += 0.08
 
     raw = (
-        (underlying_signal * 0.38)
-        + (trajectory_signal * 0.16)
-        + (credible_action_signal * 0.18)
-        + (understatement_gap * 0.18)
-        + (evidence_floor * 0.10)
-        + (modest_presentation * 0.08)
+        (diagnostics.underlying_signal * 0.30)
+        + (diagnostics.trajectory_signal * 0.14)
+        + (diagnostics.credible_action_signal * 0.24)
+        + (diagnostics.understatement_gap * 0.14)
+        + (diagnostics.evidence_floor * 0.14)
+        + (diagnostics.modest_presentation * 0.04)
     )
-    raw -= overstatement_risk * 0.08
-    raw -= low_evidence_penalty * 0.16
+    raw += min(0.06, (diagnostics.credible_action_signal * 0.10) + (diagnostics.trajectory_signal * 0.06))
+    raw -= diagnostics.overstatement_risk * 0.08
+    raw -= low_evidence_penalty * 0.20
+    raw -= inflated_presentation_penalty
     raw -= max(0.0, (authenticity_risk / 100.0) - 0.78) * 0.08
     return clamp01(raw)
 
@@ -268,17 +281,63 @@ def build_shortlist_signals(
 
 
 def build_batch_shortlist_summary(results: list[object]) -> BatchShortlistSummary:
-    sorted_results = _pairwise_rank_results(results)
+    sorted_results = rank_results_with_offline_ranker(results)
     ranked_candidate_ids = [item.candidate_id for item in sorted_results]
-    shortlist_candidate_ids = [item.candidate_id for item in sorted_results[: min(5, len(sorted_results))]]
+    shortlist_candidate_ids = [
+        item.candidate_id
+        for item in sorted_results
+        if build_policy_snapshot(
+            merit_score=int(getattr(item, "merit_score", 0)),
+            confidence_score=int(getattr(item, "confidence_score", 0)),
+            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
+            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
+            support_needed_score=int(getattr(item, "support_needed_score", 0)),
+            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
+            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
+            trajectory_score=int(getattr(item, "trajectory_score", 0)),
+        ).shortlist_band
+    ][: min(5, len(sorted_results))]
     hidden_potential_candidate_ids = [
-        item.candidate_id for item in sorted_results if getattr(item, "hidden_potential_score", 0) >= 25
+        item.candidate_id
+        for item in sorted_results
+        if build_policy_snapshot(
+            merit_score=int(getattr(item, "merit_score", 0)),
+            confidence_score=int(getattr(item, "confidence_score", 0)),
+            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
+            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
+            support_needed_score=int(getattr(item, "support_needed_score", 0)),
+            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
+            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
+            trajectory_score=int(getattr(item, "trajectory_score", 0)),
+        ).hidden_potential_band
     ][: min(5, len(sorted_results))]
     support_needed_candidate_ids = [
-        item.candidate_id for item in sorted_results if getattr(item, "support_needed_score", 0) >= 55
+        item.candidate_id
+        for item in sorted_results
+        if build_policy_snapshot(
+            merit_score=int(getattr(item, "merit_score", 0)),
+            confidence_score=int(getattr(item, "confidence_score", 0)),
+            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
+            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
+            support_needed_score=int(getattr(item, "support_needed_score", 0)),
+            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
+            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
+            trajectory_score=int(getattr(item, "trajectory_score", 0)),
+        ).support_needed_band
     ][: min(5, len(sorted_results))]
     authenticity_review_candidate_ids = [
-        item.candidate_id for item in sorted_results if getattr(item, "authenticity_risk", 0) >= 45
+        item.candidate_id
+        for item in sorted_results
+        if build_policy_snapshot(
+            merit_score=int(getattr(item, "merit_score", 0)),
+            confidence_score=int(getattr(item, "confidence_score", 0)),
+            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
+            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
+            support_needed_score=int(getattr(item, "support_needed_score", 0)),
+            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
+            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
+            trajectory_score=int(getattr(item, "trajectory_score", 0)),
+        ).authenticity_review_band
     ][: min(5, len(sorted_results))]
 
     return BatchShortlistSummary(
