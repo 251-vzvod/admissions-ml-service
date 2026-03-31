@@ -311,15 +311,6 @@ class ScoringPipeline:
             ],
             extractor_rationale=extractor_rationale,
         )
-        committee_guidance = build_committee_guidance(
-            feature_map=snapshot,
-            semantic_scores=semantic_snapshot,
-            merit_score=scoring_result.merit_score,
-            confidence_score=scoring_result.confidence_score,
-            authenticity_risk=scoring_result.authenticity_risk,
-            recommendation=recommendation_result.recommendation,
-            review_flags=recommendation_flags,
-        )
         shortlist_signals = build_shortlist_signals(
             feature_map={**merged_features, **snapshot},
             semantic_scores={key: to_display_score(value) for key, value in semantic_snapshot.items()},
@@ -327,6 +318,19 @@ class ScoringPipeline:
             confidence_score=scoring_result.confidence_score,
             authenticity_risk=scoring_result.authenticity_risk,
             recommendation=recommendation_result.recommendation,
+        )
+        committee_guidance = build_committee_guidance(
+            feature_map=snapshot,
+            semantic_scores=semantic_snapshot,
+            hidden_potential_score=shortlist_signals.hidden_potential_score,
+            support_needed_score=shortlist_signals.support_needed_score,
+            trajectory_score=shortlist_signals.trajectory_score,
+            evidence_coverage_score=shortlist_signals.evidence_coverage_score,
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
+            recommendation=recommendation_result.recommendation,
+            review_flags=recommendation_flags,
         )
 
         base_response["llm_metadata"] = llm_metadata

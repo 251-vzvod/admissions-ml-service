@@ -26,11 +26,10 @@ class BatchShortlistSummary:
     authenticity_review_candidate_ids: list[str]
 
 
-def _hidden_potential_raw(
+def _underlying_signal_raw(
     *,
     feature_map: dict[str, float | bool | int | None],
     semantic_scores: dict[str, float | int],
-    authenticity_risk: int,
 ) -> float:
     trajectory_signal = weighted_average_normalized(
         [
@@ -41,36 +40,86 @@ def _hidden_potential_raw(
             (float(feature_map.get("growth_trajectory", 0.0)), 0.18),
         ]
     )
-    underlying_signal = weighted_average_normalized(
+    return weighted_average_normalized(
         [
-            (trajectory_signal, 0.20),
-            (float(feature_map.get("resilience", 0.0)), 0.10),
-            (float(feature_map.get("initiative", 0.0)), 0.06),
-            (float(feature_map.get("leadership_impact", 0.0)), 0.05),
-            (float(semantic_scores.get("hidden_potential", 0.0)) / 100.0, 0.24),
-            (float(semantic_scores.get("growth_trajectory", 0.0)) / 100.0, 0.20),
-            (float(semantic_scores.get("leadership_potential", 0.0)) / 100.0, 0.15),
+            (trajectory_signal, 0.22),
+            (float(feature_map.get("resilience", 0.0)), 0.11),
+            (float(feature_map.get("initiative", 0.0)), 0.08),
+            (float(feature_map.get("leadership_impact", 0.0)), 0.06),
+            (float(semantic_scores.get("hidden_potential", 0.0)) / 100.0, 0.22),
+            (float(semantic_scores.get("growth_trajectory", 0.0)) / 100.0, 0.18),
+            (float(semantic_scores.get("leadership_potential", 0.0)) / 100.0, 0.13),
         ]
     )
-    presentation_polish = weighted_average_normalized(
+
+
+def _self_presentation_raw(
+    *,
+    feature_map: dict[str, float | bool | int | None],
+    semantic_scores: dict[str, float | int],
+) -> float:
+    return weighted_average_normalized(
         [
-            (float(feature_map.get("genericness_score", 0.0)), 0.32),
-            (float(feature_map.get("polished_but_empty_score", 0.0)), 0.28),
-            (1.0 - float(feature_map.get("specificity_score", 0.0)), 0.20),
-            (1.0 - float(feature_map.get("evidence_count", 0.0)), 0.20),
+            (float(feature_map.get("motivation_clarity", 0.0)), 0.28),
+            (float(feature_map.get("specificity_score", 0.0)), 0.24),
+            (float(feature_map.get("evidence_richness", 0.0)), 0.18),
+            (float(feature_map.get("evidence_count", 0.0)), 0.14),
+            (float(feature_map.get("completeness_score", 0.0)), 0.08),
+            (float(semantic_scores.get("motivation_authenticity", 0.0)) / 100.0, 0.08),
+        ]
+    )
+
+
+def _hidden_potential_raw(
+    *,
+    feature_map: dict[str, float | bool | int | None],
+    semantic_scores: dict[str, float | int],
+    authenticity_risk: int,
+) -> float:
+    underlying_signal = _underlying_signal_raw(feature_map=feature_map, semantic_scores=semantic_scores)
+    trajectory_signal = _trajectory_raw(feature_map=feature_map, semantic_scores=semantic_scores)
+    self_presentation = _self_presentation_raw(feature_map=feature_map, semantic_scores=semantic_scores)
+    overstatement_risk = weighted_average_normalized(
+        [
+            (float(feature_map.get("genericness_score", 0.0)), 0.18),
+            (float(feature_map.get("polished_but_empty_score", 0.0)), 0.30),
+            (float(feature_map.get("cross_section_mismatch_score", 0.0)), 0.22),
+            (1.0 - float(feature_map.get("specificity_score", 0.0)), 0.15),
+            (1.0 - float(feature_map.get("evidence_count", 0.0)), 0.15),
         ]
     )
     evidence_floor = weighted_average_normalized(
         [
-            (float(feature_map.get("evidence_count", 0.0)), 0.18),
-            (float(feature_map.get("evidence_richness", 0.0)), 0.16),
-            (float(feature_map.get("consistency_score", 0.0)), 0.34),
-            (float(feature_map.get("completeness_score", 0.0)), 0.32),
+            (float(feature_map.get("evidence_count", 0.0)), 0.34),
+            (float(feature_map.get("evidence_richness", 0.0)), 0.22),
+            (float(feature_map.get("consistency_score", 0.0)), 0.24),
+            (float(feature_map.get("completeness_score", 0.0)), 0.20),
         ]
     )
-    presentation_gap = clamp01(underlying_signal * presentation_polish)
-    raw = (underlying_signal * 0.48) + (presentation_gap * 0.34) + (evidence_floor * 0.18)
-    raw -= max(0.0, (authenticity_risk / 100.0) - 0.86) * 0.06
+    credible_action_signal = weighted_average_normalized(
+        [
+            (float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.28),
+            (float(feature_map.get("trajectory_reflection_score", 0.0)), 0.24),
+            (float(feature_map.get("trajectory_outcome_score", 0.0)), 0.12),
+            (float(feature_map.get("evidence_count", 0.0)), 0.22),
+            (float(feature_map.get("initiative", 0.0)), 0.14),
+        ]
+    )
+    understatement_gap = clamp01(underlying_signal - self_presentation)
+    modest_presentation = clamp01(0.62 - self_presentation)
+    low_evidence_penalty = max(0.0, 0.22 - float(feature_map.get("evidence_count", 0.0)))
+
+    raw = (
+        (underlying_signal * 0.38)
+        + (trajectory_signal * 0.16)
+        + (credible_action_signal * 0.18)
+        + (understatement_gap * 0.18)
+        + (evidence_floor * 0.10)
+        + (modest_presentation * 0.08)
+    )
+    raw -= overstatement_risk * 0.08
+    raw -= low_evidence_penalty * 0.16
+    raw -= max(0.0, (authenticity_risk / 100.0) - 0.78) * 0.08
     return clamp01(raw)
 
 
@@ -184,7 +233,7 @@ def build_batch_shortlist_summary(results: list[object]) -> BatchShortlistSummar
     ranked_candidate_ids = [item.candidate_id for item in sorted_results]
     shortlist_candidate_ids = [item.candidate_id for item in sorted_results[: min(5, len(sorted_results))]]
     hidden_potential_candidate_ids = [
-        item.candidate_id for item in sorted_results if getattr(item, "hidden_potential_score", 0) >= 60
+        item.candidate_id for item in sorted_results if getattr(item, "hidden_potential_score", 0) >= 25
     ][: min(5, len(sorted_results))]
     support_needed_candidate_ids = [
         item.candidate_id for item in sorted_results if getattr(item, "support_needed_score", 0) >= 55

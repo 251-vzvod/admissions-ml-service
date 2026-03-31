@@ -747,3 +747,166 @@ The correct committee-facing interpretation is:
 not:
 
 "This profile was proven to be AI-generated."
+
+## Phase 11. Shortlist-First Committee Layer
+
+### Why this was added
+
+The system already produced explainable candidate scores, but it still behaved more like an individual scorer than a shortlist engine for committee workflow.
+
+The main hackathon need is not:
+
+- "score this essay"
+
+but:
+
+- "help the committee surface hidden-potential candidates and build a smarter shortlist"
+
+So the next iteration shifted the system toward shortlist logic, trajectory awareness, and explicit committee support.
+
+### What was added
+
+New derived outputs:
+
+- `hidden_potential_score`
+- `support_needed_score`
+- `shortlist_priority_score`
+- `evidence_coverage_score`
+- `trajectory_score`
+
+New batch outputs:
+
+- `ranked_candidate_ids`
+- `shortlist_candidate_ids`
+- `hidden_potential_candidate_ids`
+- `support_needed_candidate_ids`
+- `authenticity_review_candidate_ids`
+
+### Why this is different from just adding more scores
+
+These are workflow-oriented signals:
+
+- `hidden_potential_score`: helps identify candidates whose underlying growth and leadership signal is stronger than their self-presentation
+- `support_needed_score`: reframes some borderline candidates as promising but likely needing onboarding, language, or academic support
+- `shortlist_priority_score`: moves the system closer to committee review order, not just independent candidate scoring
+- `trajectory_score`: makes growth-path logic more explicit
+- `evidence_coverage_score`: helps separate strong signal with support from good narrative with thin grounding
+
+### What changed in NLP features
+
+The text layer was extended with explicit trajectory-related signals:
+
+- `trajectory_challenge_score`
+- `trajectory_adaptation_score`
+- `trajectory_reflection_score`
+- `trajectory_outcome_score`
+
+This was done to make the system better at detecting:
+
+- challenge
+- action
+- adaptation
+- outcome
+- reflection
+
+instead of relying only on broader growth or resilience heuristics.
+
+### Committee-facing effect
+
+The guidance layer now more explicitly surfaces cases like:
+
+- `Hidden potential`
+- `Trajectory-led candidate`
+- `Promising but needs support`
+
+This improves alignment with the hackathon thesis:
+
+- do not reward polish alone
+- surface early-stage leaders
+- support human review with next-step guidance
+
+## Phase 11.5. Public API Simplification
+
+Once the shortlist-oriented fields were added, the public response became too noisy.
+
+The service had started to expose too many engineering-facing diagnostics alongside committee-facing outputs.
+
+So the public contract was simplified.
+
+Removed from the main committee-facing API surface:
+
+- `feature_snapshot`
+- prompt versioning metadata
+- extractor versioning metadata
+
+Kept public:
+
+- core scoring outputs
+- shortlist-oriented outputs
+- explanation and reviewer guidance
+- optional reviewer-detail fields such as `merit_breakdown`, `semantic_rubric_scores`, `authenticity_review_reasons`, and `ai_detector`
+
+This made the service easier to consume for:
+
+- judges
+- frontend
+- backend
+- committee demo flows
+
+## Phase 12. Hidden Potential Recalibration
+
+### Why this was needed
+
+After the shortlist-first layer was added, one important weakness remained:
+
+- `hidden_potential_score` existed
+- but its scale was still too conservative on realistic growth cases
+- and committee cohorts could still miss candidates whose underlying signal was stronger than their writing quality
+
+### What changed
+
+The hidden-potential logic was recalibrated around a more explicit distinction between:
+
+- `underlying signal`
+- `self-presentation quality`
+- `credible action / evidence floor`
+- `overstatement risk`
+
+This made the signal less dependent on noisy genericness alone and more sensitive to:
+
+- adaptation
+- reflection
+- challenge-response pattern
+- evidence that a candidate actually acted, even if the writing remained imperfect
+
+### Committee-layer alignment
+
+The committee guidance layer was also aligned with the derived shortlist signals.
+
+Instead of using a separate hidden-potential heuristic that could disagree with the score, the cohort logic now relies more directly on:
+
+- `hidden_potential_score`
+- `trajectory_score`
+- `evidence_coverage_score`
+
+### Practical result
+
+A realistic contrast case was checked locally:
+
+- candidate with stronger growth / adaptation / early leadership but imperfect presentation
+- candidate with smoother, thinner, more generic narrative
+
+Observed behavior after recalibration:
+
+- the growth-oriented case now surfaces as `Hidden potential`
+- the polished-thin case does not
+- `why_candidate_surfaced` now better matches the intended product story
+
+### Why this matters
+
+This phase does not solve multilingual fairness yet.
+
+But it does strengthen the most important product thesis for the hackathon:
+
+- do not reward polish alone
+- surface early-stage leaders whose signal is stronger than their self-presentation

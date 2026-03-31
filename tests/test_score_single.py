@@ -107,3 +107,66 @@ def test_score_single_uses_application_materials_features() -> None:
     assert result["evidence_coverage_score"] >= 0
     assert result["confidence_score"] >= 0
     assert isinstance(result["committee_cohorts"], list)
+
+
+def test_hidden_potential_outscores_polished_but_thin_case() -> None:
+    hidden_payload = {
+        "candidate_id": "cand_hidden_signal_001",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "When younger students in my school started skipping science club because they felt behind, "
+                "I asked a teacher for one classroom on Saturdays and began a small peer group. "
+                "The first version failed because the tasks were too hard and attendance dropped, "
+                "so I split the group by level, added weekly feedback, and changed the materials. "
+                "By the end of the semester twelve students were attending regularly and several joined olympiad preparation. "
+                "I learned that leadership is building a system that keeps working after the first failure."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What changed in you through a difficult period?",
+                    "answer": (
+                        "When my family lost stable income, I had to study, help at home, and continue supporting younger students. "
+                        "I became more disciplined and less afraid of responsibility."
+                    ),
+                }
+            ],
+            "interview_text": (
+                "I can explain exactly what failed in the first version, what feedback I collected, and what changed afterward."
+            ),
+        },
+        "consent": True,
+    }
+    polished_payload = {
+        "candidate_id": "cand_polished_thin_001",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I believe in transformative leadership, social innovation, and lifelong growth. "
+                "My journey has prepared me to contribute meaningfully to a world-class community of changemakers. "
+                "I am deeply motivated to collaborate, inspire, and create scalable impact through education and entrepreneurship."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this program?",
+                    "answer": (
+                        "The program matches my aspirations, values, and vision for sustainable impact. "
+                        "I am confident that it will help me unlock my full potential."
+                    ),
+                }
+            ],
+            "interview_text": "I care about leadership, innovation, and social progress.",
+        },
+        "consent": True,
+    }
+
+    hidden_response = client.post("/score", json=hidden_payload)
+    polished_response = client.post("/score", json=polished_payload)
+
+    assert hidden_response.status_code == 200
+    assert polished_response.status_code == 200
+
+    hidden_result = hidden_response.json()
+    polished_result = polished_response.json()
+
+    assert hidden_result["hidden_potential_score"] > polished_result["hidden_potential_score"]
+    assert hidden_result["trajectory_score"] > polished_result["trajectory_score"]
+    assert "Hidden potential" in hidden_result["committee_cohorts"]
