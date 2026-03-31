@@ -366,7 +366,7 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=your_api_key_here
 ```
 
-### Switching Between OpenAI And Ollama
+### Switching Between OpenAI, Groq, And Ollama
 
 The LLM explainability layer uses an OpenAI-compatible client, so you can switch providers without changing application code.
 
@@ -377,6 +377,16 @@ LLM_PROVIDER=openai
 LLM_MODEL=gpt-4o
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=your_openai_api_key_here
+```
+
+Groq example:
+
+```env
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=llama-3.1-8b-instant
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=your_groq_api_key_here
+LLM_TIMEOUT_SECONDS=45
 ```
 
 Ollama example:
@@ -408,6 +418,12 @@ or:
 copy .env.openai.example .env
 ```
 
+or:
+
+```bash
+copy .env.groq.example .env
+```
+
 3. Restart the API process after changing `.env`.
 
 Notes:
@@ -415,6 +431,12 @@ Notes:
 - offline scoring and evaluation scripts do not require OpenAI credits when LLM explainability is disabled
 - if you want fully credit-free scoring, you can also set `ENABLE_LLM=false`
 - Ollama is intended here for local explainability output, not for final benchmark claims
+- Groq is a good middle ground for faster remote open-source inference with the same OpenAI-compatible client
+
+Recommended Groq starting models for this service:
+
+- `llama-3.1-8b-instant` for fast explainability responses
+- `openai/gpt-oss-20b` if you want to try a stronger open-weight model and can tolerate higher latency
 
 ## Evaluation Scripts
 

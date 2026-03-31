@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+.env.groq.example
 data_ver2/
 .vercel
 .tmp/
