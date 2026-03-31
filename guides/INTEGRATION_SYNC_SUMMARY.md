@@ -6,13 +6,11 @@
 - `frontend` пока не интегрирован с live ML response и использует mock data
 - значит сейчас нужен не "bug fix", а синхронизация контрактов
 
-## Что отправить бэкендеру
+## бэкенд
 
 Файл:
 
 - [BACKEND_TO_ML_CONTRACT.md](/C:/Users/Admin/Desktop/decentrathon/ml-service/guides/BACKEND_TO_ML_CONTRACT.md)
-
-Короткое сообщение:
 
 ```text
 Ниже точный contract для вызова ML-сервиса.
@@ -20,13 +18,11 @@
 Личные поля в ML не отправляем.
 ```
 
-## Что отправить фронтендеру
+## фронтенд
 
 Файл:
 
 - [FRONTEND_ML_RESPONSE_CONTRACT.md](/C:/Users/Admin/Desktop/decentrathon/ml-service/guides/FRONTEND_ML_RESPONSE_CONTRACT.md)
-
-Короткое сообщение:
 
 ```text
 Ниже live response contract ML-сервиса.
