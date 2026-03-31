@@ -136,3 +136,15 @@ def test_llm_parser_keeps_backward_compatibility_for_old_explainability_shape() 
     assert parsed.rubric_assessment["authenticity_review_needed"] == "medium"
     assert parsed.committee_follow_up_question == "What changed after your first version failed?"
     assert parsed.uncertainty_signals[0].claim == "Need stronger outcome evidence"
+
+
+def test_llm_parser_preserves_wrapper_answer_as_rationale() -> None:
+    raw = """
+    {
+      "answer": "Candidate shows initiative and growth, but evidence is lightly quantified."
+    }
+    """
+
+    parsed = parse_llm_extraction_json(raw)
+
+    assert parsed.extractor_rationale == "Candidate shows initiative and growth, but evidence is lightly quantified."

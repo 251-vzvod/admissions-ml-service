@@ -64,6 +64,19 @@ def _normalize_bool(raw: Any) -> bool:
 
 
 def _normalize_bounded_score(raw: Any) -> int | None:
+    text_value = _normalize_text(raw).lower()
+    textual_map = {
+        "very weak": 1,
+        "weak": 2,
+        "mixed": 3,
+        "moderate": 3,
+        "medium": 3,
+        "strong": 4,
+        "high": 4,
+        "very strong": 5,
+    }
+    if text_value in textual_map:
+        return textual_map[text_value]
     try:
         value_int = int(raw)
     except (TypeError, ValueError):
@@ -191,13 +204,25 @@ class LLMExplainabilityOutput(BaseModel):
         if "evidence_spans" not in normalized:
             normalized["evidence_spans"] = normalized.get("evidence") or normalized.get("spans") or []
         if "extractor_rationale" not in normalized:
-            normalized["extractor_rationale"] = normalized.get("rationale") or ""
+            normalized["extractor_rationale"] = (
+                normalized.get("rationale")
+                or normalized.get("answer")
+                or normalized.get("response")
+                or normalized.get("output")
+                or ""
+            )
         if "rubric_assessment" not in normalized:
             normalized["rubric_assessment"] = normalized.get("llm_rubric_assessment") or normalized.get("rubric") or {}
         if "committee_follow_up_question" not in normalized:
             normalized["committee_follow_up_question"] = normalized.get("follow_up_question") or ""
         if "human_review" not in normalized and isinstance(normalized.get("review"), dict):
             normalized["human_review"] = normalized["review"]
+        if "top_strength_signals" not in normalized and isinstance(normalized.get("strength_signals"), list):
+            normalized["top_strength_signals"] = normalized.get("strength_signals") or []
+        if "main_gap_signals" not in normalized and isinstance(normalized.get("gap_signals"), list):
+            normalized["main_gap_signals"] = normalized.get("gap_signals") or []
+        if "uncertainty_signals" not in normalized and isinstance(normalized.get("uncertainty_items"), list):
+            normalized["uncertainty_signals"] = normalized.get("uncertainty_items") or []
 
         raw_uncertainties = normalized.get("uncertainties")
         if isinstance(raw_uncertainties, list) and raw_uncertainties and all(isinstance(item, dict) for item in raw_uncertainties):
@@ -305,7 +330,8 @@ class LLMExplainabilityOutput(BaseModel):
 
         review_signal = normalized.get("authenticity_review_needed")
         lowered = _normalize_text(review_signal).lower()
-        output["authenticity_review_needed"] = lowered if lowered in {"low", "medium", "high"} else ""
+        if lowered in {"low", "medium", "high"}:
+            output["authenticity_review_needed"] = lowered
         return output
 
 
