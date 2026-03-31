@@ -21,6 +21,10 @@ For the current fairness posture, targeted mitigations, and remaining risks:
 
 - [docs/fairness_note.md](docs/fairness_note.md)
 
+For the current English-first shortlist validation slices:
+
+- [docs/english_first_validation.md](docs/english_first_validation.md)
+
 ## What The Service Does
 
 The API accepts one or more candidate profiles and returns:

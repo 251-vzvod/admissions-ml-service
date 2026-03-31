@@ -556,6 +556,28 @@ We now do three things that help:
 
 But that is still a mitigation layer, not proof that fairness is solved.
 
+At the same time, the product focus evolved.
+
+Once we accepted that the real product will mostly receive English applications, the fairness question had to become more specific.
+
+The more relevant question is no longer only:
+
+- "Are Russian candidates disadvantaged?"
+
+It is also:
+
+- "Are polished English applicants still being overrewarded relative to plainer but credible English applicants?"
+
+That is why we added an English-first slice validation layer over:
+
+- polished vs plain
+- verbose vs concise
+- evidence-strong vs evidence-thin
+- transcript-present vs transcript-absent
+
+This was a useful methodological shift.
+It gave us a more realistic fairness and validation story for the actual product direction.
+
 ## 19. What The System Ultimately Became
 
 The system started as a transparent heuristic scorer.
@@ -568,6 +590,7 @@ It evolved into:
 - with explainability and committee routing
 - with benchmark-based calibration
 - with leakage-aware validation
+- with English-first shortlist slice validation
 
 That is a much stronger end state than what we had at the beginning.
 

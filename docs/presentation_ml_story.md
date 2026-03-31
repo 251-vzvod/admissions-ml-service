@@ -269,13 +269,13 @@ This directly addresses the restrictions in the TЗ. We treat privacy, transpare
 **Current limitations**
 
 - the final hackathon labels are pragmatic, not a production gold benchmark
-- Russian profiles still underperform relative to English and mixed profiles
+- fairness now needs to be framed mainly as `polished English vs plain English`, not only `RU vs EN`
 - synthetic multimodal evidence is cleaner than real applicant evidence
 
 **Next steps**
 
-- stronger multilingual semantic encoder
-- further fairness calibration for RU / EN
+- stronger shortlist validation on English-first slices
+- further fairness calibration for polished vs plain English
 - stronger claim-evidence coverage across more candidate types
 - richer committee feedback loop
 - real pilot with consented candidate data

@@ -1194,3 +1194,56 @@ This phase reduces one weakness of the heuristic backbone:
 It is now:
 
 - "score candidates transparently, then compare them head-to-head for shortlist order"
+
+## Phase 18. English-First Slice Validation
+
+### Why this was needed
+
+Once the product assumption shifted to English-first applicant text, the main fairness question changed too.
+
+It was no longer enough to ask:
+
+- `RU vs EN`
+
+The more relevant shortlist-risk question became:
+
+- polished English vs plain English
+- verbose vs concise
+- evidence-strong vs evidence-thin
+- transcript-present vs transcript-absent
+
+### What changed
+
+A new validation script was added:
+
+- `scripts/english_first_validation.py`
+
+Artifacts:
+
+- `data/evaluation_pack_final_hackathon_v3/english_first_validation.json`
+- `docs/english_first_validation.md`
+
+### What the first report showed
+
+The report surfaced several useful realities:
+
+- plain / concise English slices are not automatically failing; some of them show strong label alignment
+- polished and evidence-strong slices still look somewhat over-rewarded in shortlist ordering
+- transcript presence helps confidence and shortlist quality, but transcript absence should still be handled carefully because the slice is small
+
+This was an important shift in how fairness is framed.
+
+### Why this matters
+
+This phase strengthens the project in two ways:
+
+1. it gives a more relevant fairness story for the real product assumption
+2. it creates a repeatable validation loop for future scoring changes
+
+### Honest takeaway
+
+The system is now better instrumented to answer:
+
+- "Are we overvaluing polished English?"
+
+That is a more useful and defensible hackathon question than just keeping multilingual fairness as a generic open issue.
