@@ -22,14 +22,18 @@ Core product framing:
 - Sensitive fields are excluded from merit scoring
 - Batch scoring already exists
 - There is already a baseline, semantic layer, annotations, and validation story
+- Shortlist-oriented outputs now exist
+- Hidden-potential logic is now materially stronger than the earlier scorer-only version
+- Lightweight multilingual semantic support for RU / EN now exists by default
 
-## What Is Weak
+## What Is Still Weak
 
 - Core is still closer to a strong heuristic scorer than a stronger ML ranking system
-- RU bias is not fully addressed
+- RU bias is improved but not solved
 - Runtime LLM is unstable and slow, so it cannot be a hard dependency
 - AI detection must remain a weak review signal only
-- The system is stronger at individual scoring than shortlist ranking
+- Ranking is stronger than before, but still not a true learned ranker
+- Section consistency and claim-to-evidence grounding are still underdeveloped
 
 ## What Must Be Reduced
 
@@ -38,16 +42,26 @@ Core product framing:
 - Too much merit weight on documents / portfolio / video presence
 - Any wording that sounds like "AI text detected" as a final verdict
 - Any narrative that sounds like "LLM decides"
+- Any product surface that exposes too many raw correlated internal features
 
-## What Must Be Added
+## What Has Already Been Added
 
 - Hidden Potential Score
 - Support Needed Score
 - Shortlist Priority Score
 - Batch shortlist view
 - Evidence Coverage Score
-- Better section consistency logic
 - Better growth trajectory extraction
+- Better committee-facing guidance
+- Lightweight multilingual semantic upgrade
+
+## What Still Needs To Be Added
+
+- Better section consistency logic
+- Better claim-evidence extraction
+- Stronger multilingual semantic encoder as optional higher-capability mode
+- Pairwise ranking logic
+- Better top-N shortlist reranking
 
 ## ML / NLP Priorities
 
@@ -56,21 +70,35 @@ Core product framing:
 - strengthen ranking / shortlist logic
 - strengthen hidden potential logic
 - strengthen trajectory of growth
-- improve fairness for RU / EN
+- improve fairness for RU / EN without making the system black-box
 - make the committee workflow more explicit in outputs
+
+Status:
+
+- largely in progress
+- hidden potential / shortlist / trajectory are now substantially stronger than before
+- fairness is still only partially improved
 
 ### Priority 2
 
-- multilingual semantic encoder
-- pairwise ranking logic
-- claim-evidence extraction improvements
 - section-to-section consistency checks
+- claim-evidence extraction improvements
+- stronger multilingual semantic encoder
+- pairwise ranking logic
+
+Status:
+
+- this is the current most valuable block of unfinished work
 
 ### Priority 3
 
 - reranking for top-N candidates
 - better predictive / engagement features when data exists
 - richer multimodal signals when real product inputs exist
+
+Status:
+
+- not a hackathon-critical priority yet
 
 ## LLM Policy
 
@@ -85,6 +113,12 @@ Use LLM for:
 - verification checklist
 - concise reviewer card
 
+Do not use LLM for:
+
+- final merit scoring
+- final shortlist authority
+- authenticity verdicts
+
 ## Explainable AI Direction
 
 The service should tell the committee not only what the model thinks, but also:
@@ -95,12 +129,17 @@ The service should tell the committee not only what the model thinks, but also:
 - what should be verified manually
 - what support might unlock the candidate
 
+Status:
+
+- mostly implemented at the product layer
+- still needs stronger claim-to-evidence grounding underneath
+
 ## Current Build Priorities
 
-1. Add transparent hidden potential / support needed / shortlist priority outputs
-2. Add shortlist summary to batch scoring
-3. Keep the service stable without mandatory LLM runtime dependence
-4. Improve fairness without making the system black-box
+1. Keep shortlist-first outputs stable and demo-ready
+2. Improve section-to-section consistency
+3. Improve claim-to-evidence grounding
+4. Continue fairness work without making the system opaque
 
 ## Guardrails
 
@@ -108,6 +147,7 @@ The service should tell the committee not only what the model thinks, but also:
 - No demographic or socio-economic merit proxies
 - No black-box ranking narrative
 - No AI detector as final truth
+- No deploy path that depends on heavy optional models by default
 
 ## Working Rule
 

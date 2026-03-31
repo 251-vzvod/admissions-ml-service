@@ -32,10 +32,14 @@ def estimate_authenticity_risk(
     consistency = float(features.get("consistency_score", 0.0))
     polished_but_empty_score = float(features.get("polished_but_empty_score", 0.0))
     cross_section_mismatch_score = float(features.get("cross_section_mismatch_score", 0.0))
+    section_claim_overlap_score = float(features.get("section_claim_overlap_score", 0.0))
+    section_role_consistency_score = float(features.get("section_role_consistency_score", 1.0))
+    section_time_consistency_score = float(features.get("section_time_consistency_score", 1.0))
     contradiction_flag = bool(features.get("contradiction_flag", False))
     ai_probability = ai_detector_result.probability_ai_generated if ai_detector_result else None
 
     long_but_thin = bool(diagnostics.get("long_but_thin", False))
+    section_pair_count = int(diagnostics.get("section_pair_count", 0))
 
     polished_but_empty_pattern = long_but_thin and genericness > 0.55 and evidence_count < 0.35
 
@@ -45,6 +49,10 @@ def estimate_authenticity_risk(
     risk += (1.0 - consistency) * 0.18
     risk += polished_but_empty_score * 0.12
     risk += cross_section_mismatch_score * 0.10
+    if section_pair_count > 0:
+        risk += (1.0 - section_claim_overlap_score) * 0.06
+        risk += (1.0 - section_role_consistency_score) * 0.04
+        risk += (1.0 - section_time_consistency_score) * 0.03
     risk += 0.12 if polished_but_empty_pattern else 0.0
     risk += 0.15 if contradiction_flag else 0.0
     if ai_detector_result and ai_detector_result.applicable and ai_probability is not None:
@@ -73,10 +81,13 @@ def estimate_authenticity_risk(
     if cross_section_mismatch_score > 0.55:
         flags.append(ReviewFlag.CROSS_SECTION_MISMATCH)
         reasons.append("Different sections vary too much in evidence and groundedness.")
+    if section_pair_count > 0 and section_claim_overlap_score < 0.16:
+        flags.append(ReviewFlag.SECTION_MISMATCH)
+        reasons.append("Different sections do not reinforce the same concrete claims strongly enough.")
     if evidence_count < 0.35:
         flags.append(ReviewFlag.LOW_EVIDENCE_DENSITY)
         reasons.append("Claims are under-supported by concrete actions, examples, or outcomes.")
-    if consistency < 0.45:
+    if consistency < 0.45 or (section_pair_count > 0 and section_role_consistency_score < 0.35):
         flags.append(ReviewFlag.SECTION_MISMATCH)
         reasons.append("Application sections do not align well enough for high-confidence trust.")
     if contradiction_flag:

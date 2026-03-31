@@ -63,6 +63,54 @@ def test_remove_evidence_reduces_confidence() -> None:
     assert weak_result.confidence_score <= rich_result.confidence_score
 
 
+def test_section_mismatch_increases_authenticity_risk() -> None:
+    pipeline = ScoringPipeline()
+
+    consistent_payload = {
+        "candidate_id": "cand_consistent_sections",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a peer study group for younger students, changed the format after the first month failed, "
+                "and tracked what improved each week."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Tell us about your initiative.",
+                    "answer": (
+                        "I organized weekly sessions, collected feedback, and adjusted the plan when students were still confused."
+                    ),
+                }
+            ],
+            "interview_text": (
+                "I can explain what failed at first, how I adapted the sessions, and what changed for the students afterward."
+            ),
+        },
+    }
+
+    inconsistent_payload = {
+        "candidate_id": "cand_inconsistent_sections",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I founded a coding club and built a long-term tutoring system for younger students."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Tell us about your initiative.",
+                    "answer": "I mostly worked alone on environmental awareness posters and public speaking practice.",
+                }
+            ],
+            "interview_text": (
+                "My strongest experience is actually sports captaincy and event hosting, not tutoring or coding."
+            ),
+        },
+    }
+
+    consistent_result = pipeline.score_candidate(consistent_payload)
+    inconsistent_result = pipeline.score_candidate(inconsistent_payload)
+
+    assert inconsistent_result.authenticity_risk >= consistent_result.authenticity_risk
+
+
 def test_hidden_potential_is_not_punished_below_polished_low_signal_profile() -> None:
     pipeline = ScoringPipeline()
 

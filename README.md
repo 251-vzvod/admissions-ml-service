@@ -27,6 +27,7 @@ The API accepts one or more candidate profiles and returns:
 - `recommendation`: routing label for committee workflow
 - `hidden_potential_score`, `support_needed_score`, `shortlist_priority_score`
 - `trajectory_score`, `evidence_coverage_score`
+- section-to-section consistency-aware authenticity review
 - short explanations, evidence spans, and follow-up guidance for the committee
 
 The scoring logic is transparent:
@@ -326,6 +327,10 @@ Response shape:
 - `merit_score`: candidate promise and strength signals
 - `confidence_score`: reliability of the current assessment
 - `authenticity_risk`: review-risk signal based on groundedness, consistency, and evidence density
+- consistency is now computed not only from generic mismatch, but also from:
+  - claim overlap across sections
+  - role consistency across sections
+  - time and change narrative consistency
 
 These scores are not admission decisions.
 
@@ -367,6 +372,14 @@ It is used conservatively:
 - never changes `merit_score`
 - never auto-rejects a candidate
 - only contributes to authenticity review guidance
+
+This detector is only one weak signal.
+The main authenticity layer still relies primarily on:
+
+- groundedness
+- evidence density
+- section-to-section consistency
+- contradiction and mismatch signals
 
 Optional install for local experiments only:
 

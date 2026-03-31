@@ -967,3 +967,64 @@ This phase is important because it improves the system in exactly the direction 
 - lower bias toward polished English
 - better semantic matching for multilingual candidates
 - stronger hidden-potential and trajectory reasoning without making the deploy heavier by default
+
+## Phase 14. Section-to-Section Consistency Layer
+
+### Why this was needed
+
+The system already had:
+
+- genericness checks
+- contradiction flags
+- simple cross-section mismatch logic
+
+But that was still too coarse.
+
+It could detect that a profile looked risky, but not clearly enough distinguish:
+
+- weak but internally coherent applications
+- applications whose sections fail to reinforce the same claims
+
+### What changed
+
+The text feature layer was upgraded with more explicit cross-section signals:
+
+- `section_claim_overlap_score`
+- `section_role_consistency_score`
+- `section_time_consistency_score`
+
+These signals now feed into:
+
+- `consistency_score`
+- `cross_section_mismatch_score`
+- `authenticity_risk`
+
+### What the new layer checks
+
+Instead of only asking whether sections look globally similar, the system now checks whether different sections reinforce the same candidate story through:
+
+- overlapping content claims
+- similar roles and responsibility patterns
+- consistent time and change narrative
+
+### Authenticity impact
+
+The authenticity layer now raises more meaningful review risk when:
+
+- sections do not reinforce the same concrete claims
+- role descriptions drift too much between sections
+- time and change narrative are inconsistent
+
+This is still a review signal, not an accusation.
+
+### Why this matters
+
+This phase improves the system on two fronts at once:
+
+- better authenticity review routing
+- better confidence calibration for committee reading
+
+It also aligns closely with the hackathon brief:
+
+- generative AI makes essays less trustworthy
+- so multi-section consistency is more useful than pretending to "detect AI" perfectly

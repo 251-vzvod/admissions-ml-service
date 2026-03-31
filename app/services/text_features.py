@@ -1,12 +1,16 @@
-"""Heuristic rubric extractor for potential, confidence, and risk signals."""
+"""Heuristic rubric extractor for potential, confidence, risk, and consistency signals."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from app.services.preprocessing import NormalizedTextBundle
 from app.utils.math_utils import clamp01, safe_div, weighted_average_normalized
 from app.utils.text import count_occurrences
+
+
+TOKEN_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
 
 
 ACTION_TERMS = [
@@ -20,11 +24,16 @@ ACTION_TERMS = [
     "implemented",
     "solved",
     "helped",
+    "initiated",
+    "organized",
     "инициировал",
     "организовал",
     "создал",
     "запустил",
+    "улучшил",
     "помог",
+    "собрал",
+    "изменил",
 ]
 
 ROLE_TERMS = [
@@ -34,11 +43,18 @@ ROLE_TERMS = [
     "captain",
     "mentor",
     "volunteer",
+    "group",
+    "community",
+    "classmates",
+    "students",
     "группа",
     "команда",
     "лидер",
     "наставник",
     "волонтер",
+    "сообщество",
+    "одноклассники",
+    "ученики",
 ]
 
 OUTCOME_TERMS = [
@@ -49,10 +65,13 @@ OUTCOME_TERMS = [
     "saved",
     "won",
     "better",
+    "changed",
+    "resulted",
     "результат",
     "улучш",
     "добил",
     "смог",
+    "измен",
 ]
 
 TEMPORAL_TERMS = [
@@ -61,12 +80,18 @@ TEMPORAL_TERMS = [
     "after",
     "before",
     "for months",
-    "2 years",
+    "for weeks",
+    "later",
+    "at first",
+    "then",
+    "when",
     "когда",
     "после",
     "до",
     "сначала",
     "потом",
+    "позже",
+    "несколько месяцев",
 ]
 
 CAUSE_EFFECT_TERMS = [
@@ -75,6 +100,8 @@ CAUSE_EFFECT_TERMS = [
     "so that",
     "as a result",
     "because of",
+    "which meant",
+    "so i",
     "потому",
     "поэтому",
     "в результате",
@@ -88,11 +115,15 @@ RESILIENCE_TERMS = [
     "setback",
     "tried again",
     "hard",
+    "uncertainty",
+    "struggle",
     "сложно",
     "трудно",
     "не сдался",
     "ошиб",
     "не получилось",
+    "тяжело",
+    "трудност",
 ]
 
 ADAPTATION_TERMS = [
@@ -105,9 +136,13 @@ ADAPTATION_TERMS = [
     "then i changed",
     "after that i",
     "learned how",
+    "feedback",
     "изменил",
     "переделал",
     "адаптировал",
+    "улучшил",
+    "обратная связь",
+    "скорректировал",
 ]
 
 REFLECTION_TERMS = [
@@ -119,10 +154,13 @@ REFLECTION_TERMS = [
     "after that",
     "i became",
     "what changed in me",
+    "i noticed",
     "я понял",
     "я осознал",
     "я научился",
     "это изменило меня",
+    "я заметил",
+    "я стал",
 ]
 
 PROGRAM_FIT_TERMS = [
@@ -133,12 +171,16 @@ PROGRAM_FIT_TERMS = [
     "projects",
     "mission",
     "university",
+    "community",
+    "education",
+    "program-based",
     "программа",
     "университет",
     "проект",
     "команд",
     "мисси",
     "обучени",
+    "сообщество",
 ]
 
 GENERIC_TERMS = [
@@ -148,6 +190,8 @@ GENERIC_TERMS = [
     "dream",
     "best version",
     "change the world",
+    "unlock my potential",
+    "meaningful impact",
     "я мотивирован",
     "я очень мотивирован",
     "хочу развиваться",
@@ -164,6 +208,55 @@ CONTRADICTION_PAIRS = [
     ("никогда", "всегда"),
     ("нет опыта", "я руководил"),
 ]
+
+STOPWORDS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "that",
+    "this",
+    "from",
+    "into",
+    "when",
+    "what",
+    "have",
+    "just",
+    "they",
+    "them",
+    "their",
+    "your",
+    "about",
+    "after",
+    "before",
+    "because",
+    "then",
+    "were",
+    "was",
+    "had",
+    "you",
+    "our",
+    "but",
+    "или",
+    "как",
+    "что",
+    "это",
+    "когда",
+    "потом",
+    "после",
+    "перед",
+    "для",
+    "его",
+    "ее",
+    "они",
+    "она",
+    "оно",
+    "мне",
+    "меня",
+    "свои",
+    "свою",
+    "своих",
+}
 
 
 @dataclass(slots=True)
@@ -201,13 +294,41 @@ def _section_metric(section_text: str) -> tuple[float, float]:
     return evidence, generic
 
 
+def _content_tokens(text: str) -> set[str]:
+    lowered = text.lower()
+    tokens = set()
+    for token in TOKEN_RE.findall(lowered):
+        if len(token) < 3:
+            continue
+        if token in STOPWORDS:
+            continue
+        tokens.add(token)
+    return tokens
+
+
+def _jaccard(left: set[str], right: set[str]) -> float:
+    if not left and not right:
+        return 1.0
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
 def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, float | bool]) -> TextFeaturesResult:
     """Extract heuristic rubric features in normalized [0..1] scale."""
     full_text = bundle.full_text_lower
     word_count = int(bundle.stats.get("word_count", 0))
 
     first_person_density = clamp01(
-        (full_text.count(" i ") + full_text.count(" my ") + full_text.count(" me ") + full_text.count(" я ")) / 40.0
+        (
+            full_text.count(" i ")
+            + full_text.count(" my ")
+            + full_text.count(" me ")
+            + full_text.count(" я ")
+            + full_text.count(" мой ")
+            + full_text.count(" меня ")
+        )
+        / 40.0
     )
     action_density = _density_score(full_text, ACTION_TERMS, denominator=24.0)
     role_density = _density_score(full_text, ROLE_TERMS, denominator=16.0)
@@ -247,14 +368,14 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             (action_density, 0.45),
             (role_density, 0.20),
             (outcome_density, 0.20),
-            (structured.get("linked_examples_count", 0.0), 0.15),
+            (float(structured.get("linked_examples_count", 0.0)), 0.15),
         ]
     )
     leadership_impact = weighted_average_normalized(
         [
             (role_density, 0.30),
             (outcome_density, 0.35),
-            (structured.get("project_mentions_count", 0.0), 0.20),
+            (float(structured.get("project_mentions_count", 0.0)), 0.20),
             (number_density, 0.15),
         ]
     )
@@ -281,15 +402,15 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
         [
             (program_fit_density, 0.60),
             (motivation_clarity, 0.25),
-            (structured.get("question_coverage_score", 0.0), 0.15),
+            (float(structured.get("question_coverage_score", 0.0)), 0.15),
         ]
     )
     evidence_richness = weighted_average_normalized(
         [
             (evidence_density, 0.55),
-            (structured.get("evidence_count_estimate", 0.0), 0.20),
+            (float(structured.get("evidence_count_estimate", 0.0)), 0.20),
             (number_density, 0.15),
-            (structured.get("linked_examples_count", 0.0), 0.10),
+            (float(structured.get("linked_examples_count", 0.0)), 0.10),
         ]
     )
 
@@ -297,14 +418,14 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
         [
             (evidence_density, 0.45),
             (number_density, 0.25),
-            (structured.get("linked_examples_count", 0.20), 0.20),
-            (structured.get("achievement_mentions_count", 0.10), 0.10),
+            (float(structured.get("linked_examples_count", 0.20)), 0.20),
+            (float(structured.get("achievement_mentions_count", 0.10)), 0.10),
         ]
     )
     evidence_count = weighted_average_normalized(
         [
-            (structured.get("evidence_count_estimate", 0.0), 0.5),
-            (structured.get("linked_examples_count", 0.0), 0.3),
+            (float(structured.get("evidence_count_estimate", 0.0)), 0.5),
+            (float(structured.get("linked_examples_count", 0.0)), 0.3),
             (evidence_density, 0.2),
         ]
     )
@@ -355,11 +476,70 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
     ]
     section_alignment = clamp01(sum(section_presence) / 3.0)
 
+    section_texts = [
+        bundle.motivation_letter_original,
+        interview_text := bundle.interview_original,
+        bundle.video_interview_transcript_original,
+        bundle.video_presentation_transcript_original,
+        "\n".join(bundle.motivation_answers_original),
+    ]
+    non_empty_sections = [text for text in section_texts if text.strip()]
+    section_pairs = [_section_metric(text) for text in non_empty_sections]
+
+    lexical_overlaps: list[float] = []
+    role_gaps: list[float] = []
+    temporal_gaps: list[float] = []
+    evidence_gaps: list[float] = []
+    generic_gaps: list[float] = []
+
+    for i in range(len(non_empty_sections)):
+        left_text = non_empty_sections[i].lower()
+        left_tokens = _content_tokens(non_empty_sections[i])
+        left_role_density = _density_score(left_text, ROLE_TERMS, denominator=8.0)
+        left_temporal_density = _density_score(left_text, TEMPORAL_TERMS, denominator=8.0)
+        for j in range(i + 1, len(non_empty_sections)):
+            right_text = non_empty_sections[j].lower()
+            right_tokens = _content_tokens(non_empty_sections[j])
+            right_role_density = _density_score(right_text, ROLE_TERMS, denominator=8.0)
+            right_temporal_density = _density_score(right_text, TEMPORAL_TERMS, denominator=8.0)
+
+            lexical_overlaps.append(_jaccard(left_tokens, right_tokens))
+            role_gaps.append(abs(left_role_density - right_role_density))
+            temporal_gaps.append(abs(left_temporal_density - right_temporal_density))
+            evidence_gaps.append(abs(section_pairs[i][0] - section_pairs[j][0]))
+            generic_gaps.append(abs(section_pairs[i][1] - section_pairs[j][1]))
+
+    section_claim_overlap_score = clamp01(
+        safe_div(sum(lexical_overlaps), len(lexical_overlaps), default=0.0) if lexical_overlaps else 0.0
+    )
+    section_role_consistency_score = clamp01(
+        1.0 - safe_div(sum(role_gaps), len(role_gaps), default=0.0) if role_gaps else 1.0
+    )
+    section_time_consistency_score = clamp01(
+        1.0 - safe_div(sum(temporal_gaps), len(temporal_gaps), default=0.0) if temporal_gaps else 1.0
+    )
+
+    cross_section_mismatch_score = clamp01(
+        weighted_average_normalized(
+            [
+                (safe_div(sum(evidence_gaps), len(evidence_gaps), default=0.0), 0.28),
+                (safe_div(sum(generic_gaps), len(generic_gaps), default=0.0), 0.18),
+                (1.0 - section_claim_overlap_score, 0.28),
+                (1.0 - section_role_consistency_score, 0.16),
+                (1.0 - section_time_consistency_score, 0.10),
+            ],
+            default=0.0,
+        )
+    )
+
     consistency_score = weighted_average_normalized(
         [
-            (section_alignment, 0.40),
-            (1.0 - abs(motivation_clarity - program_fit), 0.30),
-            (1.0 - abs(initiative - leadership_impact), 0.30),
+            (section_alignment, 0.22),
+            (1.0 - abs(motivation_clarity - program_fit), 0.18),
+            (1.0 - abs(initiative - leadership_impact), 0.16),
+            (section_claim_overlap_score, 0.18),
+            (section_role_consistency_score, 0.14),
+            (section_time_consistency_score, 0.12),
         ]
     )
     if contradiction_flag:
@@ -367,8 +547,8 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
 
     completeness_score = weighted_average_normalized(
         [
-            (structured.get("text_completeness_score", 0.0), 0.45),
-            (structured.get("question_coverage_score", 0.0), 0.30),
+            (float(structured.get("text_completeness_score", 0.0)), 0.45),
+            (float(structured.get("question_coverage_score", 0.0)), 0.30),
             (clamp01(safe_div(word_count, 500.0)), 0.25),
         ]
     )
@@ -385,31 +565,13 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
         + (0.10 if long_but_thin else 0.0)
     )
 
-    section_texts = [
-        bundle.motivation_letter_original,
-        bundle.interview_original,
-        bundle.video_interview_transcript_original,
-        bundle.video_presentation_transcript_original,
-        "\n".join(bundle.motivation_answers_original),
-    ]
-    section_pairs = []
-    for text in section_texts:
-        if text.strip():
-            section_pairs.append(_section_metric(text))
-
-    mismatch_components: list[float] = []
-    for i in range(len(section_pairs)):
-        for j in range(i + 1, len(section_pairs)):
-            mismatch_components.append(abs(section_pairs[i][0] - section_pairs[j][0]))
-            mismatch_components.append(abs(section_pairs[i][1] - section_pairs[j][1]))
-    cross_section_mismatch_score = clamp01(sum(mismatch_components) / max(len(mismatch_components), 1))
-
     polished_but_empty_score = clamp01(
         weighted_average_normalized(
             [
-                (generic_density, 0.45),
-                (1.0 - evidence_density, 0.35),
-                (1.0 - specificity_score, 0.20),
+                (generic_density, 0.38),
+                (1.0 - evidence_density, 0.28),
+                (1.0 - specificity_score, 0.18),
+                (1.0 - section_claim_overlap_score, 0.16),
             ],
             default=0.0,
         )
@@ -433,6 +595,9 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "trajectory_adaptation_score": trajectory_adaptation_score,
             "trajectory_reflection_score": trajectory_reflection_score,
             "trajectory_outcome_score": trajectory_outcome_score,
+            "section_claim_overlap_score": section_claim_overlap_score,
+            "section_role_consistency_score": section_role_consistency_score,
+            "section_time_consistency_score": section_time_consistency_score,
             "consistency_score": consistency_score,
             "completeness_score": completeness_score,
             "genericness_score": genericness_score,
@@ -446,5 +611,6 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "evidence_density": evidence_density,
             "generic_density": generic_density,
             "long_but_thin": long_but_thin,
+            "section_pair_count": len(lexical_overlaps),
         },
     )
