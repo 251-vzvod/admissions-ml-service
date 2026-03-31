@@ -10,6 +10,7 @@ from app.schemas.decision import Recommendation, ReviewFlag
 from app.schemas.output import ScoreResponse
 from app.services.ai_detector import detect_ai_generated_text
 from app.services.authenticity import estimate_authenticity_risk
+from app.services.claim_evidence import build_claim_evidence_map
 from app.services.committee_guidance import build_committee_guidance
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
@@ -68,6 +69,9 @@ class ScoringPipeline:
         merged_features: dict[str, float | bool] = {}
         merged_features.update(structured_result.features)
         merged_features.update(text_result.features)
+        merged_features["cyrillic_text_share"] = float(bundle.stats.get("cyrillic_text_share", 0.0))
+        merged_features["latin_text_share"] = float(bundle.stats.get("latin_text_share", 0.0))
+        merged_features["mixed_script_flag"] = bool(bundle.stats.get("mixed_script_flag", 0))
 
         semantic_result = extract_semantic_rubric_features(bundle=bundle, heuristic_features=merged_features)
         merged_features.update(semantic_result.features)
@@ -240,6 +244,8 @@ class ScoringPipeline:
                 shortlist_priority_score=0,
                 evidence_coverage_score=0,
                 trajectory_score=0,
+                supported_claims=[],
+                weakly_supported_claims=[],
                 top_strengths=explanation.top_strengths,
                 main_gaps=explanation.main_gaps,
                 uncertainties=explanation.uncertainties,
@@ -332,6 +338,14 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
         )
+        claim_evidence = build_claim_evidence_map(
+            bundle=bundle,
+            feature_map={**merged_features, **snapshot},
+            semantic_result=semantic_result,
+            hidden_potential_score=shortlist_signals.hidden_potential_score,
+            evidence_coverage_score=shortlist_signals.evidence_coverage_score,
+            trajectory_score=shortlist_signals.trajectory_score,
+        )
 
         base_response["llm_metadata"] = llm_metadata
 
@@ -351,6 +365,8 @@ class ScoringPipeline:
             shortlist_priority_score=shortlist_signals.shortlist_priority_score,
             evidence_coverage_score=shortlist_signals.evidence_coverage_score,
             trajectory_score=shortlist_signals.trajectory_score,
+            supported_claims=[asdict(item) for item in claim_evidence.supported_claims],
+            weakly_supported_claims=[asdict(item) for item in claim_evidence.weakly_supported_claims],
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,

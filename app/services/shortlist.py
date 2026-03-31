@@ -26,6 +26,54 @@ class BatchShortlistSummary:
     authenticity_review_candidate_ids: list[str]
 
 
+def _pairwise_preference_score(left: object, right: object) -> float:
+    """Transparent head-to-head comparison for shortlist ordering."""
+    score = 0.0
+    score += (getattr(left, "shortlist_priority_score", 0) - getattr(right, "shortlist_priority_score", 0)) * 0.42
+    score += (getattr(left, "hidden_potential_score", 0) - getattr(right, "hidden_potential_score", 0)) * 0.18
+    score += (getattr(left, "trajectory_score", 0) - getattr(right, "trajectory_score", 0)) * 0.12
+    score += (getattr(left, "evidence_coverage_score", 0) - getattr(right, "evidence_coverage_score", 0)) * 0.11
+    score += (getattr(left, "merit_score", 0) - getattr(right, "merit_score", 0)) * 0.09
+    score += (getattr(left, "confidence_score", 0) - getattr(right, "confidence_score", 0)) * 0.05
+    score += (getattr(right, "authenticity_risk", 100) - getattr(left, "authenticity_risk", 100)) * 0.08
+    return score
+
+
+def _pairwise_rank_results(results: list[object]) -> list[object]:
+    if len(results) <= 1:
+        return list(results)
+
+    pairwise_totals: dict[str, float] = {getattr(item, "candidate_id", ""): 0.0 for item in results}
+    for idx, left in enumerate(results):
+        for jdx, right in enumerate(results):
+            if idx >= jdx:
+                continue
+            preference = _pairwise_preference_score(left, right)
+            left_id = getattr(left, "candidate_id", "")
+            right_id = getattr(right, "candidate_id", "")
+            if preference > 0:
+                pairwise_totals[left_id] += 1.0 + min(0.5, preference / 100.0)
+                pairwise_totals[right_id] -= min(0.5, preference / 120.0)
+            elif preference < 0:
+                magnitude = abs(preference)
+                pairwise_totals[right_id] += 1.0 + min(0.5, magnitude / 100.0)
+                pairwise_totals[left_id] -= min(0.5, magnitude / 120.0)
+
+    return sorted(
+        results,
+        key=lambda item: (
+            pairwise_totals.get(getattr(item, "candidate_id", ""), 0.0),
+            getattr(item, "shortlist_priority_score", 0),
+            getattr(item, "hidden_potential_score", 0),
+            getattr(item, "trajectory_score", 0),
+            getattr(item, "merit_score", 0),
+            -getattr(item, "authenticity_risk", 100),
+            getattr(item, "confidence_score", 0),
+        ),
+        reverse=True,
+    )
+
+
 def _underlying_signal_raw(
     *,
     feature_map: dict[str, float | bool | int | None],
@@ -220,16 +268,7 @@ def build_shortlist_signals(
 
 
 def build_batch_shortlist_summary(results: list[object]) -> BatchShortlistSummary:
-    sorted_results = sorted(
-        results,
-        key=lambda item: (
-            getattr(item, "shortlist_priority_score", 0),
-            getattr(item, "merit_score", 0),
-            -getattr(item, "authenticity_risk", 100),
-            getattr(item, "confidence_score", 0),
-        ),
-        reverse=True,
-    )
+    sorted_results = _pairwise_rank_results(results)
     ranked_candidate_ids = [item.candidate_id for item in sorted_results]
     shortlist_candidate_ids = [item.candidate_id for item in sorted_results[: min(5, len(sorted_results))]]
     hidden_potential_candidate_ids = [

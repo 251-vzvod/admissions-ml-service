@@ -24,16 +24,17 @@ Core product framing:
 - There is already a baseline, semantic layer, annotations, and validation story
 - Shortlist-oriented outputs now exist
 - Hidden-potential logic is now materially stronger than the earlier scorer-only version
-- Lightweight multilingual semantic support for RU / EN now exists by default
+- English-first operation is now the practical product assumption
+- Lightweight multilingual support still exists, but is no longer the main optimization target
 
 ## What Is Still Weak
 
 - Core is still closer to a strong heuristic scorer than a stronger ML ranking system
-- RU bias is improved but not solved
+- Fairness is still not fully closed, but the main risk is now polish bias within English rather than multilingual handling
 - Runtime LLM is unstable and slow, so it cannot be a hard dependency
 - AI detection must remain a weak review signal only
 - Ranking is stronger than before, but still not a true learned ranker
-- Section consistency and claim-to-evidence grounding are still underdeveloped
+- Section consistency is now implemented, but claim-to-evidence grounding still needs to become stronger and more visible
 
 ## What Must Be Reduced
 
@@ -59,9 +60,15 @@ Core product framing:
 
 - Better section consistency logic
 - Better claim-evidence extraction
-- Stronger multilingual semantic encoder as optional higher-capability mode
 - Pairwise ranking logic
 - Better top-N shortlist reranking
+
+Status:
+
+- section consistency is now implemented
+- claim-evidence extraction is now active
+- pairwise ranking is now the most valuable next ML step
+- stronger multilingual encoder is optional future work, not a core hackathon priority anymore
 
 ## ML / NLP Priorities
 
@@ -70,25 +77,27 @@ Core product framing:
 - strengthen ranking / shortlist logic
 - strengthen hidden potential logic
 - strengthen trajectory of growth
-- improve fairness for RU / EN without making the system black-box
+- improve fairness for English-first inputs without making the system black-box
 - make the committee workflow more explicit in outputs
 
 Status:
 
 - largely in progress
 - hidden potential / shortlist / trajectory are now substantially stronger than before
-- fairness is still only partially improved
+- fairness still needs better slice-based evaluation and mitigation
 
 ### Priority 2
 
 - section-to-section consistency checks
 - claim-evidence extraction improvements
-- stronger multilingual semantic encoder
 - pairwise ranking logic
+- stronger validation on shortlist ordering
 
 Status:
 
-- this is the current most valuable block of unfinished work
+- section consistency is now done
+- claim-evidence extraction is in progress
+- pairwise ranking and shortlist validation are now the main unfinished ML block
 
 ### Priority 3
 
@@ -132,14 +141,15 @@ The service should tell the committee not only what the model thinks, but also:
 Status:
 
 - mostly implemented at the product layer
-- still needs stronger claim-to-evidence grounding underneath
+- claim-to-evidence grounding is now partially implemented, but still needs stronger coverage and calibration
 
 ## Current Build Priorities
 
 1. Keep shortlist-first outputs stable and demo-ready
-2. Improve section-to-section consistency
-3. Improve claim-to-evidence grounding
-4. Continue fairness work without making the system opaque
+2. Improve claim-to-evidence grounding
+3. Add transparent pairwise shortlist reranking
+4. Continue fairness work through English-first slice-based checks, not multilingual expansion by default
+5. Keep the shortlist-first narrative tightly aligned with the actual product behavior
 
 ## Guardrails
 

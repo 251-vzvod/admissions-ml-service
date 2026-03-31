@@ -1028,3 +1028,169 @@ It also aligns closely with the hackathon brief:
 
 - generative AI makes essays less trustworthy
 - so multi-section consistency is more useful than pretending to "detect AI" perfectly
+
+## Phase 15. Claim-to-Evidence Grounding Layer
+
+### Why this was needed
+
+By this point, the service already returned:
+
+- shortlist-oriented scores
+- explanation text
+- evidence spans
+- committee guidance
+
+But one important reviewer question was still not answered clearly enough:
+
+"Which concrete claims does the system believe, and which ones does it still treat as under-supported?"
+
+That gap matters for:
+
+- explainability
+- authenticity review
+- committee trust
+- demo clarity
+
+### What changed
+
+The public API now includes a structured claim-to-evidence layer:
+
+- `supported_claims`
+- `weakly_supported_claims`
+
+Each item includes:
+
+- the claim
+- support level
+- source
+- evidence snippet
+- support score
+- short rationale
+
+### How the layer works
+
+It is deterministic and grounded in existing signals.
+
+It combines:
+
+- semantic rubric evidence
+- evidence density
+- specificity
+- consistency
+- source coverage
+- shortlist-oriented hidden-potential / trajectory context
+
+This is important: the new layer does **not** turn the service into an LLM-only explainer.
+
+### Why this matters
+
+This phase improves the service in a very product-relevant way:
+
+- it helps the committee see what the system thinks is actually supported
+- it surfaces which promising claims still need manual verification
+- it makes authenticity review more concrete than a single risk score
+
+That is a stronger answer to the hackathon brief than adding more raw features or another opaque score.
+
+## Phase 16. Targeted Fairness Mitigation Note
+
+### Why this was needed
+
+Even after the multilingual semantic upgrade, one fairness risk remained clear:
+
+- style-sensitive penalties could still hit coherent Cyrillic-heavy or mixed-language profiles too hard
+
+This was especially risky when:
+
+- the candidate had real evidence
+- sections were internally consistent
+- but the text still looked less polished to the heuristic layer
+
+### What changed
+
+A narrow targeted mitigation was added.
+
+For coherent Cyrillic-heavy or mixed-script profiles, the system now slightly reduces:
+
+- genericness-based penalty
+- polished-but-empty penalty
+
+This mitigation only applies when the profile already shows:
+
+- some evidence floor
+- some specificity
+- some consistency
+
+### Why this is a good hackathon tradeoff
+
+This does not pretend to solve fairness globally.
+
+It is a pragmatic, transparent mitigation that reduces one known failure mode while keeping the scorer:
+
+- deterministic
+- explainable
+- lightweight to deploy
+
+### Honest outcome
+
+This phase should be presented as:
+
+- targeted bias reduction
+- not fairness solved
+- a step toward better multilingual handling without hiding the remaining limitations
+
+## Phase 17. Transparent Pairwise Shortlist Reranking
+
+### Why this was needed
+
+Even after the shortlist-first layer became much stronger, batch ranking still relied too heavily on a single scalar sort.
+
+That was workable, but still weaker than real committee behavior.
+
+Committees do not only ask:
+
+- "What is this candidate's score?"
+
+They also ask:
+
+- "When we compare these two candidates directly, who should we look at first?"
+
+### What changed
+
+Batch ranking now uses a transparent head-to-head reranking step.
+
+Candidates are compared pairwise using:
+
+- `shortlist_priority_score`
+- `hidden_potential_score`
+- `trajectory_score`
+- `evidence_coverage_score`
+- `merit_score`
+- `confidence_score`
+- `authenticity_risk`
+
+The resulting net pairwise preference is then used to produce:
+
+- `ranked_candidate_ids`
+
+### Why this matters
+
+This is still not a learned ranker.
+
+But it is a real step away from pure independent scoring and toward shortlist ordering that behaves more like committee prioritization.
+
+It also creates a much better bridge to future validation and learned ranking work:
+
+- stronger shortlist evaluation
+- future pairwise label comparison
+- future learned reranker on transparent features
+
+### Honest takeaway
+
+This phase reduces one weakness of the heuristic backbone:
+
+- the system is no longer only "score each candidate independently and sort"
+
+It is now:
+
+- "score candidates transparently, then compare them head-to-head for shortlist order"

@@ -12,6 +12,15 @@ class EvidenceSpan(BaseModel):
     snippet: str
 
 
+class ClaimEvidenceItem(BaseModel):
+    claim: str
+    support_level: str
+    source: str
+    snippet: str
+    support_score: int
+    rationale: str
+
+
 class ExplanationNotes(BaseModel):
     potential: str
     motivation: str
@@ -60,6 +69,8 @@ class ScoreResponse(BaseModel):
     evidence_coverage_score: int
     trajectory_score: int
 
+    supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list)
+    weakly_supported_claims: list[ClaimEvidenceItem] = Field(default_factory=list)
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
     uncertainties: list[str] = Field(default_factory=list)

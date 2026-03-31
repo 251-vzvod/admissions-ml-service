@@ -29,6 +29,23 @@ def _material_support_score(feature_map: dict[str, float | bool]) -> float:
     )
 
 
+def _language_fairness_discount(feature_map: dict[str, float | bool]) -> float:
+    cyrillic_share = float(feature_map.get("cyrillic_text_share", 0.0))
+    latin_share = float(feature_map.get("latin_text_share", 0.0))
+    coherence = weighted_average_normalized(
+        [
+            (float(feature_map.get("evidence_count", 0.0)), 0.34),
+            (float(feature_map.get("specificity_score", 0.0)), 0.16),
+            (float(feature_map.get("consistency_score", 0.0)), 0.28),
+            (1.0 - float(feature_map.get("cross_section_mismatch_score", 0.0)), 0.22),
+        ]
+    )
+    if cyrillic_share < 0.20 or coherence < 0.28:
+        return 0.0
+    mixed_bonus = 0.05 if latin_share >= 0.12 else 0.0
+    return clamp01((cyrillic_share * 0.70) + (coherence * 0.25) + mixed_bonus) * 0.28
+
+
 def _unsupported_narrative_penalty(feature_map: dict[str, float | bool], material_support: float) -> float:
     supported_signal = weighted_average_normalized(
         [
@@ -52,13 +69,14 @@ def _hidden_material_bonus(feature_map: dict[str, float | bool], material_suppor
 
 def _committee_calibration_signal(feature_map: dict[str, float | bool], authenticity_risk_raw: float) -> tuple[float, dict[str, float]]:
     material_support = _material_support_score(feature_map)
+    fairness_discount = _language_fairness_discount(feature_map)
     unsupported_narrative_penalty = _unsupported_narrative_penalty(feature_map, material_support)
     low_evidence_with_no_support_penalty = (
         0.08 if bool(feature_map.get("low_evidence_flag", False)) and material_support < 0.25 else 0.0
     )
     contradiction_penalty = 0.18 if bool(feature_map.get("contradiction_flag", False)) else 0.0
-    genericness_penalty = float(feature_map.get("genericness_score", 0.0)) * 0.05
-    polished_penalty = float(feature_map.get("polished_but_empty_score", 0.0)) * 0.10
+    genericness_penalty = float(feature_map.get("genericness_score", 0.0)) * 0.05 * (1.0 - fairness_discount)
+    polished_penalty = float(feature_map.get("polished_but_empty_score", 0.0)) * 0.10 * (1.0 - (fairness_discount * 0.85))
     mismatch_penalty = float(feature_map.get("cross_section_mismatch_score", 0.0)) * 0.06
     authenticity_penalty = max(0.0, authenticity_risk_raw - 0.65) * 0.10
 
@@ -104,6 +122,7 @@ def _committee_calibration_signal(feature_map: dict[str, float | bool], authenti
         "authenticity_penalty": round(authenticity_penalty, 6),
         "committee_signal_base": round(base, 6),
         "committee_signal": round(signal, 6),
+        "language_fairness_discount": round(fairness_discount, 6),
     }
     return signal, diagnostics
 
@@ -135,6 +154,7 @@ def build_score_trace(
     """Build auditable factor-level trace for deterministic scoring formulas."""
     f = feature_map
     material_support = _material_support_score(f)
+    fairness_discount = _language_fairness_discount(f)
 
     potential_items = [
         ("growth_trajectory", float(f.get("growth_trajectory", 0.0)), 0.20),
@@ -215,8 +235,8 @@ def build_score_trace(
     trust_penalty_contrib = {
         "contradiction_flag": 0.18 if bool(f.get("contradiction_flag", False)) else 0.0,
         "low_evidence_flag": (0.14 if material_support < 0.25 else 0.05) if bool(f.get("low_evidence_flag", False)) else 0.0,
-        "genericness_penalty": float(f.get("genericness_score", 0.0)) * 0.06,
-        "polished_empty_penalty": float(f.get("polished_but_empty_score", 0.0)) * 0.08,
+        "genericness_penalty": float(f.get("genericness_score", 0.0)) * 0.06 * (1.0 - fairness_discount),
+        "polished_empty_penalty": float(f.get("polished_but_empty_score", 0.0)) * 0.08 * (1.0 - (fairness_discount * 0.85)),
         "mismatch_penalty": float(f.get("cross_section_mismatch_score", 0.0)) * 0.06,
         "unsupported_narrative_penalty": unsupported_narrative_penalty,
     }
@@ -320,6 +340,7 @@ def compute_scores(
     """Compute candidate-level operational scores for decision support."""
     f = feature_map
     material_support = _material_support_score(f)
+    fairness_discount = _language_fairness_discount(f)
 
     potential_items = [
         (float(f.get("growth_trajectory", 0.0)), 0.20),
@@ -399,8 +420,8 @@ def compute_scores(
         trust_penalty += 0.18
     if bool(f.get("low_evidence_flag", False)):
         trust_penalty += 0.14 if material_support < 0.25 else 0.05
-    trust_penalty += float(f.get("genericness_score", 0.0)) * 0.06
-    trust_penalty += float(f.get("polished_but_empty_score", 0.0)) * 0.08
+    trust_penalty += float(f.get("genericness_score", 0.0)) * 0.06 * (1.0 - fairness_discount)
+    trust_penalty += float(f.get("polished_but_empty_score", 0.0)) * 0.08 * (1.0 - (fairness_discount * 0.85))
     trust_penalty += float(f.get("cross_section_mismatch_score", 0.0)) * 0.06
     trust_penalty += _unsupported_narrative_penalty(f, material_support)
     trust_completeness = clamp01(trust_base - trust_penalty)

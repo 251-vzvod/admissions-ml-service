@@ -36,18 +36,27 @@ def estimate_authenticity_risk(
     section_role_consistency_score = float(features.get("section_role_consistency_score", 1.0))
     section_time_consistency_score = float(features.get("section_time_consistency_score", 1.0))
     contradiction_flag = bool(features.get("contradiction_flag", False))
+    cyrillic_text_share = float(features.get("cyrillic_text_share", 0.0))
+    latin_text_share = float(features.get("latin_text_share", 0.0))
     ai_probability = ai_detector_result.probability_ai_generated if ai_detector_result else None
 
     long_but_thin = bool(diagnostics.get("long_but_thin", False))
     section_pair_count = int(diagnostics.get("section_pair_count", 0))
 
     polished_but_empty_pattern = long_but_thin and genericness > 0.55 and evidence_count < 0.35
+    fairness_discount = 0.0
+    if cyrillic_text_share >= 0.20 and evidence_count >= 0.25 and consistency >= 0.45:
+        fairness_discount = clamp01(
+            (cyrillic_text_share * 0.70)
+            + (section_claim_overlap_score * 0.20)
+            + ((0.10 if latin_text_share >= 0.12 else 0.0))
+        ) * 0.20
 
     risk = 0.0
-    risk += genericness * 0.35
+    risk += genericness * 0.35 * (1.0 - fairness_discount)
     risk += (1.0 - evidence_count) * 0.25
     risk += (1.0 - consistency) * 0.18
-    risk += polished_but_empty_score * 0.12
+    risk += polished_but_empty_score * 0.12 * (1.0 - (fairness_discount * 0.85))
     risk += cross_section_mismatch_score * 0.10
     if section_pair_count > 0:
         risk += (1.0 - section_claim_overlap_score) * 0.06

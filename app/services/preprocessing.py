@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from app.utils.math_utils import safe_div
 from app.utils.text import char_count, maybe_text, sentence_count, split_sections, to_lower, word_count
+
+
+CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+LATIN_RE = re.compile(r"[A-Za-z]")
 
 
 @dataclass(slots=True)
@@ -57,6 +62,9 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
     full_text = "\n\n".join(part for part in full_text_parts if part)
 
     answer_word_counts = [word_count(a) for a in non_empty_answers]
+    cyrillic_chars = len(CYRILLIC_RE.findall(full_text))
+    latin_chars = len(LATIN_RE.findall(full_text))
+    script_total = cyrillic_chars + latin_chars
 
     sections = {
         "motivation_letter_text": split_sections(motivation_letter),
@@ -99,6 +107,9 @@ def preprocess_text_inputs(text_inputs: dict[str, object]) -> NormalizedTextBund
                 int(len(non_empty_answers) > 0),
             ]
         ),
+        "cyrillic_text_share": safe_div(cyrillic_chars, script_total, default=0.0),
+        "latin_text_share": safe_div(latin_chars, script_total, default=0.0),
+        "mixed_script_flag": int(cyrillic_chars > 0 and latin_chars > 0),
     }
 
     return NormalizedTextBundle(

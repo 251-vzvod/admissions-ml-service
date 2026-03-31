@@ -84,6 +84,20 @@ These are the fields that matter most for the committee, the frontend, and the h
 - Used for: reviewer workflow and demo clarity
 - Shown to committee: yes
 
+### `supported_claims`
+
+- Meaning: the strongest reviewer-facing claims the system believes are concretely supported
+- Used for: explainability, reviewer trust, and committee walkthroughs
+- Shown to committee: yes
+- Notes: intended to bridge scoring logic and evidence, not replace human judgment
+
+### `weakly_supported_claims`
+
+- Meaning: promising claims that appear directionally true but still need more evidence
+- Used for: manual verification and authenticity-aware review
+- Shown to committee: yes
+- Notes: this is where the system says "signal exists, but check it"
+
 ### `why_candidate_surfaced`
 
 - Meaning: concise reasons why the candidate was surfaced
@@ -143,6 +157,13 @@ They can be shown in reviewer details or an expanded UI, but they should not dom
 - Meaning: concrete reasons why authenticity review was raised
 - Used for: transparency of review routing
 - Shown to committee: optional but useful
+
+### `claim_evidence` logic
+
+- Meaning: the internal extraction step that maps selected rubric-level claims to source snippets
+- Used for: building `supported_claims` and `weakly_supported_claims`
+- Shown to committee: only through the structured claim fields above
+- Notes: deterministic and evidence-grounded, not LLM-only
 
 ### `ai_detector`
 

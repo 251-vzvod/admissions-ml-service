@@ -193,3 +193,34 @@ def test_committee_guidance_surfaces_hidden_potential_and_follow_up_question() -
     assert any("Promising but needs support" == cohort for cohort in guidance.cohorts)
     assert guidance.suggested_follow_up_question
     assert guidance.why_candidate_surfaced
+
+
+def test_claim_evidence_extraction_returns_supported_or_weak_claims() -> None:
+    pipeline = ScoringPipeline()
+
+    payload = {
+        "candidate_id": "cand_claim_map_001",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a Saturday peer study group for younger students, changed the format after the first month failed, "
+                "and tracked who returned each week."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What changed in you through this process?",
+                    "answer": "I learned to collect feedback, adapt the plan, and keep responsibility when the first version did not work.",
+                }
+            ],
+            "interview_text": "I can explain what failed first, what I changed, and what improved afterward.",
+        },
+    }
+
+    result = pipeline.score_candidate(payload)
+
+    assert result.supported_claims or result.weakly_supported_claims
+    if result.supported_claims:
+        first = result.supported_claims[0]
+        assert first.claim
+        assert first.source
+        assert first.snippet
+        assert 0 <= first.support_score <= 100

@@ -17,6 +17,10 @@ This file explains:
 - which raw features stay internal
 - why some correlated signals are intentionally aggregated before exposure
 
+For the current fairness posture, targeted mitigations, and remaining risks:
+
+- [docs/fairness_note.md](docs/fairness_note.md)
+
 ## What The Service Does
 
 The API accepts one or more candidate profiles and returns:
@@ -27,6 +31,7 @@ The API accepts one or more candidate profiles and returns:
 - `recommendation`: routing label for committee workflow
 - `hidden_potential_score`, `support_needed_score`, `shortlist_priority_score`
 - `trajectory_score`, `evidence_coverage_score`
+- structured `supported_claims` and `weakly_supported_claims`
 - section-to-section consistency-aware authenticity review
 - short explanations, evidence spans, and follow-up guidance for the committee
 
@@ -231,6 +236,8 @@ Main response fields:
 - `why_candidate_surfaced`
 - `what_to_verify_manually`
 - `suggested_follow_up_question`
+- `supported_claims`
+- `weakly_supported_claims`
 - `top_strengths`
 - `main_gaps`
 - `uncertainties`
@@ -273,6 +280,16 @@ Example response shape:
   "shortlist_priority_score": 63,
   "evidence_coverage_score": 46,
   "trajectory_score": 61,
+  "supported_claims": [
+    {
+      "claim": "Candidate demonstrates growth through challenge, adaptation, and reflection.",
+      "support_level": "moderate",
+      "source": "motivation_letter_text",
+      "snippet": "I started a tutoring group, changed the format after the first month failed, and tracked what improved.",
+      "support_score": 58,
+      "rationale": "Supported by challenge-response and reflection signals across sections."
+    }
+  ],
   "committee_cohorts": [
     "Promising but needs support"
   ],
@@ -322,11 +339,19 @@ Response shape:
 - `authenticity_review_candidate_ids`
 - `results[]`
 
+Batch ranking note:
+
+- `ranked_candidate_ids` is now produced with transparent pairwise shortlist reranking
+- the reranker compares candidates head-to-head using shortlist priority, hidden potential, trajectory, evidence coverage, confidence, and authenticity risk
+- this keeps the ranking more committee-oriented than a single scalar sort
+
 ## How To Read The Scores
 
 - `merit_score`: candidate promise and strength signals
 - `confidence_score`: reliability of the current assessment
 - `authenticity_risk`: review-risk signal based on groundedness, consistency, and evidence density
+- `supported_claims`: strongest reviewer-facing claims with concrete supporting evidence
+- `weakly_supported_claims`: promising but still thin claims that need manual verification
 - consistency is now computed not only from generic mismatch, but also from:
   - claim overlap across sections
   - role consistency across sections

@@ -58,6 +58,8 @@ def test_score_single_candidate() -> None:
     assert 0 <= result["shortlist_priority_score"] <= 100
     assert 0 <= result["evidence_coverage_score"] <= 100
     assert 0 <= result["trajectory_score"] <= 100
+    assert isinstance(result["supported_claims"], list)
+    assert isinstance(result["weakly_supported_claims"], list)
 
 
 def test_score_single_candidate_with_video_transcript_only() -> None:
@@ -170,3 +172,6 @@ def test_hidden_potential_outscores_polished_but_thin_case() -> None:
     assert hidden_result["hidden_potential_score"] > polished_result["hidden_potential_score"]
     assert hidden_result["trajectory_score"] > polished_result["trajectory_score"]
     assert "Hidden potential" in hidden_result["committee_cohorts"]
+    assert hidden_result["supported_claims"] or hidden_result["weakly_supported_claims"]
+    claim_items = hidden_result["supported_claims"] or hidden_result["weakly_supported_claims"]
+    assert any(item["claim"] for item in claim_items)

@@ -145,7 +145,7 @@ Pipeline:
 2. heuristic + semantic feature extraction
 3. transparent scoring
 4. hidden-potential / support / authenticity signals
-5. explanation with evidence spans
+5. claim-to-evidence grounding
 6. human committee decision
 
 ### Speaker note
@@ -222,6 +222,7 @@ These metrics are not claims about real-world deployment accuracy yet. They are 
 For each candidate:
 
 - ranking recommendation
+- supported claims vs weakly supported claims
 - top strengths
 - main gaps
 - uncertainties
@@ -250,6 +251,7 @@ This is the product value. The committee gets a shortlist with reasons, not a bl
 - authenticity is a review signal, not an accusation
 - final decision remains with the committee
 - fairness audit is built into the evaluation flow
+- style-based penalties are now damped for coherent Cyrillic-heavy profiles to reduce avoidable language bias
 
 ### Speaker note
 
@@ -274,6 +276,7 @@ This directly addresses the restrictions in the TЗ. We treat privacy, transpare
 
 - stronger multilingual semantic encoder
 - further fairness calibration for RU / EN
+- stronger claim-evidence coverage across more candidate types
 - richer committee feedback loop
 - real pilot with consented candidate data
 

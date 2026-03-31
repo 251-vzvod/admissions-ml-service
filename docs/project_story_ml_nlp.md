@@ -502,6 +502,7 @@ That is the right differentiation for this track.
 And now it also has a much stronger committee-facing interface contract:
 
 - score
+- supported claims vs weakly supported claims
 - evidence
 - review routing
 - cohorts
@@ -544,6 +545,16 @@ Another limitation is that the new AI detector layer is still only a cautious au
 
 That is deliberate.
 It is a better product decision for this track than pretending to have perfect AI-use detection.
+
+Another fairness limitation is that multilingual mitigation is still incremental, not complete.
+
+We now do three things that help:
+
+- a lightweight RU/EN semantic bridge
+- section-consistency checks instead of essay-polish-only trust
+- a small targeted mitigation that reduces style-based penalties for coherent Cyrillic-heavy profiles
+
+But that is still a mitigation layer, not proof that fairness is solved.
 
 ## 19. What The System Ultimately Became
 
