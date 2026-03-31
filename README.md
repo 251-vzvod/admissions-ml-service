@@ -1,57 +1,133 @@
-# inVision U Scoring Service MVP
+# inVision U Scoring Service
 
-Explainable FastAPI service for primary candidate screening support.
+FastAPI service for primary candidate screening support in the inVision U admissions workflow.
 
-This is a decision-support tool for committee workflow, not an autonomous admission engine.
+This service is a decision-support tool. It does not make autonomous admission decisions.
 
-## Core Behavior
+## What The Service Does
 
-- Final numeric scoring is deterministic and rule-based.
-- LLM is optional and used only for explainability text (claims linked to evidence).
-- Sensitive/socio-economic fields are excluded from merit scoring.
-- Human-in-the-loop is required for final decisions.
+The API accepts one or more candidate profiles and returns:
+
+- `merit_score`: overall strength of the candidate profile
+- `confidence_score`: how reliable the assessment is, given the available evidence
+- `authenticity_risk`: review-risk signal, not proof of cheating
+- `recommendation`: routing label for committee workflow
+- short explanations, evidence spans, and follow-up guidance for the committee
+
+The scoring logic is transparent:
+
+- numeric scoring is deterministic
+- sensitive and socio-economic fields are excluded from merit scoring
+- LLM is optional and used only for explainability output
+- final decision always stays with a human committee
+
+## Public API
+
+The service exposes only three routes:
+
+- `GET /health`
+- `POST /score`
+- `POST /score/batch`
 
 ## Quick Start
 
 ```bash
 python -m venv .venv
 . .venv/Scripts/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Run tests:
+Open API docs:
 
-```bash
-pytest -q
+- `http://127.0.0.1:8000/docs`
+
+## Environment Configuration
+
+The main config file is:
+
+- `.env`
+
+The template is:
+
+- `.env.example`
+
+### Default Local Mode
+
+Right now the project is configured to work locally with `Ollama`.
+
+Minimal local setup:
+
+```env
+ENABLE_LLM=true
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=llama3.1:8b
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_TIMEOUT_SECONDS=120
 ```
 
-## API Endpoints
+If you do not want to use any LLM at all:
 
-Required:
+```env
+ENABLE_LLM=false
+```
 
-- `GET /health`
+In that mode:
+
 - `POST /score`
 - `POST /score/batch`
 
-## `POST /score`
+still work normally, but the service skips LLM explainability and returns deterministic scoring only.
 
-Purpose:
+### Switching Back To OpenAI Later
 
-- Score one candidate profile.
+When credits are available again, only these fields need to change:
 
-Minimum input:
+```env
+ENABLE_LLM=true
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=your_openai_api_key
+```
+
+No application code changes are required.
+
+## Request Shape
+
+Minimum useful payload:
+
+```json
+{
+  "candidate_id": "cand_001",
+  "text_inputs": {
+    "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
+  },
+  "consent": true
+}
+```
+
+Supported fields:
 
 - `candidate_id`
-- At least one non-empty text source in `text_inputs`.
+- `structured_data`
+- `text_inputs`
+- `behavioral_signals`
+- `metadata`
+- `consent`
 
-Supported `text_inputs` fields:
+Important `text_inputs` fields:
 
 - `motivation_letter_text`
-- `motivation_questions[]` (`question` + `answer`)
+- `motivation_questions[]`
 - `interview_text`
-- `video_interview_transcript_text` (optional)
-- `video_presentation_transcript_text` (optional)
+- `video_interview_transcript_text`
+- `video_presentation_transcript_text`
+
+## `POST /score`
+
+Use this route to score one candidate.
 
 Example request:
 
@@ -60,8 +136,14 @@ Example request:
   "candidate_id": "cand_001",
   "structured_data": {
     "education": {
-      "english_proficiency": {"type": "ielts", "score": 7.0},
-      "school_certificate": {"type": "unt", "score": 110}
+      "english_proficiency": {
+        "type": "ielts",
+        "score": 7.0
+      },
+      "school_certificate": {
+        "type": "unt",
+        "score": 110
+      }
     }
   },
   "text_inputs": {
@@ -73,21 +155,37 @@ Example request:
       }
     ],
     "video_presentation_transcript_text": "In my video I described a tutoring initiative and weekly tracking."
-  }
+  },
+  "consent": true
 }
 ```
 
-Core response fields:
+Main response fields:
 
-- `candidate_id`, `scoring_run_id`, `scoring_version`
-- `eligibility_status`, `eligibility_reasons`
-- `merit_score`, `confidence_score`, `authenticity_risk`
-- `recommendation`, `review_flags`
-- `merit_breakdown`, `feature_snapshot`
-- `authenticity_review_reasons`, `ai_detector`
-- `committee_cohorts`, `why_candidate_surfaced`
-- `what_to_verify_manually`, `suggested_follow_up_question`
-- `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
+- `candidate_id`
+- `scoring_run_id`
+- `scoring_version`
+- `eligibility_status`
+- `eligibility_reasons`
+- `merit_score`
+- `confidence_score`
+- `authenticity_risk`
+- `recommendation`
+- `review_flags`
+- `merit_breakdown`
+- `feature_snapshot`
+- `semantic_rubric_scores`
+- `top_strengths`
+- `main_gaps`
+- `uncertainties`
+- `authenticity_review_reasons`
+- `ai_detector`
+- `committee_cohorts`
+- `why_candidate_surfaced`
+- `what_to_verify_manually`
+- `suggested_follow_up_question`
+- `evidence_spans`
+- `explanation`
 
 Example response shape:
 
@@ -95,14 +193,11 @@ Example response shape:
 {
   "candidate_id": "cand_001",
   "scoring_run_id": "run_20260329_120000_abcd1234",
-  "scoring_version": "v1.0.0",
+  "scoring_version": "v1.2.0",
   "prompt_version": null,
   "extraction_mode": "deterministic_scoring",
   "extractor_version": "llm-extractor-v1",
-  "llm_metadata": {
-    "provider": "openai",
-    "model": "gpt-4o"
-  },
+  "llm_metadata": null,
   "eligibility_status": "eligible",
   "eligibility_reasons": [],
   "merit_score": 25,
@@ -113,131 +208,66 @@ Example response shape:
     "low_confidence",
     "low_evidence_density"
   ],
-  "merit_breakdown": {
-    "potential": 16,
-    "motivation": 18,
-    "leadership_agency": 24,
-    "experience_skills": 32,
-    "trust_completeness": 48
-  },
-  "feature_snapshot": {
-    "motivation_clarity": 0.1123,
-    "initiative": 0.1925,
-    "leadership_impact": 0.2481,
-    "growth_trajectory": 0.0469,
-    "resilience": 0.073,
-    "program_fit": 0.2381,
-    "evidence_richness": 0.2497,
-    "specificity_score": 0.2397,
-    "evidence_count": 0.2899,
-    "consistency_score": 0.9456,
-    "completeness_score": 0.8135,
-    "docs_count_score": 0.5,
-    "portfolio_links_score": 0.5,
-    "has_video_presentation": true,
-    "genericness_score": 0.4498,
-    "contradiction_flag": false,
-    "polished_but_empty_score": 0.4498,
-    "cross_section_mismatch_score": 0.0298,
-    "authenticity_risk_raw": 0.4017,
-    "excluded_sensitive_fields_count": 0
-  },
-  "top_strengths": [
-    "..."
-  ],
-  "main_gaps": [
-    "..."
-  ],
-  "uncertainties": [
-    "..."
-  ],
-  "authenticity_review_reasons": [
-    "Claims are under-supported by concrete actions, examples, or outcomes."
-  ],
-  "ai_detector": {
-    "enabled": false,
-    "applicable": false,
-    "language": null,
-    "probability_ai_generated": null,
-    "provider": "huggingface-local",
-    "model": "desklib/ai-text-detector-v1.01",
-    "note": "disabled"
+  "semantic_rubric_scores": {
+    "leadership_potential": 51,
+    "growth_trajectory": 48,
+    "motivation_authenticity": 54,
+    "authenticity_groundedness": 46,
+    "hidden_potential": 49
   },
   "committee_cohorts": [
     "Promising but needs support"
   ],
-  "why_candidate_surfaced": [
-    "Strong growth trajectory and reflection signals."
-  ],
   "what_to_verify_manually": [
     "Ask for one concrete example with actions, obstacles, and measurable outcome."
   ],
-  "suggested_follow_up_question": "What is one example from your application that best shows how you create value for other people, not just for yourself?",
-  "evidence_spans": [
-    {
-      "source": "motivation_letter_text",
-      "snippet": "..."
-    }
-  ],
-  "explanation": {
-    "summary": "...",
-    "scoring_notes": {
-      "potential": "...",
-      "motivation": "...",
-      "confidence": "...",
-      "authenticity_risk": "...",
-      "recommendation": "..."
-    }
-  }
+  "suggested_follow_up_question": "What is one example from your application that best shows how you create value for other people, not just for yourself?"
 }
 ```
 
-Response notes:
+## `POST /score/batch`
 
-- `recommendation` and `review_flags` are deterministic backend routing outputs.
-- `authenticity_review_reasons` summarize why a profile was routed toward authenticity review.
-- `ai_detector` is an auxiliary detector payload, not a final cheating verdict.
-- `committee_cohorts` and follow-up guidance are committee-facing assistive outputs, not final decisions.
-- `llm_metadata` can be `null` when LLM explainability is unavailable.
-- `feature_snapshot` values are normalized in `0..1` scale unless explicitly boolean/count.
-- `merit_score`, `confidence_score`, `authenticity_risk` are display scores in `0..100`.
+Use this route to score multiple candidates in one request.
 
-Trace fields:
+Example request:
 
-- `extraction_mode`: `deterministic_scoring`
-- `extractor_version`
-- `llm_metadata` (nullable)
+```json
+{
+  "candidates": [
+    {
+      "candidate_id": "cand_001",
+      "text_inputs": {
+        "motivation_letter_text": "I started a tutoring group for younger students."
+      },
+      "consent": true
+    },
+    {
+      "candidate_id": "cand_002",
+      "text_inputs": {
+        "motivation_letter_text": "I want to study because I need more opportunities."
+      },
+      "consent": true
+    }
+  ]
+}
+```
 
-## Scoring Model (Short)
+Response shape:
 
-### Deterministic numeric path
+- `scoring_run_id`
+- `scoring_version`
+- `count`
+- `results[]`
 
-- Structured features: rule-based extraction from structured data and process signals.
-- Text features: rule-based extraction from all available text sources (letter, Q/A, interview, transcripts).
-- Authenticity risk: deterministic heuristic from genericness/evidence/consistency signals.
-- Optional auxiliary AI detector: English-only weak signal that can raise review risk but never drives merit.
-- Final scores: deterministic formulas and fixed weights.
+## How To Read The Scores
 
-### Explainability path
+- `merit_score`: candidate promise and strength signals
+- `confidence_score`: reliability of the current assessment
+- `authenticity_risk`: review-risk signal based on groundedness, consistency, and evidence density
 
-- LLM receives candidate text plus deterministic signals.
-- LLM returns only explainability artifacts in claim -> evidence format.
-- If LLM fails, deterministic fallback explanations are still returned.
+These scores are not admission decisions.
 
-## Eligibility Statuses
-
-- `invalid`: missing id, no usable text, or consent false
-- `incomplete_application`: too little text for reliable scoring
-- `conditionally_eligible`: scoreable but missingness/formal checks trigger review
-- `eligible`: key content present
-
-Formal material reasons (when configured):
-
-- `missing_required_materials_documents`
-- `missing_required_materials_portfolio`
-- `missing_required_materials_video`
-
-## Recommendation Labels
+`recommendation` is only a workflow routing label:
 
 - `review_priority`
 - `standard_review`
@@ -246,26 +276,24 @@ Formal material reasons (when configured):
 - `incomplete_application`
 - `invalid`
 
-These are routing labels for committee workflow, not admission decisions.
+## AI Detector
 
-## Optional AI Detector
-
-The service supports an optional auxiliary AI-generated text detector based on:
+The service supports an optional auxiliary AI-generated text detector:
 
 - `desklib/ai-text-detector-v1.01`
 
-This detector is used conservatively:
+It is used conservatively:
 
-- English only by default
+- English-only by default
 - weak signal only
-- never affects `merit_score`
+- never changes `merit_score`
 - never auto-rejects a candidate
-- only contributes to `authenticity_risk`, `review_flags`, and review guidance
+- only contributes to authenticity review guidance
 
-Install optional dependencies:
+Optional install:
 
 ```bash
-pip install -r requirements-ai-detector.txt
+python -m pip install -r requirements-ai-detector.txt
 ```
 
 Enable in `.env`:
@@ -278,251 +306,35 @@ AI_DETECTOR_MIN_WORDS=60
 AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD=0.80
 ```
 
-## Contract Constants
+## Project Structure
 
-Source of truth for API decision labels:
+- `app/api/routes.py`: public HTTP routes
+- `app/schemas/`: request and response contracts
+- `app/services/`: scoring pipeline, explainability, privacy, authenticity, semantic features
+- `app/config.py`: environment and scoring config
+- `tests/`: API and scoring tests
 
-- [app/schemas/decision.py](app/schemas/decision.py)
+## Important Limits
 
-Canonical `recommendation` values:
+- The service is a committee-support tool, not an autonomous selector.
+- `authenticity_risk` is a review signal, not proof of AI use or cheating.
+- LLM output is optional and used only for explanations.
+- Missing modalities reduce confidence of assessment, not candidate worth by default.
 
-- `invalid`
-- `incomplete_application`
-- `insufficient_evidence`
-- `review_priority`
-- `manual_review_required`
-- `standard_review`
+## Deployment
 
-Canonical `review_flags` values:
+Example `Procfile`:
 
-- `eligibility_gate`
-- `low_confidence`
-- `insufficient_evidence`
-- `low_evidence_density`
-- `moderate_authenticity_risk`
-- `high_authenticity_risk`
-- `contradiction_risk`
-- `possible_contradiction`
-- `polished_but_empty_pattern`
-- `high_polished_but_empty`
-- `high_genericness`
-- `cross_section_mismatch`
-- `auxiliary_ai_generation_signal`
-- `section_mismatch`
-- `missing_required_materials`
-
-Note: clients should treat unknown future flags as non-breaking and render them as generic/neutral badges.
-
-## Score Trace (Auditing)
-
-The API no longer exposes a public score-trace route.
-
-Auditing still exists inside the service and evaluation tooling:
-
-- deterministic formulas live in the scoring pipeline
-- offline diagnostics and evaluation packs remain available through scripts
-- committee-facing explainability is returned directly from `POST /score` and `POST /score/batch`
-
-## Configuration
-
-Primary env vars:
-
-- `LLM_PROVIDER`
-- `LLM_MODEL`
-- `LLM_TIMEOUT_SECONDS`
-- `LLM_TEMPERATURE`
-- `LLM_MAX_RETRIES`
-- `LLM_RETRY_BACKOFF_SECONDS`
-- `LLM_RETRY_JITTER_SECONDS`
-- `LLM_FALLBACK_TO_BASELINE`
-- `LLM_BASE_URL`
-- `LLM_API_KEY`
-- `ENABLE_LLM`
-
-Universal example:
-
-```env
-ENABLE_LLM=true
-LLM_PROVIDER=openai-compatible
-LLM_MODEL=llama-3.1-8b-instant
-LLM_TIMEOUT_SECONDS=45
-LLM_TEMPERATURE=0
-LLM_MAX_RETRIES=1
-LLM_RETRY_BACKOFF_SECONDS=0.6
-LLM_RETRY_JITTER_SECONDS=0.2
-LLM_FALLBACK_TO_BASELINE=true
-LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_API_KEY=your_api_key_here
+```txt
+web: uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Use the same 4 fields to switch providers:
+For Railway or similar platforms:
 
-- `LLM_PROVIDER`
-- `LLM_MODEL`
-- `LLM_BASE_URL`
-- `LLM_API_KEY`
+1. Push the repo.
+2. Set environment variables from `.env.example`.
+3. Start the service with `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
-### Provider Presets
+After deployment, the API docs are available at:
 
-The LLM explainability layer uses an OpenAI-compatible client, so you can switch providers without changing application code.
-
-OpenAI example:
-
-```env
-LLM_PROVIDER=openai
-LLM_MODEL=gpt-4o
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_API_KEY=your_openai_api_key_here
-```
-
-Groq example:
-
-```env
-LLM_PROVIDER=openai-compatible
-LLM_MODEL=llama-3.1-8b-instant
-LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_API_KEY=your_groq_api_key_here
-LLM_TIMEOUT_SECONDS=45
-```
-
-Ollama example:
-
-```env
-LLM_PROVIDER=openai-compatible
-LLM_MODEL=llama3.1:8b
-LLM_BASE_URL=http://localhost:11434/v1
-LLM_API_KEY=ollama
-```
-
-Quick switch workflow:
-
-1. Copy the universal env template into `.env`:
-
-```bash
-copy .env.example .env
-```
-
-2. Edit the provider-specific values:
-
-- OpenAI:
-  - `LLM_PROVIDER=openai`
-  - `LLM_MODEL=gpt-4o`
-  - `LLM_BASE_URL=https://api.openai.com/v1`
-  - `LLM_API_KEY=...`
-- Groq:
-  - `LLM_PROVIDER=openai-compatible`
-  - `LLM_MODEL=llama-3.1-8b-instant`
-  - `LLM_BASE_URL=https://api.groq.com/openai/v1`
-  - `LLM_API_KEY=...`
-- Ollama:
-  - `LLM_PROVIDER=openai-compatible`
-  - `LLM_MODEL=llama3.1:8b`
-  - `LLM_BASE_URL=http://localhost:11434/v1`
-  - `LLM_API_KEY=ollama`
-
-3. Restart the API process after changing `.env`.
-
-Notes:
-
-- offline scoring and evaluation scripts do not require OpenAI credits when LLM explainability is disabled
-- if you want fully credit-free scoring, set `ENABLE_LLM=false`; the API routes will then skip LLM explainability and use deterministic scoring only
-- Ollama is intended here for local explainability output, not for final benchmark claims
-- Groq is a good middle ground for faster remote open-source inference with the same OpenAI-compatible client
-
-Recommended Groq starting models for this service:
-
-- `llama-3.1-8b-instant` for fast explainability responses
-- `openai/gpt-oss-20b` if you want to try a stronger open-weight model and can tolerate higher latency
-
-## Evaluation Scripts
-
-Quick diagnostics:
-
-```bash
-python scripts/score_candidates.py --input data/candidates.json
-``` 
-
-Build committee annotation pack:
-
-```bash
-python scripts/build_annotation_pack.py --input data/candidates.json --output data/annotation_pack.json
-```
-
-Fetch external corpora:
-
-```bash
-python scripts/fetch_external_datasets.py --mode open
-```
-
-If you manually place Kaggle datasets under `data/external/raw/learning_agency_*`, the seed builder will pick them up automatically.
-
-Build seed corpus from downloaded corpora:
-
-```bash
-python scripts/build_seed_corpus.py --output data/external/seed_corpus.jsonl
-```
-
-Offline evaluation pack:
-
-```bash
-python scripts/evaluation_pack.py --input data/candidates.json --output-dir data/evaluation_pack
-```
-
-Offline evaluation pack with committee labels:
-
-```bash
-python scripts/evaluation_pack.py --input data/candidates.json --annotations data/annotation_pack.json --output-dir data/evaluation_pack
-```
-
-Main artifacts:
-
-- `data/scored_candidates.json`
-- `data/diagnostics_report.json`
-- `data/evaluation_pack/evaluation_report.json`
-- `data/evaluation_pack/label_evaluation.json` (when `--annotations` is provided)
-- `data/external/dataset_manifest.json`
-- `data/external/seed_corpus.jsonl`
-
-## Project Map
-
-- `app/api/routes.py`: HTTP endpoints
-- `app/schemas/`: request/response contracts
-- `app/services/`: pipeline, scoring, explainability, privacy
-- `app/config.py`: thresholds, weights, versions, env config
-- `scripts/`: offline scoring/evaluation utilities
-- `docs/ml_nlp_dataset_plan.md`: dataset, annotation, and semantic-space plan
-- `docs/annotation_guide.md`: rubric and process for building the gold dataset
-- `docs/candidate_profiles_and_input_format.md`: where profiles come from and what candidate JSON should look like
-- `docs/scoring_system_evolution.md`: evolution of the scoring logic for demo/presentation
-- `docs/final_hackathon_annotation_report.md`: final merged hackathon label set summary
-- `docs/family_aware_validation.md`: leakage-aware validation over counterfactual candidate families
-- `tests/`: unit and API tests
-
-## Limits
-
-- Heuristic text features are approximate by design.
-- Authenticity risk is a review-risk signal, not proof of cheating/AI use.
-- Recommendation is operational routing only.
-
-## Deployment on Railway
-
-You can easily deploy this service to [Railway](https://railway.app/):
-
-1. Push your code to a GitHub repository.
-2. Create a new Railway project and connect your repository.
-3. Set environment variables in Railway (see `.env` example in this repo).
-4. Ensure you have a `Procfile` in the root with:
-   
-   ```
-   web: uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
-5. Railway will automatically detect the Python project and install dependencies from `requirements.txt`.
-6. The service will be available at your Railway domain, e.g.:
-   
-   https://admissions-ml-service-production.up.railway.app
-
-You can test the API at:
-
-    https://admissions-ml-service-production.up.railway.app/docs
-
-or use any HTTP client to call the endpoints described above.
+- `/docs`
