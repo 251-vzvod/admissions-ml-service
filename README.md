@@ -21,14 +21,9 @@ For the current fairness posture, targeted mitigations, and remaining risks:
 
 - [docs/fairness_note.md](docs/fairness_note.md)
 
-For the current English-first shortlist validation slices:
+For the current runtime architecture and shortlist direction:
 
-- [docs/english_first_validation.md](docs/english_first_validation.md)
-
-For current robustness stress tests and the offline pairwise-ranker experiment:
-
-- [docs/english_first_stress_test.md](docs/english_first_stress_test.md)
-- [docs/pairwise_ranker_experiment.md](docs/pairwise_ranker_experiment.md)
+- [docs/ML_SERVICE_V2_ARCHITECTURE.md](docs/ML_SERVICE_V2_ARCHITECTURE.md)
 
 ## What The Service Does
 
@@ -48,7 +43,8 @@ The scoring logic is transparent:
 
 - numeric scoring is deterministic
 - sensitive and socio-economic fields are excluded from merit scoring
-- LLM is optional and used only for explainability output
+- LLM is optional and used only for bounded reviewer outputs and explainability
+- documents, portfolio links, and video presence are not direct merit boosts
 - final decision always stays with a human committee
 
 ## Public API
@@ -66,6 +62,12 @@ python -m venv .venv
 . .venv/Scripts/activate
 python -m pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+If you want the heavier sentence-transformer semantic backend locally:
+
+```bash
+python -m pip install -r requirements-semantic.txt
 ```
 
 For local test runs:
@@ -90,7 +92,9 @@ The template is:
 
 ### Default Local Mode
 
-Right now the project is configured to work locally with `Ollama`.
+Right now the project is deterministic-first by default.
+
+If you want local LLM reviewer assistance, the project is configured to work with `Ollama`.
 
 Minimal local setup:
 
@@ -132,62 +136,72 @@ No application code changes are required.
 
 ## Semantic Backend
 
-The service uses a lightweight semantic rubric layer.
+The base install is now deploy-safe and lightweight.
 
 Default mode:
 
 - `SEMANTIC_BACKEND=hash`
 
-This is now a multilingual-friendly hash backend with a bilingual concept bridge for RU/EN text.
+Optional heavier mode:
 
-Optional upgrade for stronger semantic matching:
+- install `requirements-semantic.txt`
+- set `SEMANTIC_BACKEND=sentence-transformer`
+- set `SEMANTIC_MODEL=sentence-transformers/all-MiniLM-L6-v2`
 
-```bash
-python -m pip install -r requirements-semantic.txt
-```
+Runtime posture:
 
-Then in `.env`:
-
-```env
-SEMANTIC_BACKEND=sentence-transformer
-SEMANTIC_MODEL=intfloat/multilingual-e5-base
-```
-
-Recommended usage:
-
-- keep `hash` for lightweight deploys
-- use `sentence-transformer` only when you explicitly want the heavier multilingual encoder
+- applicant text is assumed to be English
+- `hash` is the safe default for cloud builds with tight image limits
+- `sentence-transformer` is an opt-in stronger NLP mode when your deploy target can afford the extra weight
 
 ## Request Shape
 
-Minimum useful payload:
+Canonical payload:
 
 ```json
 {
   "candidate_id": "cand_001",
-  "text_inputs": {
-    "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
+  "profile": {
+    "academics": {
+      "english_proficiency": {
+        "type": "ielts",
+        "score": 7.0
+      }
+    },
+    "narratives": {
+      "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
+    },
+    "process_signals": {
+      "completion_rate": 1.0
+    }
   },
   "consent": true
 }
 ```
 
-Supported fields:
+Canonical top-level fields:
 
 - `candidate_id`
-- `structured_data`
-- `text_inputs`
-- `behavioral_signals`
-- `metadata`
+- `profile`
 - `consent`
 
-Important `text_inputs` fields:
+Canonical `profile` sections:
+
+- `academics`
+- `materials`
+- `narratives`
+- `process_signals`
+- `metadata`
+
+Important `profile.narratives` fields:
 
 - `motivation_letter_text`
 - `motivation_questions[]`
 - `interview_text`
 - `video_interview_transcript_text`
 - `video_presentation_transcript_text`
+
+Legacy payloads with `structured_data`, `text_inputs`, `behavioral_signals`, and top-level `metadata` are still accepted and normalized into the canonical profile contract.
 
 ## `POST /score`
 
@@ -198,8 +212,8 @@ Example request:
 ```json
 {
   "candidate_id": "cand_001",
-  "structured_data": {
-    "education": {
+  "profile": {
+    "academics": {
       "english_proficiency": {
         "type": "ielts",
         "score": 7.0
@@ -208,17 +222,17 @@ Example request:
         "type": "unt",
         "score": 110
       }
+    },
+    "narratives": {
+      "motivation_letter_text": "I organized a student project and improved attendance by 30%.",
+      "motivation_questions": [
+        {
+          "question": "Why this program?",
+          "answer": "I want to build social impact projects with measurable outcomes."
+        }
+      ],
+      "video_presentation_transcript_text": "In my video I described a tutoring initiative and weekly tracking."
     }
-  },
-  "text_inputs": {
-    "motivation_letter_text": "I organized a student project and improved attendance by 30%.",
-    "motivation_questions": [
-      {
-        "question": "Why this program?",
-        "answer": "I want to build social impact projects with measurable outcomes."
-      }
-    ],
-    "video_presentation_transcript_text": "In my video I described a tutoring initiative and weekly tracking."
   },
   "consent": true
 }
@@ -245,18 +259,12 @@ Main response fields:
 - `why_candidate_surfaced`
 - `what_to_verify_manually`
 - `suggested_follow_up_question`
-- `supported_claims`
-- `weakly_supported_claims`
+- `evidence_highlights`
 - `top_strengths`
 - `main_gaps`
-- `uncertainties`
-- `evidence_spans`
 - `explanation`
-- optional reviewer-detail fields:
-  - `merit_breakdown`
-  - `semantic_rubric_scores`
-- `authenticity_review_reasons`
-- `ai_detector`
+
+The merit core now also includes a community/value dimension aligned with InVisionU's mission.
 
 Example response shape:
 
@@ -265,8 +273,6 @@ Example response shape:
   "candidate_id": "cand_001",
   "scoring_run_id": "run_20260329_120000_abcd1234",
   "scoring_version": "v1.2.0",
-  "extraction_mode": "deterministic_scoring",
-  "llm_metadata": null,
   "eligibility_status": "eligible",
   "eligibility_reasons": [],
   "merit_score": 25,
@@ -277,19 +283,12 @@ Example response shape:
     "low_confidence",
     "low_evidence_density"
   ],
-  "semantic_rubric_scores": {
-    "leadership_potential": 51,
-    "growth_trajectory": 48,
-    "motivation_authenticity": 54,
-    "authenticity_groundedness": 46,
-    "hidden_potential": 49
-  },
   "hidden_potential_score": 58,
   "support_needed_score": 41,
   "shortlist_priority_score": 63,
   "evidence_coverage_score": 46,
   "trajectory_score": 61,
-  "supported_claims": [
+  "evidence_highlights": [
     {
       "claim": "Candidate demonstrates growth through challenge, adaptation, and reflection.",
       "support_level": "moderate",
@@ -320,15 +319,19 @@ Example request:
   "candidates": [
     {
       "candidate_id": "cand_001",
-      "text_inputs": {
-        "motivation_letter_text": "I started a tutoring group for younger students."
+      "profile": {
+        "narratives": {
+          "motivation_letter_text": "I started a tutoring group for younger students."
+        }
       },
       "consent": true
     },
     {
       "candidate_id": "cand_002",
-      "text_inputs": {
-        "motivation_letter_text": "I want to study because I need more opportunities."
+      "profile": {
+        "narratives": {
+          "motivation_letter_text": "I want to study because I need more opportunities."
+        }
       },
       "consent": true
     }
@@ -350,17 +353,16 @@ Response shape:
 
 Batch ranking note:
 
-- `ranked_candidate_ids` is now produced with transparent pairwise shortlist reranking
-- the reranker compares candidates head-to-head using shortlist priority, hidden potential, trajectory, evidence coverage, confidence, and authenticity risk
-- this keeps the ranking more committee-oriented than a single scalar sort
+- `ranked_candidate_ids` is now produced by an offline-trained shortlist ranker artifact
+- runtime ranking uses aggregated axes and committee-facing scores, not hand-written pairwise heuristics
+- ranker training and evaluation belong to the offline research layer, not to request-time code
 
 ## How To Read The Scores
 
 - `merit_score`: candidate promise and strength signals
 - `confidence_score`: reliability of the current assessment
 - `authenticity_risk`: review-risk signal based on groundedness, consistency, and evidence density
-- `supported_claims`: strongest reviewer-facing claims with concrete supporting evidence
-- `weakly_supported_claims`: promising but still thin claims that need manual verification
+- `evidence_highlights`: strongest evidence-grounded claims surfaced for committee reading
 - consistency is now computed not only from generic mismatch, but also from:
   - claim overlap across sections
   - role consistency across sections
@@ -392,6 +394,10 @@ Public API principle:
 - committee-facing outputs stay compact
 - raw internal diagnostics stay inside the scoring layer
 - correlated engineering signals are aggregated before exposure
+
+For the current runtime architecture and the exact boundary between heuristics, NLP, and LLM:
+
+- [docs/ML_SERVICE_V2_ARCHITECTURE.md](docs/ML_SERVICE_V2_ARCHITECTURE.md)
 
 ## AI Detector
 
@@ -436,12 +442,40 @@ AI_DETECTOR_MIN_WORDS=60
 AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD=0.80
 ```
 
+## Bounded LLM Adjudication
+
+When `ENABLE_LLM=true`, the service can ask the configured LLM for bounded rubric judgments only.
+
+This LLM layer does **not** set final numeric scores.
+It is limited to:
+
+- `llm_rubric_assessment`
+  - `leadership_potential`
+  - `growth_trajectory`
+  - `motivation_authenticity`
+  - `evidence_strength`
+  - `hidden_potential_hint`
+  - `authenticity_review_needed`
+- reviewer-facing strengths / gaps / uncertainties
+- evidence spans
+- one committee follow-up question
+
+Deterministic backend scoring still owns:
+
+- `merit_score`
+- `confidence_score`
+- `authenticity_risk`
+- `recommendation`
+- shortlist ordering
+
 ## Project Structure
 
 - `app/api/routes.py`: public HTTP routes
 - `app/schemas/`: request and response contracts
-- `app/services/`: scoring pipeline, explainability, privacy, authenticity, semantic features
+- `app/services/`: request-time scoring pipeline, explainability, privacy, authenticity, semantic features
+- `app/assets/`: runtime model artifacts such as the offline shortlist ranker weights
 - `app/config.py`: environment and scoring config
+- `research/`: offline evaluation, annotation analysis, and ranker training utilities
 - `tests/`: API and scoring tests
 
 ## Important Limits
@@ -465,6 +499,12 @@ For Railway or similar platforms:
 1. Push the repo.
 2. Set environment variables from `.env.example`.
 3. Start the service with `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+
+Recommended Railway posture:
+
+- keep `SEMANTIC_BACKEND=hash`
+- do not install `requirements-semantic.txt`
+- keep `AI_DETECTOR_ENABLED=false`
 
 After deployment, the API docs are available at:
 

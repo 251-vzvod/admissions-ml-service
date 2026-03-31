@@ -14,6 +14,16 @@ Core product framing:
 
 `hidden potential + trajectory of growth + committee support workflow`
 
+This framing is now further anchored by the InVisionU brief:
+
+- the service should reward action over polish
+- it should reward values-based leadership over prestige signaling
+- it should surface promising candidates who may need support, not just already-finished high performers
+
+Reference:
+
+- `docs/INVISIONU_SCORING_PRINCIPLES.md`
+
 ## What Is Already Strong
 
 - Human-in-the-loop by design
@@ -24,8 +34,8 @@ Core product framing:
 - There is already a baseline, semantic layer, annotations, and validation story
 - Shortlist-oriented outputs now exist
 - Hidden-potential logic is now materially stronger than the earlier scorer-only version
-- English-first operation is now the practical product assumption
-- Lightweight multilingual support still exists, but is no longer the main optimization target
+- English-only operation is now the practical product assumption
+- multilingual support is no longer part of the active runtime scope
 
 ## What Is Still Weak
 
@@ -40,6 +50,7 @@ Core product framing:
 
 - Any penalty for weak self-presentation by itself
 - Any hidden bias toward polished English
+- Any hidden reward for prestige-coded backgrounds or institutions
 - Too much merit weight on documents / portfolio / video presence
 - Any wording that sounds like "AI text detected" as a final verdict
 - Any narrative that sounds like "LLM decides"
@@ -54,7 +65,29 @@ Core product framing:
 - Evidence Coverage Score
 - Better growth trajectory extraction
 - Better committee-facing guidance
-- Lightweight multilingual semantic upgrade
+- production English semantic backend
+- Bounded LLM rubric adjudication for reviewer-assistant use only
+
+## InVisionU-Specific Scoring Rules
+
+The service should explicitly prefer:
+
+- action on real problems
+- growth through challenge and adaptation
+- community orientation
+- project-based initiative
+- promising candidates who may need support
+
+The service should explicitly avoid rewarding:
+
+- polished English by itself
+- abstract leadership language without action
+- prestige-coded self-presentation
+- strong ambition without grounded contribution
+
+Reference:
+
+- `docs/INVISIONU_SCORING_PRINCIPLES.md`
 
 ## What Still Needs To Be Added
 
@@ -68,7 +101,7 @@ Status:
 - section consistency is now implemented
 - claim-evidence extraction is now active
 - pairwise ranking is now the most valuable next ML step
-- stronger multilingual encoder is optional future work, not a core hackathon priority anymore
+- sentence-transformer semantic mode remains available, but the deploy-safe default runtime is now hash-based
 - experimental learned ranking should only survive if it beats current shortlist logic on held-out family-aware validation
 
 ## ML / NLP Priorities
@@ -148,10 +181,15 @@ Status:
 
 1. Keep shortlist-first outputs stable and demo-ready
 2. Improve claim-to-evidence grounding
-3. Add transparent pairwise shortlist reranking
-4. Continue fairness work through English-first slice-based checks, not multilingual expansion by default
+3. Use offline shortlist ranker artifacts instead of hand-written pairwise reranking
+4. Continue fairness work through English-first slice-based checks
 5. Add stress-test robustness checks for English-first candidates
 6. Keep the shortlist-first narrative tightly aligned with the actual product behavior
+7. Keep scoring logic aligned with InVisionU's actual mission:
+   - project-based learning
+   - values-based leadership
+   - equal access
+   - growth, not just polish
 
 ## Guardrails
 

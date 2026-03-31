@@ -1371,3 +1371,449 @@ Result:
 - Leaner runtime dependency set.
 - Less local repo noise during development and review.
 - Cleaner separation between production code, offline research scripts, and temporary debugging artifacts.
+
+## Phase 22. Scoring Formula Refactor And Hidden-Potential Guardrails
+
+Why this step happened:
+
+- The scoring code had started to duplicate the same weighted formulas in both the runtime scorer and the trace builder.
+- That duplication was becoming a maintenance risk: future tweaks could easily change one path without changing the other.
+- A live batch test also exposed a product bug: a polished-but-thin profile could still surface inside the `Hidden potential` cohort.
+
+What changed:
+
+- Refactored `app/services/scoring.py` so that component definitions are shared:
+  - potential items
+  - motivation items
+  - leadership items
+  - experience items
+  - trust items
+  - confidence items
+- Centralized trust and confidence penalty assembly instead of duplicating penalty math in multiple places.
+- Tightened hidden-potential logic in shortlist/cohort mapping:
+  - stronger penalty for inflated presentation with thin evidence
+  - explicit penalty when there is little real understatement gap
+  - stricter committee-level threshold before assigning `Hidden potential`
+
+Files touched:
+
+- `app/services/scoring.py`
+- `app/services/shortlist.py`
+- `app/services/committee_guidance.py`
+- `tests/test_score_single.py`
+
+Result:
+
+- Scoring logic is easier to reason about and safer to modify without trace/runtime drift.
+- The system is less likely to label a polished-but-thin candidate as `Hidden potential`.
+- This was a refactor with product-behavior guardrails, not a large model rewrite.
+
+## Phase 23. Bounded LLM Rubric Adjudication
+
+Why this step happened:
+
+- The project already used LLM only for explainability, but there was still an open question: where can LLM help without becoming the final scorer?
+- The answer was to keep deterministic backend scoring as the source of truth, while allowing LLM to produce only narrow rubric judgments and reviewer artifacts.
+
+What changed:
+
+- Extended the LLM extraction contract so the model can now return:
+  - `leadership_potential` (1..5)
+  - `growth_trajectory` (1..5)
+  - `motivation_authenticity` (1..5)
+  - `evidence_strength` (1..5)
+  - `hidden_potential_hint` (1..5)
+  - `authenticity_review_needed` (`low|medium|high`)
+- Added one bounded reviewer artifact:
+  - `committee_follow_up_question`
+- Kept all final backend scores deterministic:
+  - `merit_score`
+  - `confidence_score`
+  - `authenticity_risk`
+  - `recommendation`
+  - shortlist ordering
+
+Why this is different from handing scoring to the LLM:
+
+- The LLM is not allowed to output final recommendation or final service scores.
+- The LLM is used as a rubric-based reviewer, not as the final arbiter.
+- This preserves explainability and human-defensible backend logic while still benefiting from LLM qualitative judgment.
+
+Additional prompt discipline:
+
+- Added bounded rubric schema to the system prompt.
+- Added few-shot calibration examples:
+  - modest real-action hidden-potential case
+  - polished abstract thin-evidence case
+
+Files touched:
+
+- `app/services/llm_prompts.py`
+- `app/services/llm_parser.py`
+- `app/services/llm_extractor.py`
+- `app/services/pipeline.py`
+- `app/schemas/output.py`
+- `tests/test_llm_parser.py`
+
+Result:
+
+- The service can now expose LLM rubric judgments without surrendering final scoring control.
+- This gives the committee a clearer reviewer-assistant layer while keeping the product aligned with transparent AI support rather than black-box ranking.
+
+## Phase 24. InVisionU Mission Translation Into Scoring Principles
+
+Why this step happened:
+
+- The project already had a solid shortlist-first direction, but the university brief made the target profile much clearer.
+- InVisionU is not a generic admissions environment. It is explicitly looking for values-based leaders, practical builders, and community-oriented future founders.
+- That means the system should not only be technically transparent. It should also be aligned with the institution's actual mission.
+
+What changed:
+
+- Added an explicit scoring-principles document:
+  - `docs/INVISIONU_SCORING_PRINCIPLES.md`
+- Synced `docs/HACKATHON_ML_SYSTEM_DIRECTION.md` with the brief so the direction doc now reflects:
+  - action over polish
+  - values-based leadership over prestige signaling
+  - support-aware surfacing of promising candidates
+
+What this clarified:
+
+- Strong signal at InVisionU is not just academic polish or fluent motivation language.
+- Stronger signals include:
+  - concrete initiative
+  - growth through friction
+  - project-based behavior
+  - community orientation
+  - practical contribution
+- `Promising but needs support` is not a weak byproduct cohort. It is strategically important for this university model.
+
+Why this matters:
+
+- It makes future scoring changes easier to judge against a real institutional target instead of a generic admissions intuition.
+- It reduces the risk of drifting toward an essay-quality scorer.
+- It strengthens the story for the committee and for the hackathon presentation, because the system is now explicitly aligned with the university's mission rather than only with generic scoring abstractions.
+
+## Phase 25. Action-Weighted Scoring Alignment
+
+Why this step happened:
+
+- After translating the InVisionU brief into scoring principles, the remaining mismatch became easier to name.
+- The service still gave too much indirect credit to application materials and not enough explicit credit to practical action.
+- That mismatch was especially risky for the exact type of candidate InVisionU wants to surface:
+  - strong action signal
+  - imperfect polish
+  - early but real project-based initiative
+
+What changed:
+
+- Reduced the influence of `docs_count_score`, `portfolio_links_score`, and `has_video_presentation` across:
+  - merit
+  - trust
+  - confidence
+  - committee calibration
+- Added a stronger `practical action` bias using existing transparent signals such as:
+  - initiative
+  - leadership impact
+  - evidence count
+  - project mentions
+  - adaptation
+  - outcome
+- Tightened hidden-potential logic so it now demands stronger credible action before surfacing a candidate as `Hidden potential`.
+- Tightened committee cohort thresholds so polished-but-thin cases are less likely to leak into hidden-potential routing.
+
+Why this matters:
+
+- This pushes the system closer to InVisionU's real selection logic:
+  - action over polish
+  - contribution over presentation
+  - early-stage builders over prestige-coded applicants
+- It also reduces the chance that extra materials alone make a candidate look stronger than the text evidence actually supports.
+
+## Phase 26. Ground-Truth Dataset Blueprint
+
+Why this step happened:
+
+- The project hit the practical limit of pure heuristic tuning on a mixed-quality hackathon annotation set.
+- The next bottleneck is no longer feature invention. It is label quality.
+- A stronger future system needs a cleaner data collection and adjudication protocol, not just more local score tweaking.
+
+What changed:
+
+- Added a new annotation workflow document:
+  - `docs/annotation_guide_v2.md`
+- Added a dataset layout specification:
+  - `docs/dataset_schema_v2.md`
+- Added starter templates for the future benchmark:
+  - `data/templates/candidates.csv`
+  - `data/templates/candidate_structured.csv`
+  - `data/templates/annotations_individual.csv`
+  - `data/templates/annotations_adjudicated.csv`
+  - `data/templates/pairwise_labels.csv`
+  - `data/templates/candidate_texts.jsonl.example`
+  - `data/templates/annotation_evidence.jsonl.example`
+  - `data/templates/batch_shortlist_tasks.jsonl.example`
+
+Why this matters:
+
+- It shifts the project from "keep tuning the current scorer forever" toward a more defensible benchmark strategy.
+- It makes the intended future ground truth explicit:
+  - committee shortlist priority
+  - hidden potential
+  - support need
+  - authenticity review need
+- It also makes it easier to collect pairwise and batch-level labels, which are often more useful for ranking than one scalar score.
+
+## Phase 27. Repository Surface Cleanup
+
+Why this step happened:
+
+- The repository had accumulated too many parallel reports, experimental markdown files, offline evaluation artifacts, and temporary local scoring dumps.
+- Even when those files were useful historically, they were making it harder to think clearly about the current system state and next direction.
+
+What changed:
+
+- Reduced the visible `docs/` surface to the current working set:
+  - `docs/HACKATHON_ML_SYSTEM_DIRECTION.md`
+  - `docs/INVISIONU_SCORING_PRINCIPLES.md`
+  - `docs/scoring_system_evolution.md`
+  - `docs/annotation_guide_v2.md`
+  - `docs/dataset_schema_v2.md`
+  - `docs/fairness_note.md`
+  - `docs/input_example.md`
+- Moved older reports and planning documents into:
+  - `docs/archive/`
+- Reduced the visible `data/` surface to the current working set:
+  - `data/candidates_expanded_v1.json`
+  - `data/final_hackathon_annotations_v1.json`
+  - `data/templates/`
+- Moved offline evaluation packs and earlier annotation layers into:
+  - `data/archive/`
+- Deleted temporary local scoring outputs for ad-hoc candidate runs.
+
+Why this matters:
+
+- It makes the current project state easier to reason about.
+- It lowers the risk of continuing to optimize against stale reports or side artifacts by accident.
+- It supports a cleaner rethink of the system architecture from a smaller, more deliberate working set.
+
+## Phase 28. Runtime V2 Rethink And Scope Narrowing
+
+Why this step happened:
+
+- After the repository cleanup, the bigger problem became architectural rather than cosmetic.
+- The service still carried traces of older experimental assumptions:
+  - multilingual runtime ambition
+  - loosely defined input payloads
+  - too many public-facing internal fields
+- That made the system harder to explain and easier to misuse.
+
+What changed:
+
+- Defined a cleaner runtime architecture in:
+  - `docs/ML_SERVICE_V2_ARCHITECTURE.md`
+- Narrowed the runtime product assumption to:
+  - English-only applicant materials
+  - deterministic scoring first
+  - bounded NLP support
+  - optional LLM explainability
+- Introduced a canonical runtime input contract centered on:
+  - `candidate_id`
+  - `profile`
+  - `consent`
+- Normalized older payload shapes into the canonical profile contract before scoring.
+
+Why this matters:
+
+- The service now has a much clearer product boundary.
+- It is easier to explain what belongs to:
+  - runtime
+  - offline research
+  - future product extensions
+- This phase was a real rethink, not just another scoring tweak.
+
+## Phase 29. Production Semantic Backend Upgrade
+
+Why this step happened:
+
+- Earlier phases kept the semantic layer flexible, but the default runtime path still behaved too much like a heuristic-plus-hash setup.
+- That was useful for experimentation, but too weak as the long-term production story.
+
+What changed:
+
+- Switched the intended production semantic backend to:
+  - `sentence-transformer`
+- Kept the lightweight `hash` backend as:
+  - test-friendly fallback
+  - resilience option when the stronger backend is unavailable
+- Preserved the backend abstraction so runtime behavior remains configurable and reproducible.
+
+Why this matters:
+
+- The semantic layer now has a more credible production default.
+- This aligns the runtime story better with the actual NLP positioning of the project:
+  - deterministic scoring core
+  - stronger semantic retrieval
+  - still no black-box end-to-end admission model
+
+## Phase 30. Runtime And Research Separation
+
+Why this step happened:
+
+- The codebase still mixed two different responsibilities:
+  - runtime scoring for the live service
+  - offline evaluation, calibration, and experimentation
+- That made the service feel more complex than it really needed to be.
+
+What changed:
+
+- Moved evaluation-oriented logic and artifacts into the `research/` tree.
+- Kept runtime modules focused on:
+  - preprocessing
+  - privacy
+  - eligibility
+  - signal extraction
+  - scoring
+  - routing
+  - committee-facing explanation
+- Made the repo structure more explicit about what is:
+  - deployable runtime code
+  - offline research code
+  - archived historical material
+
+Why this matters:
+
+- This was an important simplification step.
+- It reduced the risk of accidentally treating evaluation helpers as production dependencies.
+- It also made the demo story cleaner: the runtime engine is now easier to describe without dragging the whole research tail into every explanation.
+
+## Phase 31. Compact Public API And Reviewer Signal Layer
+
+Why this step happened:
+
+- The runtime response still exposed too many low-level internal artifacts.
+- Even when those fields were useful for debugging, they were making the service surface feel noisy and unfocused.
+
+What changed:
+
+- Reduced the public `/score` response to a smaller committee-facing surface.
+- Kept detailed artifacts internal and excluded from the public JSON.
+- Added a more compact reviewer layer built around a few high-level signals such as:
+  - growth
+  - agency
+  - motivation
+  - community
+  - evidence
+  - authenticity
+  - polish risk
+  - hidden potential
+- Consolidated the external evidence story into:
+  - `evidence_highlights`
+
+Why this matters:
+
+- The service now communicates more like a committee support product and less like a debug dump.
+- Internal feature clutter still exists where needed, but it no longer dominates the public API narrative.
+
+## Phase 32. Unified Routing Policy And Centralized Thresholds
+
+Why this step happened:
+
+- Recommendation, shortlist surfacing, hidden-potential surfacing, and support-needed surfacing had become too easy to reason about separately and too hard to reason about together.
+- That is dangerous in a committee workflow product because inconsistent routing logic creates confusion even when individual rules look sensible.
+
+What changed:
+
+- Added a unified policy layer that owns:
+  - priority routing
+  - shortlist bands
+  - hidden-potential bands
+  - support-needed bands
+  - authenticity-review bands
+  - insufficient-evidence bands
+- Centralized key thresholds into configuration instead of scattering them as magic numbers across multiple modules.
+- Exposed policy state in score traces for debugging and calibration.
+
+Why this matters:
+
+- Derived scores now explain policy instead of competing with it.
+- This makes threshold tuning much cheaper and much safer.
+- It also makes the system easier to defend in front of judges and committee stakeholders:
+  - one policy layer
+  - one routing story
+  - one place to calibrate thresholds
+
+## Phase 33. Offline Shortlist Ranker Integration
+
+Why this step happened:
+
+- Earlier shortlist ordering improvements were helpful, but the runtime still leaned too much on hand-written comparison logic.
+- That was not the right long-term bridge between transparent scoring and future ranking improvements.
+
+What changed:
+
+- Replaced hand-written pairwise reranking with an offline-trained shortlist ranker artifact loaded at runtime.
+- Kept the runtime ranker transparent by building it on top of committee-facing scores and interpretable axes.
+- Moved training and evaluation of that ranker into the offline research layer.
+
+Why this matters:
+
+- The ranking story is now cleaner:
+  - runtime loads a validated artifact
+  - research trains and evaluates it offline
+- This is a much better product architecture than keeping ranking behavior buried inside growing heuristic comparison code.
+
+## Phase 34. Calibration Toolkit And LLM Role Separation
+
+Why this step happened:
+
+- The project reached a point where the main bottleneck was no longer feature plumbing.
+- The key missing ingredient became calibration against actual committee judgment.
+- At the same time, there was a risk of letting LLM drift from explainability into soft adjudication inside the live runtime path.
+
+What changed:
+
+- Added a calibration toolkit in:
+  - `research/calibration/`
+- Introduced:
+  - adjudication template
+  - human-vs-model comparison script
+  - markdown/json calibration reporting
+- Added an offline-only LLM adjudication prompt for drafting calibration labels.
+- Kept the live runtime LLM path explainability-only.
+
+Important correction to the earlier story:
+
+- The project briefly explored a richer LLM rubric/adjudication contract.
+- The final decision was to keep that contract in offline calibration only.
+- The live service LLM path was explicitly pulled back to:
+  - explainability
+  - reviewer support
+  - follow-up question generation
+
+Why this matters:
+
+- This phase clarifies the final architecture boundary better than any earlier LLM experiment did.
+- It preserves the intended product philosophy:
+  - deterministic and policy-driven runtime scoring
+  - human-reviewed calibration
+  - LLM as assistant, not authority
+
+## Current Truth After These Phases
+
+The current runtime should now be described as:
+
+- a transparent screening-support engine
+- English-only in the active product scope
+- deterministic-first
+- semantically supported by a sentence-transformer backend
+- optionally assisted by LLM for explainability only
+- routed through one unified policy layer
+- ranked via an offline-trained shortlist artifact
+
+And the current offline research direction should be described as:
+
+- collect a small adjudicated calibration set
+- compare human judgment against current policy
+- tune thresholds before touching scorer weights
+- improve ranking only when offline validation clearly beats the current runtime
