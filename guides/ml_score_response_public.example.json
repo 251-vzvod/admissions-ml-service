@@ -1,0 +1,55 @@
+{
+  "candidate_id": "form_123",
+  "scoring_run_id": "run_abc123",
+  "scoring_version": "v1.4.0",
+  "eligibility_status": "conditionally_eligible",
+  "eligibility_reasons": [],
+  "merit_score": 72,
+  "confidence_score": 61,
+  "authenticity_risk": 37,
+  "recommendation": "review_priority",
+  "review_flags": [
+    "low_confidence"
+  ],
+  "hidden_potential_score": 68,
+  "support_needed_score": 44,
+  "shortlist_priority_score": 71,
+  "evidence_coverage_score": 58,
+  "trajectory_score": 74,
+  "committee_cohorts": [
+    "Hidden potential"
+  ],
+  "why_candidate_surfaced": [
+    "Growth and agency signals are stronger than presentation polish."
+  ],
+  "what_to_verify_manually": [
+    "Ask for one concrete example with measurable outcome."
+  ],
+  "suggested_follow_up_question": "What changed after your first attempt did not work?",
+  "evidence_highlights": [
+    {
+      "claim": "Helped classmates prepare for exams",
+      "support_level": "supported",
+      "source": "motivation_letter_text",
+      "snippet": "I shared notes with classmates before exams.",
+      "support_score": 78,
+      "rationale": "Concrete action tied to other people."
+    }
+  ],
+  "top_strengths": [
+    "Clear initiative and agency markers in self-driven actions."
+  ],
+  "main_gaps": [
+    "Specificity is limited; more concrete examples and outcomes would improve reliability."
+  ],
+  "explanation": {
+    "summary": "This profile was scored using deterministic feature extraction with deterministic internal scoring.",
+    "scoring_notes": {
+      "potential": "Potential axis reflects growth, resilience, initiative, and fit signals.",
+      "motivation": "Motivation axis combines clarity, fit, and grounded evidence.",
+      "confidence": "Confidence score measures reliability of this assessment, not candidate quality.",
+      "authenticity_risk": "Authenticity risk is a review-risk signal.",
+      "recommendation": "Recommendation is a workflow routing label for committee review."
+    }
+  }
+}
