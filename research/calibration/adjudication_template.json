@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "version": "calibration-v2",
+    "purpose": "small adjudicated set for policy calibration"
+  },
+  "cases": [
+    {
+      "candidate_id": "calib_hidden_001",
+      "candidate_payload": {
+        "candidate_id": "calib_hidden_001",
+        "profile": {
+          "narratives": {
+            "motivation_letter_text": "I started a peer tutoring group for younger students, changed the format after the first month failed, and kept improving it with weekly feedback.",
+            "motivation_questions": [
+              {
+                "question": "Why this program?",
+                "answer": "I want to learn how to build useful projects and bring that experience back to my city."
+              }
+            ],
+            "interview_text": "I can explain what failed first, what I changed, and what improved afterward."
+          }
+        },
+        "consent": true
+      },
+      "human_review": {
+        "recommendation": "standard_review",
+        "shortlist_band": true,
+        "hidden_potential_band": true,
+        "support_needed_band": false,
+        "authenticity_review_band": false,
+        "notes": "Strong growth and community signal; should be surfaced despite imperfect polish."
+      },
+      "rubric": {
+        "leadership_through_action": 4,
+        "growth_trajectory": 5,
+        "community_orientation": 4,
+        "project_based_readiness": 4,
+        "motivation_groundedness": 4,
+        "evidence_strength": 3,
+        "shortlist_priority": 4
+      },
+      "evidence_bullets": [
+        "Candidate started a real peer tutoring effort and iterated after failure.",
+        "Motivation is connected to helping other students rather than self-marketing."
+      ],
+      "uncertainties": [
+        "Evidence of impact is credible but still limited in quantified detail."
+      ]
+    }
+  ]
+}

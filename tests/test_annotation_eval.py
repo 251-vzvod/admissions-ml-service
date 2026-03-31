@@ -1,4 +1,4 @@
-from app.services.annotation_eval import CandidateAnnotation, build_label_evaluation
+from research.annotation_eval import CandidateAnnotation, build_label_evaluation
 
 
 def test_build_label_evaluation_reports_ranking_metrics() -> None:

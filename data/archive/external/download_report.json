@@ -1,0 +1,73 @@
+{
+  "manifest": "data\\external\\dataset_manifest.json",
+  "downloaded": [
+    {
+      "id": "clear_corpus",
+      "path": "data\\external\\raw\\clear_corpus\\CLEAR_corpus_final.xlsx",
+      "bytes": 3349179,
+      "license": "CC BY-NC-SA 4.0",
+      "official_page": "https://github.com/scrosseye/CLEAR-Corpus"
+    },
+    {
+      "id": "persuade_2_train",
+      "path": "data\\external\\raw\\persuade_2_train\\persuade_2_train.csv",
+      "bytes": 616894963,
+      "license": "CC BY-NC-SA 4.0",
+      "official_page": "https://github.com/scrosseye/persuade_corpus_2.0"
+    },
+    {
+      "id": "persuade_2_test",
+      "path": "data\\external\\raw\\persuade_2_test\\persuade_2_test.zip",
+      "bytes": 14060214,
+      "license": "CC BY-NC-SA 4.0",
+      "official_page": "https://github.com/scrosseye/persuade_corpus_2.0"
+    },
+    {
+      "id": "mediasum",
+      "path": "data\\external\\raw\\mediasum\\mediasum.zip",
+      "bytes": 1468019848,
+      "license": "Research-only",
+      "official_page": "https://github.com/zcgzcgzcg1/MediaSum"
+    },
+    {
+      "id": "ru_en_multilingual_support_placeholder",
+      "path": "data\\external\\raw\\ru_en_multilingual_support_placeholder\\README.txt",
+      "bytes": 152,
+      "license": "N/A",
+      "official_page": "https://the-learning-agency.com/guides-resources/datasets/"
+    },
+    {
+      "id": "learning_agency_asap_2",
+      "path": "data\\external\\raw\\learning_agency_asap_2",
+      "license": "CC BY 4.0",
+      "official_page": "https://the-learning-agency.com/guides-resources/datasets/",
+      "competition_slug": "automated-student-assessment-prize-2"
+    },
+    {
+      "id": "learning_agency_aide",
+      "path": "data\\external\\raw\\learning_agency_aide",
+      "license": "CC BY 4.0",
+      "official_page": "https://the-learning-agency.com/guides-resources/datasets/",
+      "competition_slug": "llm-detect-ai-generated-text"
+    },
+    {
+      "id": "learning_agency_piilo",
+      "path": "data\\external\\raw\\learning_agency_piilo",
+      "license": "CC BY 4.0",
+      "official_page": "https://the-learning-agency.com/guides-resources/datasets/",
+      "competition_slug": "pii-detection-removal-from-educational-data"
+    },
+    {
+      "id": "learning_agency_klicke",
+      "path": "data\\external\\raw\\learning_agency_klicke",
+      "license": "CC BY 4.0",
+      "official_page": "https://the-learning-agency.com/guides-resources/datasets/",
+      "competition_slug": "linking-writing-processes-to-writing-quality"
+    }
+  ],
+  "notes": [
+    "Open-source downloads are fetched directly from official public sources when available.",
+    "Kaggle datasets require a configured Kaggle CLI and valid credentials.",
+    "Check dataset licenses before using any corpus beyond prototype/research scope."
+  ]
+}

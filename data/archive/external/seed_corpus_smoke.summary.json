@@ -1,0 +1,11 @@
+{
+  "output": "data\\external\\seed_corpus_smoke.jsonl",
+  "record_count": 45,
+  "sources_present": [
+    "clear_corpus",
+    "learning_agency_aide",
+    "learning_agency_asap_2",
+    "learning_agency_piilo",
+    "persuade_2_train"
+  ]
+}

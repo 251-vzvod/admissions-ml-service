@@ -1,0 +1,997 @@
+{
+  "meta": {
+    "label_type": "silver_draft",
+    "source_file": "data/candidates.json",
+    "annotation_method": "rubric_based_llm_draft"
+  },
+  "annotations": [
+    {
+      "candidate_id": "cand_001",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "One time I decided to organize all the books in our home because everything was messy and people kept losing their things",
+        "I helped organize my brother's birthday at home with a small party for his friends",
+        "I helped my neighbor, who is an old lady, with carrying her groceries and cleaning her small garden, because I saw she could not do it"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_002",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 2,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I started tutoring my younger cousin to help her with geometry",
+        "I have not organized any large events, but I coordinated small study sessions for classmates before exams",
+        "I helped my classmate who was struggling with algebra for several weeks after school"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is moderate pending human comparison against stronger files."
+    },
+    {
+      "candidate_id": "cand_003",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I tried to build a small water filter using sand and charcoal in a plastic bottle after reading about it online",
+        "I started a little weekend cleanup with friends",
+        "I sometimes help the old man across our street with grocery shopping when he can't go out, and sometimes we talk about what the city"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_004",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Я сама придумала провести микроопрос среди соседей, чтобы узнать, чего им не хватает во дворе",
+        "Пробовала запустить челлендж по сбору пластика среди знакомых — первые дни был интерес, потом затухло, потому что никто не следил за",
+        "Помогала подружке справиться с тревожностью перед экзаменами — пересматривали программы, разговаривали, я искала техники релаксации"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_005",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Проект «Общение без границ» родился из наблюдения, что в классе многие стесняются выступать и даже делиться своими мыслями",
+        "Я организовал цикл встреч по коммуникациям в школе",
+        "Я помогал новенькой девочке адаптироваться в классе — она сначала была очень закрыта, не могла найти друзей"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_006",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Я попробовал сделать простую солнечную батарею для зарядки мобильного телефона",
+        "Я не очень активен в организации событий, но один раз попробовал сделать кружок по электронике среди одноклассников",
+        "Один мальчик из младших классов не понимал математику"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_007",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I noticed that our class had never celebrated diversity or done anything to share about our cultures",
+        "I organized the Culture Swap in our class",
+        "I helped an elderly neighbor who struggled to carry groceries after her husband passed away"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_008",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I saw that in our building, old people could not change their light bulbs in the entrance",
+        "with my cousin, we started juice selling and also had a small repair idea in our building",
+        "I help my neighbor, an old man, carry water and do small things in the yard"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_009",
+      "triage_status": "usable",
+      "leadership_potential": 2,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I did not do a big project, but one time I made a plan in the summer to help my mother clean the yard better",
+        "Only small things, like the cleaning plan for our yard",
+        "I try to help my neighbor, an old woman, to carry water buckets in summer"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_010",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 5,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Auxilium — инициатива по обучению пенсионеров цифровой грамотности",
+        "Auxilium. Работает — личное общение, мотивация волонтёров через реальные истории успеха",
+        "Волонтёрство в доме престарелых. Общение с бабушками и дедушками, которым не с кем поговорить, формирует эмпатию и чувство"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_011",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Идея с лавочками возле дома появилась у меня случайно: я заметила, что соседи, особенно пожилые люди, часто садятся на коробки или",
+        "С лавочками сработало — личная вовлечённость и поддержка соседей",
+        "Я помогала бабушке по соседству делать покупки и водить её на приём в поликлинику"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_012",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Last winter, I designed and printed labels for the school library books to make finding genres easier",
+        "I have not started a formal club, but I organized a small study group with three classmates to help each other with physics",
+        "I regularly help my neighbor, a retired engineer, set up her computer and explain new programs to her"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_013",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 5,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "One project I initiated myself was the creation of a digital map for youth-friendly free events in Almaty",
+        "I've co-organized several pop-up clean-ups and cultural meetups in Almaty",
+        "I began mentoring middle schoolers in my old neighborhood last year, focusing on study skills, emotional well-being, and coping with"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_014",
+      "triage_status": "needs_edit",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "low",
+      "evidence_bullets": [
+        "The murals on our light poles came completely from my initiative",
+        "the yard art day in our microdistrict",
+        "I helped my neighbor's grandson, who was struggling with reading"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_015",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "confidence": "low",
+      "evidence_bullets": [
+        "I started a tutoring circle for kids from nearby villages who would come to Aktobe every weekend",
+        "Co-founding the rural tutoring circle was the biggest",
+        "I spent a summer helping at a local orphanage, running English classes for kids"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are reflection. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_016",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I decided to test homemade compost to improve soil for our family's tomato field",
+        "I initiated a school library group to talk about farming innovations",
+        "I help my younger sister with her homework almost every night, especially when our parents are tired from work"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_017",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 5,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Seeing how hard it was for ordinary citizens to understand Almaty's worsening air pollution, I initiated a web platform that combined",
+        "I co-founded a robotics mentorship initiative for students from under-resourced schools",
+        "Last summer, I volunteered to organize digital literacy sessions for elderly neighbors who struggled with using smartphones during the"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_018",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Однажды я заметила, что рядом со школой много мусора, особенно пластиковых бутылок — их просто некому было убирать",
+        "Я основала школьный эко-клуб. Сработало — вовлекла учеников разных классов, сделали несколько удачных акций, например, сбор макулатуры",
+        "Я помогла организовать арт-терапию для детей с особенностями развития в одном из городских центров"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_019",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I noticed that some first-year students were struggling with basic physics concepts, so I made a set of handwritten notes and shared",
+        "I tried to start a study group for physics in my school",
+        "I helped a neighbor's child who was struggling with math"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_020",
+      "triage_status": "needs_edit",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "confidence": "low",
+      "evidence_bullets": [
+        "The idea with free English and Russian help club for younger students in our aul was mine",
+        "English club worked—kids came and improved",
+        "I helped my cousin study for the UNT, because he failed on the first try"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_021",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I came up with the \"Karaganda Speaks\" oral history project after talking with my grandmother one evening",
+        "\"Karaganda Speaks\" was my first real initiative",
+        "I helped my neighbor's child, who is in primary school, with English homework every week for three months"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_022",
+      "triage_status": "usable",
+      "leadership_potential": 2,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "When I was in 10th grade, I tried to sell homemade samsa at school to get extra money for my family",
+        "I tried to sell homemade samsa at school",
+        "I helped my grandmother after her operation"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_023",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "В прошлом году я предложил(а) создать для нашей школьной библиотеки «стену отзывов», где ученики могли бы анонимно рекомендовать книги",
+        "С книгами в библиотеке идея сработала — все откликнулись",
+        "Я помогал(а) девочке из параллели, у которой были проблемы с математикой"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_024",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "confidence": "low",
+      "evidence_bullets": [
+        "Last winter, I developed a plan for a low-cost air quality monitor for my neighborhood using sensors I ordered online",
+        "I led the effort to organize a small river clean-up with my friends in our town",
+        "I started helping an elderly neighbor shovel snow last winter because she was struggling, even though we barely knew each other"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are reflection. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_025",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I made a small water filter at home by using layers of stones, sand, and charcoal",
+        "I did not organize big things, but I helped with our class's science day by bringing materials for experiments and helping classmates",
+        "I helped my neighbor's child, who is in primary school, with math and reading after school"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_026",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I noticed our school yard was muddy and dangerous, and many students were slipping",
+        "I organized a small translation club at school",
+        "I volunteered at the city animal shelter with a few friends"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are reflection. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_027",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 2,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Честно говоря, самостоятельных масштабных проектов у меня пока не было, если не считать помощь одноклассникам с разбором сложных задач",
+        "Организовывала небольшое онлайн-сообщество для подготовки к математическим олимпиадам (Telegram-чат)",
+        "Я помогала одной однокласснице, которая отставала по физике"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Committee priority is moderate pending human comparison against stronger files."
+    },
+    {
+      "candidate_id": "cand_028",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I had the idea to invite young entrepreneurs from Shymkent to our school to share real stories, not just have teachers talk about",
+        "I organized a business game competition at my school",
+        "Last summer, I mentored my cousin who wanted to learn English and start a small baking business online"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_029",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "В школе часто жалуются на горячую воду зимой (слишком долго идёт холодная, пока не станет горячей)",
+        "I tried to make a little eco-club for juniors at school, just after lessons once a week",
+        "In the summer, я помогал соседской бабушке с огородом и учил её внука считать дроби"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_030",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I created a short video series explaining basic algebra in Kazakh for my younger cousin and her classmates",
+        "I organized a small science day for younger grades at my school",
+        "I tutored my younger cousin and her classmates in math every weekend"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_031",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Я сделала серию коротких рассказов для детей о том, как белка и ёжик сортируют мусор в лесу",
+        "Пару раз организовывала субботники для соседей",
+        "Я часто помогаю девочке-соседке с домашкой по литературе"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are reflection. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_032",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 5,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Идея проекта «Город для всех» возникла после разговора с мальчиком из моего двора, который не знал, как пользоваться госуслугами онлайн",
+        "Организовал цикл бесплатных мастер-классов для подростков",
+        "Я работал волонтёром в центре для подростков из неблагополучных семей — обучал их основам программирования и медиаграмотности"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_033",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Моя идея — провести встречу для девочек на тему уверенности в себе, родилась случайно: я увидела, как подруга сомневается в своих",
+        "Проводила встречу по развитию soft skills для девочек",
+        "Я часто помогаю пожилой соседке — покупаю продукты, общаюсь с ней, иногда просто захожу посидеть и выпить чаю"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_034",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I made a power bank from old phone batteries for my little brother",
+        "Я предложил сделать совместный ремонт старого компьютера в школьной библиотеке, потому что техника часто ломалась, и никто не хотел",
+        "Я помогал пожилому соседу — ремонтировал ему розетки, когда у него начались проблемы с электричеством"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_035",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Я придумала создать стенгазету ко Дню Каспия, чтобы рассказать ученикам о ситуации с загрязнением и исчезновении рыб",
+        "Я с одноклассниками провела акцию по уборке школьного двора: привлекла 15 человек, сделали газету",
+        "Я помогала однокласснику, у которого были трудности с русским языком"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_036",
+      "triage_status": "usable",
+      "leadership_potential": 1,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 1,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "low",
+      "evidence_bullets": [
+        "I do not have a big project. Once, when water was cut in the village for two days, I tried to organize with my friends to bring",
+        "I did not organize big things. Maybe only the water buckets for neighbors",
+        "I try to help my grandmother often. She is old so I bring water, chop wood for her when she asks"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_037",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Last summer, I noticed children in my apartment complex sitting outside bored, especially during school holidays",
+        "Organizing the clothing swap was successful because we partnered with a local market and advertised in our neighborhood, which brought",
+        "Apart from the reading club, I sometimes help elderly neighbors by shopping for them or just visiting to talk"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_038",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I created an \"International Culture Day\" at my school after noticing how every ethnic group celebrated apart",
+        "I organized our school's “International Culture Day” and a charity food drive",
+        "I volunteered to help international students adjust to life in Astana, showing them around, helping with paperwork, and sometimes even"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_039",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "When the youth center's computers broke, I saw how some kids stopped coming",
+        "Организовала субботник и попыталась открыть English club",
+        "I often help younger girls in our block with homework or just talking"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_040",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I started the 'Kindness Notes' project at school, where students left anonymous supportive messages for each other on lockers and doors",
+        "I organized group discussion circles and the encouragement campaign at my school",
+        "I started helping a classmate who had trouble speaking in public"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_041",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I saw my brother's friend struggling with times tables, so I made simple flashcards from old cardboard and started practicing with him",
+        "I started an informal math club for neighbours' children, just practicing together",
+        "As I wrote earlier, I helped my brother's friend with math, and later a few others joined"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_042",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I noticed that many of my classmates didn't have a central place to share notes and updates, so I started a student-run Telegram",
+        "I organized a bake sale for charity and managed our school's student-run Telegram channel",
+        "Last winter, I volunteered at a children's home, organizing games and reading stories to orphans"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is moderate pending human comparison against stronger files."
+    },
+    {
+      "candidate_id": "cand_043",
+      "triage_status": "needs_edit",
+      "leadership_potential": 3,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "В прошлом году увидел, что наша спортплощадка совсем развалилась",
+        "Организовал обновление спортплощадки; работало то, что много лично говорил с людьми, привлекал друзей",
+        "Помогал ребятам младших классов научиться базовым вещам в футболе и баскетболе"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are reflection. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_044",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I started the school eco-media column (first in VK, then on Instagram), where I researched topics, wrote posts, interviewed local",
+        "I organized our school's eco-day, which included poster contests and a schoolyard clean-up",
+        "I helped my neighbour's daughter (age 10) with her school project on plastic waste"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    },
+    {
+      "candidate_id": "cand_045",
+      "triage_status": "needs_edit",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 3,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "low",
+      "evidence_bullets": [
+        "Я сам придумал акцию «День теплообмена» в своей школе: предложил собирать ненужную, но целую одежду и раздавать нуждающимся в соседнем",
+        "Организовывал мини-ярмарку, где мы продавали выпечку и сувениры, чтобы собрать средства для приюта животных",
+        "Однажды я помогал соседке-пенсионерке ухаживать за огородом, хотя никто меня не просил"
+      ],
+      "review_notes": "There is usable signal here, but the profile needs human cleanup because the narrative is uneven or internally inconsistent. Strongest signals are agency, reflection, motivation. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_046",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "I once started a digital gratitude board on Instagram Stories, where classmates could anonymously thank someone in our school community",
+        "I co-managed a school climate challenge campaign online",
+        "I tutored my younger neighbor in English last summer when he was struggling"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_047",
+      "triage_status": "usable",
+      "leadership_potential": 4,
+      "growth_trajectory": 4,
+      "motivation_authenticity": 4,
+      "evidence_strength": 4,
+      "committee_priority": 4,
+      "hidden_potential_flag": true,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I noticed that my phone's battery kept draining fast, especially during long power cuts in my area",
+        "Once tried to organize peer technical workshops at school",
+        "I helped a neighbor fix her broken heater last winter"
+      ],
+      "review_notes": "Candidate appears stronger than the polish level of the self-presentation suggests. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_048",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "Я разработала презентацию о вреде пластиковых пакетов для младших классов и провела экологический час в школе",
+        "Была в оргкомитете школьной научной недели",
+        "Я помогала однокласснице, которая болела и долго не посещала школу, разъясняла ей материал"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is moderate pending human comparison against stronger files."
+    },
+    {
+      "candidate_id": "cand_049",
+      "triage_status": "usable",
+      "leadership_potential": 2,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 2,
+      "committee_priority": 2,
+      "hidden_potential_flag": false,
+      "needs_support_flag": true,
+      "authenticity_review_flag": false,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Особо своих проектов не было. Иногда что-то придумывал дома – например, сделал для младшей сестры коробку для игрушек из старой мебели",
+        "Я не организовывал большие мероприятия. Только иногда помогал учителю физкультуры собирать ребят для школьных соревнований",
+        "Соседке бабушке помогал зимой чистить снег возле дома"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence stays thin relative to the ambition or tone of the profile. Support need looks real if this candidate advances."
+    },
+    {
+      "candidate_id": "cand_050",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 3,
+      "evidence_strength": 3,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": true,
+      "confidence": "medium",
+      "evidence_bullets": [
+        "Я предложила провести в школе игровую акцию «День без мусора» среди младших классов, чтобы показать им, как важно убирать за собой",
+        "Организовывала вместе с друзьями благотворительный сбор вещей для детского дома",
+        "Я участвовала в уборке дворов во время весеннего субботника"
+      ],
+      "review_notes": "Presentation is stronger than the grounding of the examples, so this should stay a human-review case. The strongest signals are moderate rather than decisive. Evidence is meaningful but mostly small-scale, unevenly detailed, or hard to calibrate. Authenticity flag is only a review signal for generic or mismatched sections."
+    },
+    {
+      "candidate_id": "cand_051",
+      "triage_status": "usable",
+      "leadership_potential": 3,
+      "growth_trajectory": 3,
+      "motivation_authenticity": 2,
+      "evidence_strength": 4,
+      "committee_priority": 3,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "I once created my own spreadsheet to track my olympiad mistakes and review weak points",
+        "I co-organized a short mathematics circle for juniors at my school",
+        "I tutored my cousin in math ahead of her university entrance exams"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. The strongest signals are moderate rather than decisive. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is moderate pending human comparison against stronger files."
+    },
+    {
+      "candidate_id": "cand_052",
+      "triage_status": "usable",
+      "leadership_potential": 5,
+      "growth_trajectory": 5,
+      "motivation_authenticity": 5,
+      "evidence_strength": 5,
+      "committee_priority": 5,
+      "hidden_potential_flag": false,
+      "needs_support_flag": false,
+      "authenticity_review_flag": false,
+      "confidence": "high",
+      "evidence_bullets": [
+        "When schools closed for quarantine, many classmates lost access to teachers and internet",
+        "I built and promoted a zero-budget \"Open Tech\" club",
+        "I mentored a younger neighbor who was always curious about computers but too shy to join clubs or ask questions in class"
+      ],
+      "review_notes": "Profile is coherent enough for a silver-draft label and contains reviewable signal. Strongest signals are agency, reflection, motivation. Evidence is concrete across sections, with multiple specific actions or outcomes. Committee priority is elevated because upside is actionable enough for deeper review."
+    }
+  ]
+}
