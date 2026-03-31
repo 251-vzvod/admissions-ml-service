@@ -9,6 +9,9 @@ This is a decision-support tool. It does not make autonomous admission decisions
 - [FEATURE_DICTIONARY.md](FEATURE_DICTIONARY.md): meaning of public scores and signals
 - [guides/ML_SERVICE_V2_ARCHITECTURE.md](guides/ML_SERVICE_V2_ARCHITECTURE.md): runtime architecture and signal boundaries
 - [guides/fairness_note.md](guides/fairness_note.md): fairness posture and known limits
+- [guides/BACKEND_TO_ML_CONTRACT.md](guides/BACKEND_TO_ML_CONTRACT.md): backend request/response contract for ML integration
+- [guides/FRONTEND_ML_RESPONSE_CONTRACT.md](guides/FRONTEND_ML_RESPONSE_CONTRACT.md): frontend-facing public ML response contract
+- [guides/INTEGRATION_SYNC_SUMMARY.md](guides/INTEGRATION_SYNC_SUMMARY.md): short sync note for frontend/backend teams
 
 ## Public API
 
@@ -20,10 +23,13 @@ Routes:
 
 Main public outputs:
 
+- `eligibility_status`
+- `eligibility_reasons`
 - `merit_score`
 - `confidence_score`
 - `authenticity_risk`
 - `recommendation`
+- `review_flags`
 - `hidden_potential_score`
 - `support_needed_score`
 - `shortlist_priority_score`
