@@ -14,17 +14,34 @@ def test_health() -> None:
     assert "scoring_version" in payload
 
 
-def test_scoring_config_contains_extraction_strategy_fields() -> None:
-    response = client.get("/config/scoring")
-    assert response.status_code == 200
-    payload = response.json()
-    assert "scoring_config_version" in payload
-    assert "weight_experiment_protocol_version" in payload
-    assert "extraction_strategy" in payload
-    assert "llm_provider" in payload
-    assert "llm_model" in payload
-    assert "llm_base_url" in payload
-    assert "llm_timeout_seconds" in payload
-    assert "llm_fallback_to_deterministic_extractor_on_failure" in payload
-    assert "ai_detector_enabled" in payload
-    assert "ai_detector_model" in payload
+def test_score_route_uses_config_llm_enabled_flag(monkeypatch) -> None:
+    from app.config import CONFIG
+    from app.services.pipeline import ScoringPipeline
+
+    captured: dict[str, object] = {}
+    original = ScoringPipeline.score_candidate_model
+
+    def _wrapped(self, model, scoring_run_id=None, enable_llm_explainability=True):
+        captured["enable_llm_explainability"] = enable_llm_explainability
+        return original(
+            self,
+            model,
+            scoring_run_id=scoring_run_id,
+            enable_llm_explainability=enable_llm_explainability,
+        )
+
+    payload = {
+        "candidate_id": "cand_health_001",
+        "text_inputs": {"motivation_letter_text": "I started a small school initiative and kept working on it."},
+        "consent": True,
+    }
+
+    old_enabled = CONFIG.llm.enabled
+    monkeypatch.setattr(ScoringPipeline, "score_candidate_model", _wrapped)
+    CONFIG.llm.enabled = False
+    try:
+        response = client.post("/score", json=payload)
+        assert response.status_code == 200
+        assert captured["enable_llm_explainability"] is False
+    finally:
+        CONFIG.llm.enabled = old_enabled

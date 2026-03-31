@@ -173,6 +173,7 @@ def _env_int(name: str, default: int) -> int:
 class LLMConfig:
     """Configuration for LLM-assisted extraction."""
 
+    enabled: bool = True
     provider: str = "openai"
     model: str = "gpt-4o-mini"
     timeout_seconds: float = 20.0
@@ -188,6 +189,7 @@ class LLMConfig:
     @classmethod
     def from_env(cls) -> "LLMConfig":
         return cls(
+            enabled=parse_bool_env("ENABLE_LLM", default=True),
             provider=_strip_wrapping_quotes(os.getenv("LLM_PROVIDER", "openai")),
             model=_strip_wrapping_quotes(os.getenv("LLM_MODEL", "gpt-4o-mini")),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
@@ -278,6 +280,7 @@ def build_scoring_config_snapshot() -> dict[str, Any]:
             "unknown_scale_default": CONFIG.normalization.unknown_scale_default,
         },
         "llm": {
+            "enabled": CONFIG.llm.enabled,
             "provider": CONFIG.llm.provider,
             "model": CONFIG.llm.model,
             "timeout_seconds": CONFIG.llm.timeout_seconds,

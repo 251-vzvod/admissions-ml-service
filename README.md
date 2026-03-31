@@ -31,20 +31,8 @@ pytest -q
 Required:
 
 - `GET /health`
-- `GET /config/scoring`
 - `POST /score`
 - `POST /score/batch`
-
-Useful debug endpoints:
-
-- `POST /debug/features`
-- `POST /debug/explanation`
-- `POST /debug/llm-extract` (LLM explainability output only)
-- `POST /debug/score-trace` (deterministic formulas and factor contributions)
-
-Additional utility endpoint:
-
-- `POST /score/file`
 
 ## `POST /score`
 
@@ -327,14 +315,13 @@ Note: clients should treat unknown future flags as non-breaking and render them 
 
 ## Score Trace (Auditing)
 
-Use `POST /debug/score-trace` to get:
+The API no longer exposes a public score-trace route.
 
-- Explicit formulas for each axis
-- Per-feature values, weights, and contributions
-- Penalty components
-- Raw outputs and 0..100 display scores
+Auditing still exists inside the service and evaluation tooling:
 
-This endpoint is the main anti-black-box audit surface.
+- deterministic formulas live in the scoring pipeline
+- offline diagnostics and evaluation packs remain available through scripts
+- committee-facing explainability is returned directly from `POST /score` and `POST /score/batch`
 
 ## Configuration
 
@@ -350,6 +337,7 @@ Primary env vars:
 - `LLM_FALLBACK_TO_BASELINE`
 - `LLM_BASE_URL`
 - `LLM_API_KEY`
+- `ENABLE_LLM`
 
 Universal example:
 
@@ -437,10 +425,9 @@ copy .env.example .env
 Notes:
 
 - offline scoring and evaluation scripts do not require OpenAI credits when LLM explainability is disabled
-- if you want fully credit-free scoring, you can also set `ENABLE_LLM=false`
+- if you want fully credit-free scoring, set `ENABLE_LLM=false`; the API routes will then skip LLM explainability and use deterministic scoring only
 - Ollama is intended here for local explainability output, not for final benchmark claims
 - Groq is a good middle ground for faster remote open-source inference with the same OpenAI-compatible client
-- `/config/scoring` shows the active `llm_provider`, `llm_model`, `llm_base_url`, and `llm_timeout_seconds`
 
 Recommended Groq starting models for this service:
 

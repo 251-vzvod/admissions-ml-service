@@ -9,3 +9,6 @@ data_ver2/
 .vercel
 .tmp/
 data/external/
+docs/
+data/
+scripts/
