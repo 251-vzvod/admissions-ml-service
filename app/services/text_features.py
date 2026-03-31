@@ -40,6 +40,7 @@ ROLE_TERMS = [
     "наставник",
     "волонтер",
 ]
+
 OUTCOME_TERMS = [
     "result",
     "outcome",
@@ -53,9 +54,77 @@ OUTCOME_TERMS = [
     "добил",
     "смог",
 ]
-TEMPORAL_TERMS = ["last year", "during", "after", "before", "for months", "2 years", "когда", "после", "до", "сначала", "потом"]
-CAUSE_EFFECT_TERMS = ["because", "therefore", "so that", "as a result", "because of", "потому", "поэтому", "в результате", "чтобы"]
-RESILIENCE_TERMS = ["difficult", "challenge", "failed", "setback", "tried again", "hard", "сложно", "трудно", "не сдался", "ошиб", "не получилось"]
+
+TEMPORAL_TERMS = [
+    "last year",
+    "during",
+    "after",
+    "before",
+    "for months",
+    "2 years",
+    "когда",
+    "после",
+    "до",
+    "сначала",
+    "потом",
+]
+
+CAUSE_EFFECT_TERMS = [
+    "because",
+    "therefore",
+    "so that",
+    "as a result",
+    "because of",
+    "потому",
+    "поэтому",
+    "в результате",
+    "чтобы",
+]
+
+RESILIENCE_TERMS = [
+    "difficult",
+    "challenge",
+    "failed",
+    "setback",
+    "tried again",
+    "hard",
+    "сложно",
+    "трудно",
+    "не сдался",
+    "ошиб",
+    "не получилось",
+]
+
+ADAPTATION_TERMS = [
+    "changed",
+    "adjusted",
+    "adapted",
+    "rewrote",
+    "revised",
+    "improved",
+    "then i changed",
+    "after that i",
+    "learned how",
+    "изменил",
+    "переделал",
+    "адаптировал",
+]
+
+REFLECTION_TERMS = [
+    "i realized",
+    "i learned",
+    "i understood",
+    "it made me",
+    "now i think",
+    "after that",
+    "i became",
+    "what changed in me",
+    "я понял",
+    "я осознал",
+    "я научился",
+    "это изменило меня",
+]
+
 PROGRAM_FIT_TERMS = [
     "invision",
     "program",
@@ -71,6 +140,7 @@ PROGRAM_FIT_TERMS = [
     "мисси",
     "обучени",
 ]
+
 GENERIC_TERMS = [
     "i am passionate",
     "i am motivated",
@@ -84,6 +154,7 @@ GENERIC_TERMS = [
     "мечтаю",
     "изменить мир",
 ]
+
 NUMERIC_TOKENS = [str(i) for i in range(10)]
 
 CONTRADICTION_PAIRS = [
@@ -144,6 +215,8 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
     temporal_density = _density_score(full_text, TEMPORAL_TERMS, denominator=16.0)
     causal_density = _density_score(full_text, CAUSE_EFFECT_TERMS, denominator=20.0)
     resilience_density = _density_score(full_text, RESILIENCE_TERMS, denominator=16.0)
+    adaptation_density = _density_score(full_text, ADAPTATION_TERMS, denominator=12.0)
+    reflection_density = _density_score(full_text, REFLECTION_TERMS, denominator=12.0)
     program_fit_density = _density_score(full_text, PROGRAM_FIT_TERMS, denominator=10.0)
 
     number_density = clamp01(sum(full_text.count(d) for d in NUMERIC_TOKENS) / 20.0)
@@ -187,17 +260,20 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
     )
     growth_trajectory = weighted_average_normalized(
         [
-            (temporal_density, 0.35),
-            (resilience_density, 0.35),
-            (causal_density, 0.20),
-            (first_person_density, 0.10),
+            (temporal_density, 0.22),
+            (resilience_density, 0.24),
+            (adaptation_density, 0.22),
+            (reflection_density, 0.18),
+            (causal_density, 0.10),
+            (first_person_density, 0.04),
         ]
     )
     resilience = weighted_average_normalized(
         [
-            (resilience_density, 0.45),
-            (temporal_density, 0.25),
-            (evidence_density, 0.20),
+            (resilience_density, 0.40),
+            (adaptation_density, 0.15),
+            (temporal_density, 0.20),
+            (evidence_density, 0.15),
             (first_person_density, 0.10),
         ]
     )
@@ -230,6 +306,38 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             (structured.get("evidence_count_estimate", 0.0), 0.5),
             (structured.get("linked_examples_count", 0.0), 0.3),
             (evidence_density, 0.2),
+        ]
+    )
+    trajectory_challenge_score = weighted_average_normalized(
+        [
+            (resilience_density, 0.45),
+            (temporal_density, 0.20),
+            (causal_density, 0.15),
+            (first_person_density, 0.20),
+        ]
+    )
+    trajectory_adaptation_score = weighted_average_normalized(
+        [
+            (adaptation_density, 0.45),
+            (causal_density, 0.20),
+            (temporal_density, 0.20),
+            (action_density, 0.15),
+        ]
+    )
+    trajectory_reflection_score = weighted_average_normalized(
+        [
+            (reflection_density, 0.50),
+            (causal_density, 0.20),
+            (temporal_density, 0.15),
+            (first_person_density, 0.15),
+        ]
+    )
+    trajectory_outcome_score = weighted_average_normalized(
+        [
+            (outcome_density, 0.45),
+            (number_density, 0.25),
+            (evidence_density, 0.20),
+            (action_density, 0.10),
         ]
     )
 
@@ -274,7 +382,7 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
                 (1.0 - specificity_score, 0.20),
             ]
         )
-        + (0.1 if long_but_thin else 0.0)
+        + (0.10 if long_but_thin else 0.0)
     )
 
     section_texts = [
@@ -321,6 +429,10 @@ def extract_text_features(bundle: NormalizedTextBundle, structured: dict[str, fl
             "evidence_richness": evidence_richness,
             "specificity_score": specificity_score,
             "evidence_count": evidence_count,
+            "trajectory_challenge_score": trajectory_challenge_score,
+            "trajectory_adaptation_score": trajectory_adaptation_score,
+            "trajectory_reflection_score": trajectory_reflection_score,
+            "trajectory_outcome_score": trajectory_outcome_score,
             "consistency_score": consistency_score,
             "completeness_score": completeness_score,
             "genericness_score": genericness_score,

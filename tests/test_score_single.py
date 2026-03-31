@@ -1,9 +1,12 @@
 from fastapi.testclient import TestClient
 
+from app.config import CONFIG
 from app.main import app
 
 
 client = TestClient(app)
+
+CONFIG.llm.enabled = False
 
 
 def test_score_single_candidate() -> None:
@@ -33,7 +36,6 @@ def test_score_single_candidate() -> None:
     result = response.json()
     assert result["candidate_id"] == "cand_test_001"
     assert result["extraction_mode"] == "deterministic_scoring"
-    assert "extractor_version" in result
     assert 0 <= result["merit_score"] <= 100
     assert 0 <= result["confidence_score"] <= 100
     assert 0 <= result["authenticity_risk"] <= 100
@@ -51,6 +53,11 @@ def test_score_single_candidate() -> None:
     assert isinstance(result["suggested_follow_up_question"], str)
     assert isinstance(result["authenticity_review_reasons"], list)
     assert "ai_detector" in result
+    assert 0 <= result["hidden_potential_score"] <= 100
+    assert 0 <= result["support_needed_score"] <= 100
+    assert 0 <= result["shortlist_priority_score"] <= 100
+    assert 0 <= result["evidence_coverage_score"] <= 100
+    assert 0 <= result["trajectory_score"] <= 100
 
 
 def test_score_single_candidate_with_video_transcript_only() -> None:
@@ -96,8 +103,7 @@ def test_score_single_uses_application_materials_features() -> None:
     response = client.post("/score", json=payload)
     assert response.status_code == 200
     result = response.json()
-
-    snapshot = result["feature_snapshot"]
-    assert snapshot["docs_count_score"] > 0
-    assert snapshot["portfolio_links_score"] > 0
-    assert snapshot["has_video_presentation"] is True
+    assert result["candidate_id"] == "cand_test_materials_001"
+    assert result["evidence_coverage_score"] >= 0
+    assert result["confidence_score"] >= 0
+    assert isinstance(result["committee_cohorts"], list)

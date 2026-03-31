@@ -19,6 +19,7 @@ from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
 from app.services.scoring import build_score_trace, compute_scores
 from app.services.semantic_rubrics import extract_semantic_rubric_features
+from app.services.shortlist import build_shortlist_signals
 from app.services.structured_features import extract_structured_features
 from app.services.text_features import extract_text_features
 from app.utils.ids import generate_scoring_run_id
@@ -186,9 +187,7 @@ class ScoringPipeline:
             "candidate_id": str(projected.get("candidate_id", "")),
             "scoring_run_id": scoring_run_id,
             "scoring_version": CONFIG.scoring_version,
-            "prompt_version": CONFIG.prompt_version,
             "extraction_mode": "deterministic_scoring",
-            "extractor_version": CONFIG.llm.extractor_version,
             "llm_metadata": None,
             "eligibility_status": eligibility.status,
             "eligibility_reasons": list(eligibility.reasons),
@@ -235,13 +234,12 @@ class ScoringPipeline:
                     "experience_skills": 0,
                     "trust_completeness": 0,
                 },
-                feature_snapshot={
-                    "completeness_score": bundle.stats.get("logical_source_groups_present", 0)
-                    / max(bundle.stats.get("logical_source_groups_total", 3), 1),
-                    "logical_source_groups_present": int(bundle.stats.get("logical_source_groups_present", 0)),
-                    "excluded_sensitive_fields_count": len(excluded_hits),
-                },
                 semantic_rubric_scores={},
+                hidden_potential_score=0,
+                support_needed_score=0,
+                shortlist_priority_score=0,
+                evidence_coverage_score=0,
+                trajectory_score=0,
                 top_strengths=explanation.top_strengths,
                 main_gaps=explanation.main_gaps,
                 uncertainties=explanation.uncertainties,
@@ -322,6 +320,14 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
         )
+        shortlist_signals = build_shortlist_signals(
+            feature_map={**merged_features, **snapshot},
+            semantic_scores={key: to_display_score(value) for key, value in semantic_snapshot.items()},
+            merit_score=scoring_result.merit_score,
+            confidence_score=scoring_result.confidence_score,
+            authenticity_risk=scoring_result.authenticity_risk,
+            recommendation=recommendation_result.recommendation,
+        )
 
         base_response["llm_metadata"] = llm_metadata
 
@@ -333,10 +339,14 @@ class ScoringPipeline:
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
             merit_breakdown=merit_breakdown,
-            feature_snapshot=snapshot,
             semantic_rubric_scores={
                 key: to_display_score(value) for key, value in semantic_snapshot.items()
             },
+            hidden_potential_score=shortlist_signals.hidden_potential_score,
+            support_needed_score=shortlist_signals.support_needed_score,
+            shortlist_priority_score=shortlist_signals.shortlist_priority_score,
+            evidence_coverage_score=shortlist_signals.evidence_coverage_score,
+            trajectory_score=shortlist_signals.trajectory_score,
             top_strengths=explanation_result.top_strengths,
             main_gaps=explanation_result.main_gaps,
             uncertainties=explanation_result.uncertainties,

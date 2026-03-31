@@ -4,6 +4,19 @@ FastAPI service for primary candidate screening support in the inVision U admiss
 
 This service is a decision-support tool. It does not make autonomous admission decisions.
 
+## Feature Dictionary
+
+To understand what the service outputs actually mean, start here:
+
+- [FEATURE_DICTIONARY.md](FEATURE_DICTIONARY.md)
+
+This file explains:
+
+- which scores are committee-facing
+- which signals are secondary reviewer details
+- which raw features stay internal
+- why some correlated signals are intentionally aggregated before exposure
+
 ## What The Service Does
 
 The API accepts one or more candidate profiles and returns:
@@ -12,6 +25,8 @@ The API accepts one or more candidate profiles and returns:
 - `confidence_score`: how reliable the assessment is, given the available evidence
 - `authenticity_risk`: review-risk signal, not proof of cheating
 - `recommendation`: routing label for committee workflow
+- `hidden_potential_score`, `support_needed_score`, `shortlist_priority_score`
+- `trajectory_score`, `evidence_coverage_score`
 - short explanations, evidence spans, and follow-up guidance for the committee
 
 The scoring logic is transparent:
@@ -36,6 +51,12 @@ python -m venv .venv
 . .venv/Scripts/activate
 python -m pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+For local test runs:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 Open API docs:
@@ -172,20 +193,25 @@ Main response fields:
 - `authenticity_risk`
 - `recommendation`
 - `review_flags`
-- `merit_breakdown`
-- `feature_snapshot`
-- `semantic_rubric_scores`
-- `top_strengths`
-- `main_gaps`
-- `uncertainties`
-- `authenticity_review_reasons`
-- `ai_detector`
+- `hidden_potential_score`
+- `support_needed_score`
+- `shortlist_priority_score`
+- `evidence_coverage_score`
+- `trajectory_score`
 - `committee_cohorts`
 - `why_candidate_surfaced`
 - `what_to_verify_manually`
 - `suggested_follow_up_question`
+- `top_strengths`
+- `main_gaps`
+- `uncertainties`
 - `evidence_spans`
 - `explanation`
+- optional reviewer-detail fields:
+  - `merit_breakdown`
+  - `semantic_rubric_scores`
+- `authenticity_review_reasons`
+- `ai_detector`
 
 Example response shape:
 
@@ -194,9 +220,7 @@ Example response shape:
   "candidate_id": "cand_001",
   "scoring_run_id": "run_20260329_120000_abcd1234",
   "scoring_version": "v1.2.0",
-  "prompt_version": null,
   "extraction_mode": "deterministic_scoring",
-  "extractor_version": "llm-extractor-v1",
   "llm_metadata": null,
   "eligibility_status": "eligible",
   "eligibility_reasons": [],
@@ -215,6 +239,11 @@ Example response shape:
     "authenticity_groundedness": 46,
     "hidden_potential": 49
   },
+  "hidden_potential_score": 58,
+  "support_needed_score": 41,
+  "shortlist_priority_score": 63,
+  "evidence_coverage_score": 46,
+  "trajectory_score": 61,
   "committee_cohorts": [
     "Promising but needs support"
   ],
@@ -257,6 +286,11 @@ Response shape:
 - `scoring_run_id`
 - `scoring_version`
 - `count`
+- `ranked_candidate_ids`
+- `shortlist_candidate_ids`
+- `hidden_potential_candidate_ids`
+- `support_needed_candidate_ids`
+- `authenticity_review_candidate_ids`
 - `results[]`
 
 ## How To Read The Scores
@@ -276,6 +310,22 @@ These scores are not admission decisions.
 - `incomplete_application`
 - `invalid`
 
+## Feature Layers
+
+The service intentionally separates signals into three layers:
+
+1. `Product-facing outputs`
+2. `Aggregated scoring signals`
+3. `Internal raw features`
+
+Only the first two belong in the public API by default.
+
+Public API principle:
+
+- committee-facing outputs stay compact
+- raw internal diagnostics stay inside the scoring layer
+- correlated engineering signals are aggregated before exposure
+
 ## AI Detector
 
 The service supports an optional auxiliary AI-generated text detector:
@@ -290,11 +340,16 @@ It is used conservatively:
 - never auto-rejects a candidate
 - only contributes to authenticity review guidance
 
-Optional install:
+Optional install for local experiments only:
 
 ```bash
 python -m pip install -r requirements-ai-detector.txt
 ```
+
+Recommended deployment rule:
+
+- keep `AI_DETECTOR_ENABLED=false` in cloud deployments unless you explicitly want the heavier detector runtime
+- do not install detector dependencies on Railway by default
 
 Enable in `.env`:
 
@@ -320,6 +375,7 @@ AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD=0.80
 - `authenticity_risk` is a review signal, not proof of AI use or cheating.
 - LLM output is optional and used only for explanations.
 - Missing modalities reduce confidence of assessment, not candidate worth by default.
+- Raw internal features are intentionally not exposed in the main response.
 
 ## Deployment
 

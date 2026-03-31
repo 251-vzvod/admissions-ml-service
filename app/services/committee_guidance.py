@@ -42,12 +42,12 @@ def build_committee_guidance(
     semantic_growth = float(semantic_scores.get("growth_trajectory", 0.0))
 
     hidden_candidate = (
-        semantic_hidden >= 0.58
-        and growth >= 0.58
-        and evidence_count >= 0.35
-        and (specificity < 0.55 or initiative < 0.45)
+        semantic_hidden >= 0.48
+        and (growth >= 0.42 or semantic_growth >= 0.54)
+        and evidence_count >= 0.15
+        and (specificity < 0.58 or motivation < 0.62)
     )
-    support_needed = merit_score >= 35 and confidence_score < 55
+    support_needed = merit_score >= 30 and confidence_score < 58
     polished_low_evidence = polished_empty >= 0.35 and evidence_count < 0.45
     authenticity_review = authenticity_risk >= 45 or any(
         flag in review_flags
@@ -65,6 +65,8 @@ def build_committee_guidance(
         cohorts.append("High priority")
     if hidden_candidate:
         cohorts.append("Hidden potential")
+    if (growth >= 0.44 or semantic_growth >= 0.54) and evidence_count >= 0.15:
+        cohorts.append("Trajectory-led candidate")
     if support_needed:
         cohorts.append("Promising but needs support")
     if polished_low_evidence:
@@ -74,7 +76,7 @@ def build_committee_guidance(
     if not cohorts:
         cohorts.append("Standard committee review")
 
-    if growth >= 0.65 or semantic_growth >= 0.58:
+    if growth >= 0.44 or semantic_growth >= 0.54:
         why_candidate_surfaced.append("Strong growth trajectory and reflection signals.")
     if initiative >= 0.60 or semantic_leadership >= 0.60:
         why_candidate_surfaced.append("Clear agency or leadership markers in actions described.")
@@ -82,6 +84,8 @@ def build_committee_guidance(
         why_candidate_surfaced.append("Application includes enough concrete evidence to support prioritization.")
     if hidden_candidate:
         why_candidate_surfaced.append("Underlying signal appears stronger than the candidate's self-presentation.")
+    if evidence_count >= 0.15 and specificity < 0.55 and (growth >= 0.42 or semantic_growth >= 0.54):
+        why_candidate_surfaced.append("Candidate shows early-stage leadership potential even with imperfect self-presentation.")
     if motivation >= 0.70 and not polished_low_evidence:
         why_candidate_surfaced.append("Motivation appears specific enough to justify committee attention.")
     why_candidate_surfaced = why_candidate_surfaced[:3]

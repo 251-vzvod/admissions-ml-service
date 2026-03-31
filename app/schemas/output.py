@@ -39,9 +39,7 @@ class ScoreResponse(BaseModel):
     candidate_id: str
     scoring_run_id: str
     scoring_version: str
-    prompt_version: str | None = None
     extraction_mode: str = "hybrid"
-    extractor_version: str = "llm-extractor-v1"
     llm_metadata: dict[str, str | int | float] | None = None
 
     eligibility_status: str
@@ -55,8 +53,12 @@ class ScoreResponse(BaseModel):
     review_flags: list[ReviewFlag] = Field(default_factory=list)
 
     merit_breakdown: dict[str, int] = Field(default_factory=dict)
-    feature_snapshot: dict[str, float | bool | int | None] = Field(default_factory=dict)
     semantic_rubric_scores: dict[str, int] = Field(default_factory=dict)
+    hidden_potential_score: int
+    support_needed_score: int
+    shortlist_priority_score: int
+    evidence_coverage_score: int
+    trajectory_score: int
 
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
@@ -75,4 +77,9 @@ class BatchScoreResponse(BaseModel):
     scoring_run_id: str
     scoring_version: str
     count: int
+    ranked_candidate_ids: list[str] = Field(default_factory=list)
+    shortlist_candidate_ids: list[str] = Field(default_factory=list)
+    hidden_potential_candidate_ids: list[str] = Field(default_factory=list)
+    support_needed_candidate_ids: list[str] = Field(default_factory=list)
+    authenticity_review_candidate_ids: list[str] = Field(default_factory=list)
     results: list[ScoreResponse]
