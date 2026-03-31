@@ -115,6 +115,34 @@ LLM_API_KEY=your_openai_api_key
 
 No application code changes are required.
 
+## Semantic Backend
+
+The service uses a lightweight semantic rubric layer.
+
+Default mode:
+
+- `SEMANTIC_BACKEND=hash`
+
+This is now a multilingual-friendly hash backend with a bilingual concept bridge for RU/EN text.
+
+Optional upgrade for stronger semantic matching:
+
+```bash
+python -m pip install -r requirements-semantic.txt
+```
+
+Then in `.env`:
+
+```env
+SEMANTIC_BACKEND=sentence-transformer
+SEMANTIC_MODEL=intfloat/multilingual-e5-base
+```
+
+Recommended usage:
+
+- keep `hash` for lightweight deploys
+- use `sentence-transformer` only when you explicitly want the heavier multilingual encoder
+
 ## Request Shape
 
 Minimum useful payload:

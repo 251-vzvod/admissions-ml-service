@@ -1,4 +1,4 @@
-"""Semantic rubric prototypes and multilingual-friendly matching backends."""
+"""Semantic rubric prototypes and lightweight multilingual matching backends."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Iterable, Protocol
 from app.config import CONFIG
 from app.services.preprocessing import NormalizedTextBundle
 from app.utils.math_utils import clamp01, weighted_average_normalized
+from app.utils.text import normalize_unicode_text
 
 try:  # pragma: no cover - optional dependency
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -89,6 +90,100 @@ RUBRIC_PROTOTYPES: dict[str, dict[str, list[str]]] = {
 }
 
 
+MULTILINGUAL_CONCEPTS: dict[str, list[str]] = {
+    "leadership": [
+        "leader",
+        "leadership",
+        "organize",
+        "organized",
+        "coordinate",
+        "initiative",
+        "лидер",
+        "организ",
+        "координ",
+        "инициатив",
+    ],
+    "growth": [
+        "growth",
+        "adapt",
+        "adapted",
+        "improve",
+        "improved",
+        "learned",
+        "reflection",
+        "рост",
+        "адапт",
+        "улучш",
+        "науч",
+        "рефлекс",
+    ],
+    "motivation": [
+        "mission",
+        "purpose",
+        "community",
+        "future",
+        "program",
+        "мисси",
+        "цель",
+        "сообществ",
+        "будущ",
+        "програм",
+    ],
+    "groundedness": [
+        "example",
+        "details",
+        "specific",
+        "evidence",
+        "outcome",
+        "пример",
+        "детал",
+        "конкрет",
+        "доказ",
+        "результ",
+    ],
+    "responsibility": [
+        "responsibility",
+        "responsible",
+        "accountable",
+        "ответствен",
+        "обязан",
+    ],
+    "challenge": [
+        "difficulty",
+        "setback",
+        "failure",
+        "problem",
+        "challenge",
+        "сложн",
+        "неудач",
+        "проблем",
+        "трудн",
+    ],
+    "adaptation": [
+        "changed",
+        "change",
+        "feedback",
+        "adjusted",
+        "adapted",
+        "измен",
+        "обратн",
+        "адапт",
+        "скоррект",
+    ],
+    "impact": [
+        "impact",
+        "improved",
+        "helped",
+        "result",
+        "outcome",
+        "влияни",
+        "помог",
+        "улучш",
+        "результ",
+    ],
+}
+
+
 @dataclass(slots=True)
 class SemanticEvidence:
     source: str
@@ -124,11 +219,23 @@ def _char_ngrams(text: str, n: int = 3) -> Iterable[str]:
         yield compact[idx : idx + n]
 
 
+def _multilingual_semantic_expand(text: str) -> str:
+    lowered = normalize_unicode_text(text).lower()
+    concept_tokens: list[str] = []
+    for concept, stems in MULTILINGUAL_CONCEPTS.items():
+        if any(stem in lowered for stem in stems):
+            concept_tokens.append(f"concept_{concept}")
+    if not concept_tokens:
+        return lowered
+    return f"{lowered} {' '.join(concept_tokens)}"
+
+
 def _hash_vectorize(text: str) -> list[float]:
+    expanded = _multilingual_semantic_expand(text)
     vector = [0.0] * EMBEDDING_DIM
-    for token in _tokenize(text):
+    for token in _tokenize(expanded):
         vector[hash(f"tok::{token}") % EMBEDDING_DIM] += 1.0
-    for gram in _char_ngrams(text):
+    for gram in _char_ngrams(expanded):
         vector[hash(f"chr::{gram}") % EMBEDDING_DIM] += 0.35
 
     norm = math.sqrt(sum(value * value for value in vector))
@@ -145,20 +252,21 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
 
 
 class HashSemanticEncoder:
-    backend_name = "hash-embedding"
+    backend_name = "hash-embedding-multilingual-bridge"
 
     def encode(self, texts: list[str]) -> list[list[float]]:
         return [_hash_vectorize(text) for text in texts]
 
 
 class TfidfCharNgramEncoder:
-    backend_name = "tfidf-char-ngram"
+    backend_name = "tfidf-char-ngram-multilingual-bridge"
 
     def __init__(self) -> None:
         if TfidfVectorizer is None:  # pragma: no cover - optional dependency
             raise RuntimeError("sklearn_unavailable")
 
     def encode(self, texts: list[str]) -> list[list[float]]:
+        expanded_texts = [_multilingual_semantic_expand(text) for text in texts]
         vectorizer = TfidfVectorizer(
             analyzer="char_wb",
             ngram_range=(3, 5),
@@ -167,7 +275,7 @@ class TfidfCharNgramEncoder:
             norm="l2",
             sublinear_tf=True,
         )
-        matrix = vectorizer.fit_transform(texts)
+        matrix = vectorizer.fit_transform(expanded_texts)
         return matrix.toarray().tolist()
 
 
@@ -181,7 +289,8 @@ class SentenceTransformerEncoder:
         self.model_name = model_name
 
     def encode(self, texts: list[str]) -> list[list[float]]:
-        vectors = self.model.encode(texts, normalize_embeddings=True)
+        expanded_texts = [_multilingual_semantic_expand(text) for text in texts]
+        vectors = self.model.encode(expanded_texts, normalize_embeddings=True)
         return [vector.tolist() for vector in vectors]
 
 

@@ -910,3 +910,60 @@ But it does strengthen the most important product thesis for the hackathon:
 
 - do not reward polish alone
 - surface early-stage leaders whose signal is stronger than their self-presentation
+
+## Phase 13. Lightweight Multilingual Semantic Upgrade
+
+### Why this was needed
+
+The semantic layer was originally designed to be multilingual-friendly, but in practice it still had two weaknesses:
+
+- the default backend remained too shallow for cross-language semantic matching
+- part of the Russian rubric prototype layer had degraded text quality
+
+This meant the system could still under-read Russian growth and leadership narratives even before the fairness layer was addressed directly.
+
+### What changed
+
+The semantic prototype layer was cleaned and upgraded without adding heavy runtime requirements to the default deploy path.
+
+Changes:
+
+- repaired Russian rubric prototypes
+- added a bilingual RU/EN concept bridge for the default hash semantic backend
+- aligned semantic matching around shared concepts such as:
+  - leadership
+  - growth
+  - motivation
+  - groundedness
+  - challenge
+  - adaptation
+  - impact
+
+### Why this approach was chosen
+
+A full multilingual encoder is still a strong next step, but it is heavier operationally.
+
+For the hackathon build, the best tradeoff was:
+
+- improve multilingual semantic behavior now
+- keep the default deploy lightweight
+- preserve an optional path to `sentence-transformers` later
+
+### Deployment-safe outcome
+
+The default semantic backend remains lightweight.
+
+Optional stronger semantic path:
+
+- `SEMANTIC_BACKEND=sentence-transformer`
+- `SEMANTIC_MODEL=intfloat/multilingual-e5-base`
+
+but the system no longer depends on that path to get basic RU/EN semantic behavior.
+
+### Why this matters
+
+This phase is important because it improves the system in exactly the direction defined by the hackathon thesis:
+
+- lower bias toward polished English
+- better semantic matching for multilingual candidates
+- stronger hidden-potential and trajectory reasoning without making the deploy heavier by default

@@ -208,15 +208,13 @@ class SemanticConfig:
     """Configuration for semantic rubric backend selection."""
 
     backend: str = "hash"
-    model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    model: str = "intfloat/multilingual-e5-base"
 
     @classmethod
     def from_env(cls) -> "SemanticConfig":
         return cls(
             backend=_strip_wrapping_quotes(os.getenv("SEMANTIC_BACKEND", "hash")),
-            model=_strip_wrapping_quotes(
-                os.getenv("SEMANTIC_MODEL", "sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
-            ),
+            model=_strip_wrapping_quotes(os.getenv("SEMANTIC_MODEL", "intfloat/multilingual-e5-base")),
         )
 
 
