@@ -84,19 +84,12 @@ These are the fields that matter most for the committee, the frontend, and the h
 - Used for: reviewer workflow and demo clarity
 - Shown to committee: yes
 
-### `supported_claims`
+### `evidence_highlights`
 
-- Meaning: the strongest reviewer-facing claims the system believes are concretely supported
+- Meaning: the strongest compact evidence-grounded claims surfaced for committee reading
 - Used for: explainability, reviewer trust, and committee walkthroughs
 - Shown to committee: yes
-- Notes: intended to bridge scoring logic and evidence, not replace human judgment
-
-### `weakly_supported_claims`
-
-- Meaning: promising claims that appear directionally true but still need more evidence
-- Used for: manual verification and authenticity-aware review
-- Shown to committee: yes
-- Notes: this is where the system says "signal exists, but check it"
+- Notes: this is the public evidence surface in the API
 
 ### `why_candidate_surfaced`
 
@@ -116,7 +109,7 @@ These are the fields that matter most for the committee, the frontend, and the h
 - Used for: committee workflow
 - Shown to committee: yes
 
-### `top_strengths`, `main_gaps`, `uncertainties`, `evidence_spans`, `explanation`
+### `top_strengths`, `main_gaps`, `explanation`
 
 - Meaning: explanation layer
 - Used for: explainability and reviewer support
@@ -135,6 +128,7 @@ They can be shown in reviewer details or an expanded UI, but they should not dom
   - `potential`
   - `motivation`
   - `leadership_agency`
+  - `community_values`
   - `experience_skills`
   - `trust_completeness`
 - Used for: explaining where the score comes from
@@ -148,6 +142,7 @@ They can be shown in reviewer details or an expanded UI, but they should not dom
   - `growth_trajectory`
   - `motivation_authenticity`
   - `authenticity_groundedness`
+  - `community_orientation`
   - `hidden_potential`
 - Used for: rubric-aware reasoning
 - Shown to committee: optional expanded view
@@ -161,8 +156,8 @@ They can be shown in reviewer details or an expanded UI, but they should not dom
 ### `claim_evidence` logic
 
 - Meaning: the internal extraction step that maps selected rubric-level claims to source snippets
-- Used for: building `supported_claims` and `weakly_supported_claims`
-- Shown to committee: only through the structured claim fields above
+- Used for: building `evidence_highlights` and internal reviewer detail
+- Shown to committee: only through aggregated evidence surfaces
 - Notes: deterministic and evidence-grounded, not LLM-only
 
 ### `ai_detector`
@@ -176,8 +171,8 @@ They can be shown in reviewer details or an expanded UI, but they should not dom
 
 - Meaning: runtime metadata about the optional explanation call
 - Used for: ops and debugging
-- Shown to committee: usually no
-- Notes: acceptable in API for engineering consumers, but not part of the reviewer-facing story
+- Shown to committee: no
+- Notes: internal only; not part of the public response contract
 
 ## Layer 3. Internal Raw Features
 

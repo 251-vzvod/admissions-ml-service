@@ -35,9 +35,9 @@ The API accepts one or more candidate profiles and returns:
 - `recommendation`: routing label for committee workflow
 - `hidden_potential_score`, `support_needed_score`, `shortlist_priority_score`
 - `trajectory_score`, `evidence_coverage_score`
-- structured `supported_claims` and `weakly_supported_claims`
+- compact `evidence_highlights`
 - section-to-section consistency-aware authenticity review
-- short explanations, evidence spans, and follow-up guidance for the committee
+- short explanations and follow-up guidance for the committee
 
 The scoring logic is transparent:
 
@@ -442,22 +442,15 @@ AI_DETECTOR_MIN_WORDS=60
 AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD=0.80
 ```
 
-## Bounded LLM Adjudication
+## Optional LLM Explainability
 
-When `ENABLE_LLM=true`, the service can ask the configured LLM for bounded rubric judgments only.
+When `ENABLE_LLM=true`, the service can ask the configured LLM for bounded explainability only.
 
-This LLM layer does **not** set final numeric scores.
+This LLM layer does **not** set final numeric scores or workflow routing.
 It is limited to:
 
-- `llm_rubric_assessment`
-  - `leadership_potential`
-  - `growth_trajectory`
-  - `motivation_authenticity`
-  - `evidence_strength`
-  - `hidden_potential_hint`
-  - `authenticity_review_needed`
-- reviewer-facing strengths / gaps / uncertainties
-- evidence spans
+- bounded rubric-style reviewer notes
+- reviewer-facing strengths and gaps
 - one committee follow-up question
 
 Deterministic backend scoring still owns:
@@ -467,6 +460,8 @@ Deterministic backend scoring still owns:
 - `authenticity_risk`
 - `recommendation`
 - shortlist ordering
+
+Offline calibration and adjudication prompts belong to the `research/calibration/` layer, not to the live `/score` runtime path.
 
 ## Project Structure
 
