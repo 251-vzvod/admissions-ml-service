@@ -1,7 +1,5 @@
 # Frontend ML Response Contract
 
-Этот файл можно отправить фронтендеру как точный contract по тому, что реально приходит из ML-сервиса.
-
 ## Главное
 
 Сейчас фронт в `invision-front` сидит на mock data, а не на живом ML API.
