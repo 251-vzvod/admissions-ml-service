@@ -33,6 +33,14 @@ from app.utils.math_utils import to_display_score
 class ScoringPipeline:
     """Deterministic scoring pipeline with optional LLM explainability."""
 
+    @staticmethod
+    def _payload_from_model(model: Any) -> dict[str, Any]:
+        if hasattr(model, "model_dump"):
+            payload = model.model_dump(mode="python")
+        else:
+            payload = asdict(model)
+        return payload if isinstance(payload, dict) else {}
+
     def _prepare_scoring_context(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
         normalized_payload = normalize_candidate_payload(candidate_payload)
         projected, excluded_hits = merit_safe_projection(normalized_payload)
@@ -486,7 +494,7 @@ class ScoringPipeline:
         enable_llm_explainability: bool | None = None,
     ) -> ScoreResponse:
         """Helper for pydantic models accepted by API layer."""
-        payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)
+        payload = self._payload_from_model(model)
         return self.score_candidate(
             payload,
             scoring_run_id=scoring_run_id,
@@ -495,5 +503,5 @@ class ScoringPipeline:
 
     def score_candidate_trace_model(self, model: Any) -> dict[str, Any]:
         """Helper to build score trace from pydantic models in API layer."""
-        payload = model.model_dump(mode="python") if hasattr(model, "model_dump") else asdict(model)
+        payload = self._payload_from_model(model)
         return self.score_candidate_trace(payload)

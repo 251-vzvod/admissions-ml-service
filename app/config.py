@@ -170,13 +170,6 @@ class NormalizationConfig:
     unknown_scale_default: float = 0.5
 
 
-def _env_bool(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return _strip_wrapping_quotes(raw).strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _env_float(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -225,7 +218,7 @@ class LLMConfig:
             max_retries=_env_int("LLM_MAX_RETRIES", 1),
             retry_backoff_seconds=_env_float("LLM_RETRY_BACKOFF_SECONDS", 0.6),
             retry_jitter_seconds=_env_float("LLM_RETRY_JITTER_SECONDS", 0.2),
-            fallback_to_baseline=_env_bool("LLM_FALLBACK_TO_BASELINE", True),
+            fallback_to_baseline=parse_bool_env("LLM_FALLBACK_TO_BASELINE", True),
             base_url=_strip_wrapping_quotes(os.getenv("LLM_BASE_URL")) if os.getenv("LLM_BASE_URL") else None,
             api_key=_strip_wrapping_quotes(os.getenv("LLM_API_KEY")) if os.getenv("LLM_API_KEY") else None,
         )
@@ -261,9 +254,9 @@ class AIDetectorConfig:
         return cls(
             enabled=parse_bool_env("AI_DETECTOR_ENABLED", default=False),
             model=_strip_wrapping_quotes(os.getenv("AI_DETECTOR_MODEL", "desklib/ai-text-detector-v1.01")),
-            min_words=int(os.getenv("AI_DETECTOR_MIN_WORDS", "60")),
+            min_words=_env_int("AI_DETECTOR_MIN_WORDS", 60),
             english_only=parse_bool_env("AI_DETECTOR_ENGLISH_ONLY", default=True),
-            elevated_probability_threshold=float(os.getenv("AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD", "0.80")),
+            elevated_probability_threshold=_env_float("AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD", 0.80),
         )
 
 

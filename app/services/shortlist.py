@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.policy import build_policy_snapshot
+from app.services.policy import RoutingPolicySnapshot, build_policy_snapshot
 from app.services.offline_ranker import rank_results_with_offline_ranker
 from app.schemas.decision import Recommendation
 from app.utils.math_utils import clamp01, to_display_score, weighted_average_normalized
@@ -38,6 +38,31 @@ class HiddenPotentialDiagnostics:
     credible_action_signal: float
     understatement_gap: float
     modest_presentation: float
+
+
+def _policy_snapshot_for_result(result: object) -> RoutingPolicySnapshot:
+    return build_policy_snapshot(
+        merit_score=int(getattr(result, "merit_score", 0)),
+        confidence_score=int(getattr(result, "confidence_score", 0)),
+        authenticity_risk=int(getattr(result, "authenticity_risk", 0)),
+        hidden_potential_score=int(getattr(result, "hidden_potential_score", 0)),
+        support_needed_score=int(getattr(result, "support_needed_score", 0)),
+        shortlist_priority_score=int(getattr(result, "shortlist_priority_score", 0)),
+        evidence_coverage_score=int(getattr(result, "evidence_coverage_score", 0)),
+        trajectory_score=int(getattr(result, "trajectory_score", 0)),
+    )
+
+
+def _candidate_ids_for_policy(
+    sorted_results: list[object],
+    result_policies: dict[str, RoutingPolicySnapshot],
+    policy_attr: str,
+) -> list[str]:
+    return [
+        item.candidate_id
+        for item in sorted_results
+        if getattr(result_policies[item.candidate_id], policy_attr)
+    ][: min(5, len(sorted_results))]
 
 
 def _practical_action_raw(feature_map: dict[str, float | bool | int | None]) -> float:
@@ -283,62 +308,30 @@ def build_shortlist_signals(
 def build_batch_shortlist_summary(results: list[object]) -> BatchShortlistSummary:
     sorted_results = rank_results_with_offline_ranker(results)
     ranked_candidate_ids = [item.candidate_id for item in sorted_results]
-    shortlist_candidate_ids = [
-        item.candidate_id
+    result_policies = {
+        item.candidate_id: _policy_snapshot_for_result(item)
         for item in sorted_results
-        if build_policy_snapshot(
-            merit_score=int(getattr(item, "merit_score", 0)),
-            confidence_score=int(getattr(item, "confidence_score", 0)),
-            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
-            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
-            support_needed_score=int(getattr(item, "support_needed_score", 0)),
-            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
-            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
-            trajectory_score=int(getattr(item, "trajectory_score", 0)),
-        ).shortlist_band
-    ][: min(5, len(sorted_results))]
-    hidden_potential_candidate_ids = [
-        item.candidate_id
-        for item in sorted_results
-        if build_policy_snapshot(
-            merit_score=int(getattr(item, "merit_score", 0)),
-            confidence_score=int(getattr(item, "confidence_score", 0)),
-            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
-            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
-            support_needed_score=int(getattr(item, "support_needed_score", 0)),
-            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
-            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
-            trajectory_score=int(getattr(item, "trajectory_score", 0)),
-        ).hidden_potential_band
-    ][: min(5, len(sorted_results))]
-    support_needed_candidate_ids = [
-        item.candidate_id
-        for item in sorted_results
-        if build_policy_snapshot(
-            merit_score=int(getattr(item, "merit_score", 0)),
-            confidence_score=int(getattr(item, "confidence_score", 0)),
-            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
-            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
-            support_needed_score=int(getattr(item, "support_needed_score", 0)),
-            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
-            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
-            trajectory_score=int(getattr(item, "trajectory_score", 0)),
-        ).support_needed_band
-    ][: min(5, len(sorted_results))]
-    authenticity_review_candidate_ids = [
-        item.candidate_id
-        for item in sorted_results
-        if build_policy_snapshot(
-            merit_score=int(getattr(item, "merit_score", 0)),
-            confidence_score=int(getattr(item, "confidence_score", 0)),
-            authenticity_risk=int(getattr(item, "authenticity_risk", 0)),
-            hidden_potential_score=int(getattr(item, "hidden_potential_score", 0)),
-            support_needed_score=int(getattr(item, "support_needed_score", 0)),
-            shortlist_priority_score=int(getattr(item, "shortlist_priority_score", 0)),
-            evidence_coverage_score=int(getattr(item, "evidence_coverage_score", 0)),
-            trajectory_score=int(getattr(item, "trajectory_score", 0)),
-        ).authenticity_review_band
-    ][: min(5, len(sorted_results))]
+    }
+    shortlist_candidate_ids = _candidate_ids_for_policy(
+        sorted_results,
+        result_policies,
+        "shortlist_band",
+    )
+    hidden_potential_candidate_ids = _candidate_ids_for_policy(
+        sorted_results,
+        result_policies,
+        "hidden_potential_band",
+    )
+    support_needed_candidate_ids = _candidate_ids_for_policy(
+        sorted_results,
+        result_policies,
+        "support_needed_band",
+    )
+    authenticity_review_candidate_ids = _candidate_ids_for_policy(
+        sorted_results,
+        result_policies,
+        "authenticity_review_band",
+    )
 
     return BatchShortlistSummary(
         ranked_candidate_ids=ranked_candidate_ids,
