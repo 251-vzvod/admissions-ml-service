@@ -745,6 +745,38 @@ Interpretation:
 - current sample pack is useful for development, smoke tests, and qualitative checks
 - it is not enough to serve as the long-term source of truth for supervised ranking
 
+### Current Active Data Scope
+
+The current active seed set for roadmap work is English-only.
+
+Working dataset:
+
+- source: `data/candidates.json`
+- processed subset: `data/ml_workbench/processed/english_candidates_api_input_v1.jsonl`
+- batch payload: `data/ml_workbench/processed/english_candidates_api_input_v1_batch.json`
+- manifest: `data/ml_workbench/processed/english_candidates_api_input_v1_manifest.json`
+- selection rule: `content_profile.language_profile == "english"`
+
+Sanitization rule:
+
+- keep only the frozen public input contract fields accepted by the ML service
+- remove `content_profile`
+- remove `scenario_meta`
+- remove extra nested fields such as `motivation_questions[].id`
+
+Current counts:
+
+- total source candidates: `52`
+- active English subset: `18`
+- excluded mixed: `17`
+- excluded russian: `17`
+
+Interpretation:
+
+- English-only is the correct v1 training / annotation scope
+- `mixed` should be preserved as a future evaluation slice
+- `russian` should stay out of the first ML loop until the English baseline is stable
+
 ### Current Verification Snapshot
 
 Full test suite at capture time:

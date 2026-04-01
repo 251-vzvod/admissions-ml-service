@@ -13,6 +13,25 @@ Use it when:
 
 This file is intentionally operational.
 The strategy lives in [roadmap.md](./roadmap.md).
+First-round reviewer instructions live in [annotation_guide_v1.md](./annotation_guide_v1.md).
+
+## Current Active Scope
+
+For the current v1 data program, active scope is English-only.
+
+Current practical rule:
+
+- use only candidates where `content_profile.language_profile == "english"` from the existing internal seed pack
+- treat `mixed` as a future evaluation slice
+- keep `russian` out of the first ML training loop
+- sanitize the seed pack down to the frozen ML-service public input contract before annotation or model work
+
+Reason:
+
+- current heuristics, semantic prototypes, and auxiliary text logic are most stable on English
+- this reduces language noise while we build the first reliable label program
+- multilingual expansion should happen after the first English-only baseline is stable
+- removing non-contract metadata also reduces leakage risk from synthetic hints such as `scenario_meta.archetype`
 
 ## Core Principle
 
