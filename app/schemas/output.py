@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from app.schemas.decision import Recommendation, ReviewFlag
@@ -106,3 +108,15 @@ class BatchScoreResponse(BaseModel):
     support_needed_candidate_ids: list[str] = Field(default_factory=list)
     authenticity_review_candidate_ids: list[str] = Field(default_factory=list)
     results: list[ScoreResponse]
+
+
+class RankResponse(BaseModel):
+    scoring_run_id: str
+    scoring_version: str
+    count: int
+    ranked_candidate_ids: list[str] = Field(default_factory=list)
+    shortlist_candidate_ids: list[str] = Field(default_factory=list)
+    hidden_potential_candidate_ids: list[str] = Field(default_factory=list)
+    support_needed_candidate_ids: list[str] = Field(default_factory=list)
+    authenticity_review_candidate_ids: list[str] = Field(default_factory=list)
+    ranker_metadata: dict[str, Any] = Field(default_factory=dict)

@@ -1,17 +1,17 @@
 {
   "version": "offline-shortlist-ranker-v1",
-  "bias": 0.0,
+  "bias": -0.007828,
   "feature_weights": {
-    "shortlist_priority_score": 0.30,
-    "hidden_potential_score": 0.18,
-    "trajectory_score": 0.12,
-    "evidence_coverage_score": 0.10,
-    "merit_score": 0.10,
-    "confidence_score": 0.06,
-    "authenticity_risk_neg": 0.08,
-    "community_values_axis": 0.12,
-    "leadership_axis": 0.08,
-    "potential_axis": 0.10,
-    "trust_axis": 0.06
+    "shortlist_priority_score": 1.161671,
+    "hidden_potential_score": 1.383412,
+    "trajectory_score": 0.952964,
+    "evidence_coverage_score": 0.997939,
+    "merit_score": 1.423766,
+    "confidence_score": 0.479356,
+    "authenticity_risk_neg": 0.605153,
+    "community_values_axis": 0.0,
+    "leadership_axis": 0.0,
+    "potential_axis": 0.0,
+    "trust_axis": 0.0
   }
 }

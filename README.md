@@ -4,14 +4,11 @@ FastAPI service for primary candidate screening support in the inVision U admiss
 
 This is a decision-support tool. It does not make autonomous admission decisions.
 
-## Core Docs
+## Docs
 
 - [FEATURE_DICTIONARY.md](FEATURE_DICTIONARY.md): meaning of public scores and signals
-- [guides/ML_SERVICE_V2_ARCHITECTURE.md](guides/ML_SERVICE_V2_ARCHITECTURE.md): runtime architecture and signal boundaries
-- [guides/fairness_note.md](guides/fairness_note.md): fairness posture and known limits
-- [guides/BACKEND_TO_ML_CONTRACT.md](guides/BACKEND_TO_ML_CONTRACT.md): backend request/response contract for ML integration
-- [guides/FRONTEND_ML_RESPONSE_CONTRACT.md](guides/FRONTEND_ML_RESPONSE_CONTRACT.md): frontend-facing public ML response contract
-- [guides/INTEGRATION_SYNC_SUMMARY.md](guides/INTEGRATION_SYNC_SUMMARY.md): short sync note for frontend/backend teams
+- [guides/backend_to_ml_score_request.example.json](guides/backend_to_ml_score_request.example.json): concrete backend request example
+- [guides/ml_score_response_public.example.json](guides/ml_score_response_public.example.json): concrete public score response example
 
 ## Public API
 
@@ -109,44 +106,51 @@ SEMANTIC_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 ## Request Shape
 
-Canonical payload:
+Public payload:
 
 ```json
 {
   "candidate_id": "cand_001",
-  "profile": {
-    "academics": {
+  "structured_data": {
+    "education": {
       "english_proficiency": {
         "type": "ielts",
         "score": 7.0
       }
-    },
-    "narratives": {
-      "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
-    },
-    "process_signals": {
-      "completion_rate": 1.0
     }
+  },
+  "text_inputs": {
+    "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
   },
   "consent": true
 }
 ```
 
-Canonical top-level fields:
+Public top-level fields:
 
 - `candidate_id`
-- `profile`
+- `structured_data`
+- `text_inputs`
+- `behavioral_signals`
+- `metadata`
 - `consent`
 
-Canonical `profile` sections:
+`structured_data` sections:
 
-- `academics`
-- `materials`
-- `narratives`
-- `process_signals`
-- `metadata`
+- `education`
+- `application_materials`
 
-Legacy payloads with `structured_data`, `text_inputs`, `behavioral_signals`, and top-level `metadata` are still accepted and normalized into the canonical profile contract.
+`text_inputs` sections:
+
+- `motivation_letter_text`
+- `motivation_questions`
+- `interview_text`
+- `video_interview_transcript_text`
+- `video_presentation_transcript_text`
+
+The old `structured_data` / `text_inputs` / `behavioral_signals` / `metadata` shape is the main public API contract again.
+
+Canonical `profile` payloads are still accepted for backward compatibility and normalized into the same internal runtime shape.
 
 ## Score Semantics
 
@@ -192,6 +196,6 @@ Recommended Railway posture:
 - `app/services/`: scoring, explainability, authenticity, privacy, semantic features
 - `app/assets/`: runtime artifacts such as shortlist ranker weights
 - `app/config.py`: environment and scoring config
-- `guides/`: lightweight tracked project documentation
+- `guides/`: JSON request/response examples only
 - `.local/`: ignored local workspace for research, scripts, and archive docs
 - `tests/`: API and scoring tests

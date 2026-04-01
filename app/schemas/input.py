@@ -170,16 +170,26 @@ class CandidateProfile(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class StructuredDataInput(BaseModel):
+    education: AcademicsInput | None = None
+    application_materials: ApplicationMaterialsInput | None = None
+
+    model_config = {"extra": "forbid"}
+
+
 class CandidateInput(BaseModel):
     candidate_id: str = Field(min_length=1)
-    profile: CandidateProfile = Field(default_factory=CandidateProfile)
+    structured_data: StructuredDataInput = Field(default_factory=StructuredDataInput)
+    text_inputs: NarrativeInputs = Field(default_factory=NarrativeInputs)
+    behavioral_signals: ProcessSignals | None = None
+    metadata: CandidateMetadata | None = None
     consent: bool | None = None
 
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_legacy_payload(cls, values: Any) -> Any:
+    def normalize_public_payload(cls, values: Any) -> Any:
         if not isinstance(values, dict):
             return values
 
@@ -188,11 +198,15 @@ class CandidateInput(BaseModel):
         if isinstance(candidate_id, str):
             normalized["candidate_id"] = candidate_id.strip()
 
-        normalized["profile"] = _build_profile_dict(normalized)
-        normalized.pop("structured_data", None)
-        normalized.pop("text_inputs", None)
-        normalized.pop("behavioral_signals", None)
-        normalized.pop("metadata", None)
+        profile = _build_profile_dict(normalized)
+        normalized["structured_data"] = {
+            "education": profile.get("academics"),
+            "application_materials": profile.get("materials"),
+        }
+        normalized["text_inputs"] = profile.get("narratives") or {}
+        normalized["behavioral_signals"] = profile.get("process_signals")
+        normalized["metadata"] = profile.get("metadata")
+        normalized.pop("profile", None)
         return normalized
 
 

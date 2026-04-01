@@ -1,8 +1,8 @@
 {
   "candidate_id": "form_123",
   "consent": true,
-  "profile": {
-    "academics": {
+  "structured_data": {
+    "education": {
       "english_proficiency": {
         "type": "ielts",
         "score": 6.5
@@ -12,30 +12,30 @@
         "score": 110
       }
     },
-    "materials": {
+    "application_materials": {
       "documents": [
         "https://storage.example.com/motivation-letter.pdf"
       ],
       "video_presentation_link": "https://www.youtube.com/watch?v=abc123"
-    },
-    "narratives": {
-      "motivation_letter_text": "Extracted text from the motivation letter.",
-      "motivation_questions": [],
-      "interview_text": null,
-      "video_interview_transcript_text": null,
-      "video_presentation_transcript_text": "Extracted transcript from the presentation video."
-    },
-    "process_signals": {
-      "completion_rate": 1.0,
-      "returned_to_edit": false,
-      "skipped_optional_questions": 0,
-      "meaningful_answers_count": 0,
-      "scenario_depth": null
-    },
-    "metadata": {
-      "source": "backend",
-      "submitted_at": "2026-04-01T12:00:00Z",
-      "scoring_version": null
     }
+  },
+  "text_inputs": {
+    "motivation_letter_text": "Extracted text from the motivation letter.",
+    "motivation_questions": [],
+    "interview_text": null,
+    "video_interview_transcript_text": null,
+    "video_presentation_transcript_text": "Extracted transcript from the presentation video."
+  },
+  "behavioral_signals": {
+    "completion_rate": 1.0,
+    "returned_to_edit": false,
+    "skipped_optional_questions": 0,
+    "meaningful_answers_count": 0,
+    "scenario_depth": null
+  },
+  "metadata": {
+    "source": "backend",
+    "submitted_at": "2026-04-01T12:00:00Z",
+    "scoring_version": null
   }
 }
