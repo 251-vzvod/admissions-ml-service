@@ -121,8 +121,7 @@ Public payload:
   },
   "text_inputs": {
     "motivation_letter_text": "I started a small student initiative and kept improving it after the first version failed."
-  },
-  "consent": true
+  }
 }
 ```
 
@@ -133,22 +132,18 @@ Public top-level fields:
 - `text_inputs`
 - `behavioral_signals`
 - `metadata`
-- `consent`
 
 `structured_data` sections:
 
 - `education`
-- `application_materials`
 
 `text_inputs` sections:
 
 - `motivation_letter_text`
 - `motivation_questions`
 - `interview_text`
-- `video_interview_transcript_text`
-- `video_presentation_transcript_text`
 
-The old `structured_data` / `text_inputs` / `behavioral_signals` / `metadata` shape is the main public API contract again.
+The public request contract is intentionally minimal and only includes the fields above.
 
 Canonical `profile` payloads are still accepted for backward compatibility and normalized into the same internal runtime shape.
 

@@ -72,6 +72,10 @@ def test_score_single_candidate_with_canonical_profile_contract() -> None:
                 "english_proficiency": {"type": "ielts", "score": 7.0},
                 "school_certificate": {"type": "unt", "score": 108},
             },
+            "materials": {
+                "documents": ["https://example.com/motivation-letter.pdf"],
+                "video_presentation_link": "https://example.com/video",
+            },
             "narratives": {
                 "motivation_letter_text": (
                     "I started a peer tutoring group, changed the format after attendance dropped, "
@@ -84,6 +88,7 @@ def test_score_single_candidate_with_canonical_profile_contract() -> None:
                     }
                 ],
                 "interview_text": "I can explain what failed first, what I changed, and what improved afterward.",
+                "video_presentation_transcript_text": "Older clients may still send this field.",
             },
             "process_signals": {
                 "completion_rate": 1.0,
@@ -104,96 +109,6 @@ def test_score_single_candidate_with_canonical_profile_contract() -> None:
     assert result["eligibility_status"] in {"eligible", "conditionally_eligible"}
     assert 0 <= result["merit_score"] <= 100
     assert isinstance(result["committee_cohorts"], list)
-
-
-def test_score_single_candidate_with_video_transcript_only() -> None:
-    payload = {
-        "candidate_id": "cand_test_video_001",
-        "text_inputs": {
-            "video_interview_transcript_text": (
-                "I planned a volunteer event, coordinated three classmates, and documented tasks over two weeks. "
-                "During the interview I explained what worked, what failed, and how we improved next time."
-            )
-        },
-    }
-
-    response = client.post("/score", json=payload)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["candidate_id"] == "cand_test_video_001"
-    assert result["eligibility_status"] in {"eligible", "conditionally_eligible"}
-    assert 0 <= result["merit_score"] <= 100
-
-
-def test_score_single_uses_application_materials_features() -> None:
-    payload = {
-        "candidate_id": "cand_test_materials_001",
-        "structured_data": {
-            "education": {
-                "english_proficiency": {"type": "ielts", "score": 6.5},
-                "school_certificate": {"type": "unt", "score": 105},
-            },
-            "application_materials": {
-                "documents": ["cv.pdf", "statement.pdf"],
-                "attachments": ["portfolio.pdf"],
-                "portfolio_links": ["https://example.com/portfolio"],
-                "video_presentation_link": "https://example.com/video",
-            },
-        },
-        "text_inputs": {
-            "motivation_letter_text": "I organized a student project with measurable outcomes and weekly reports.",
-            "interview_text": "I led a team of five and tracked participation metrics over three months.",
-        },
-    }
-
-    response = client.post("/score", json=payload)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["candidate_id"] == "cand_test_materials_001"
-    assert result["evidence_coverage_score"] >= 0
-    assert result["confidence_score"] >= 0
-    assert isinstance(result["committee_cohorts"], list)
-
-
-def test_application_materials_do_not_dominate_merit_for_same_text() -> None:
-    base_payload = {
-        "candidate_id": "cand_text_only_control_001",
-        "text_inputs": {
-            "motivation_letter_text": (
-                "I noticed younger students were missing deadlines because class updates were scattered, "
-                "so I built a small Telegram bot that collected homework and exam dates in one place. "
-                "The first version broke often, so I rewrote it after feedback and added a simple admin flow."
-            ),
-            "interview_text": (
-                "The bot reduced repeated questions in our class and taught me that building something useful is not the same as building something complicated."
-            ),
-        },
-        "consent": True,
-    }
-    materials_payload = {
-        **base_payload,
-        "candidate_id": "cand_text_with_materials_001",
-        "structured_data": {
-            "application_materials": {
-                "documents": ["cv.pdf", "statement.pdf"],
-                "attachments": ["portfolio.pdf"],
-                "portfolio_links": ["https://example.com/portfolio"],
-                "video_presentation_link": "https://example.com/video",
-            }
-        },
-    }
-
-    base_response = client.post("/score", json=base_payload)
-    materials_response = client.post("/score", json=materials_payload)
-
-    assert base_response.status_code == 200
-    assert materials_response.status_code == 200
-
-    base_result = base_response.json()
-    materials_result = materials_response.json()
-
-    assert abs(materials_result["merit_score"] - base_result["merit_score"]) <= 8
-    assert abs(materials_result["shortlist_priority_score"] - base_result["shortlist_priority_score"]) <= 8
 
 
 def test_hidden_potential_outscores_polished_but_thin_case() -> None:

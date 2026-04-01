@@ -172,7 +172,14 @@ class CandidateProfile(BaseModel):
 
 class StructuredDataInput(BaseModel):
     education: AcademicsInput | None = None
-    application_materials: ApplicationMaterialsInput | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+class PublicTextInputs(BaseModel):
+    motivation_letter_text: str | None = None
+    motivation_questions: list[MotivationAnswer] = Field(default_factory=list)
+    interview_text: str | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -180,10 +187,9 @@ class StructuredDataInput(BaseModel):
 class CandidateInput(BaseModel):
     candidate_id: str = Field(min_length=1)
     structured_data: StructuredDataInput = Field(default_factory=StructuredDataInput)
-    text_inputs: NarrativeInputs = Field(default_factory=NarrativeInputs)
+    text_inputs: PublicTextInputs = Field(default_factory=PublicTextInputs)
     behavioral_signals: ProcessSignals | None = None
     metadata: CandidateMetadata | None = None
-    consent: bool | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -201,12 +207,17 @@ class CandidateInput(BaseModel):
         profile = _build_profile_dict(normalized)
         normalized["structured_data"] = {
             "education": profile.get("academics"),
-            "application_materials": profile.get("materials"),
         }
-        normalized["text_inputs"] = profile.get("narratives") or {}
+        narratives = profile.get("narratives") if isinstance(profile.get("narratives"), dict) else {}
+        normalized["text_inputs"] = {
+            "motivation_letter_text": narratives.get("motivation_letter_text"),
+            "motivation_questions": narratives.get("motivation_questions") or [],
+            "interview_text": narratives.get("interview_text"),
+        }
         normalized["behavioral_signals"] = profile.get("process_signals")
         normalized["metadata"] = profile.get("metadata")
         normalized.pop("profile", None)
+        normalized.pop("consent", None)
         return normalized
 
 
