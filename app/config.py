@@ -261,6 +261,21 @@ class AIDetectorConfig:
 
 
 @dataclass(slots=True)
+class ReviewRoutingSidecarConfig:
+    """Configuration for optional review-routing shadow sidecar."""
+
+    enabled: bool = False
+    artifact_name: str = "review_routing_sidecar_v1"
+
+    @classmethod
+    def from_env(cls) -> "ReviewRoutingSidecarConfig":
+        return cls(
+            enabled=parse_bool_env("ENABLE_REVIEW_ROUTING_SIDECAR", default=False),
+            artifact_name=_strip_wrapping_quotes(os.getenv("REVIEW_ROUTING_SIDECAR_ARTIFACT", "review_routing_sidecar_v1")),
+        )
+
+
+@dataclass(slots=True)
 class AppConfig:
     """Application configuration container."""
 
@@ -276,6 +291,7 @@ class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig.from_env)
     semantic: SemanticConfig = field(default_factory=SemanticConfig.from_env)
     ai_detector: AIDetectorConfig = field(default_factory=AIDetectorConfig.from_env)
+    review_routing_sidecar: ReviewRoutingSidecarConfig = field(default_factory=ReviewRoutingSidecarConfig.from_env)
 
 
 CONFIG = AppConfig()
@@ -322,5 +338,9 @@ def build_scoring_config_snapshot() -> dict[str, Any]:
             "min_words": CONFIG.ai_detector.min_words,
             "english_only": CONFIG.ai_detector.english_only,
             "elevated_probability_threshold": CONFIG.ai_detector.elevated_probability_threshold,
+        },
+        "review_routing_sidecar": {
+            "enabled": CONFIG.review_routing_sidecar.enabled,
+            "artifact_name": CONFIG.review_routing_sidecar.artifact_name,
         },
     }

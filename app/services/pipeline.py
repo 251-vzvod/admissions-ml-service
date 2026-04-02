@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from types import SimpleNamespace
 from typing import Any
 
 from app.config import CONFIG
@@ -20,6 +21,7 @@ from app.services.policy import build_policy_snapshot
 from app.services.preprocessing import preprocess_text_inputs
 from app.services.privacy import merit_safe_projection
 from app.services.recommendation import map_recommendation
+from app.services.review_routing_sidecar import score_review_routing_shadow
 from app.services.reviewer_signals import build_reviewer_signals
 from app.services.scoring import build_score_trace, compute_scores
 from app.services.semantic_rubrics import extract_semantic_rubric_features
@@ -375,6 +377,19 @@ class ScoringPipeline:
             evidence_highlights.extend(weak_claim_dicts[: 3 - len(evidence_highlights)])
 
         base_response["llm_metadata"] = llm_metadata
+        review_routing_shadow = score_review_routing_shadow(
+            SimpleNamespace(
+                merit_score=scoring_result.merit_score,
+                confidence_score=scoring_result.confidence_score,
+                authenticity_risk=scoring_result.authenticity_risk,
+                hidden_potential_score=shortlist_signals.hidden_potential_score,
+                support_needed_score=shortlist_signals.support_needed_score,
+                shortlist_priority_score=shortlist_signals.shortlist_priority_score,
+                evidence_coverage_score=shortlist_signals.evidence_coverage_score,
+                trajectory_score=shortlist_signals.trajectory_score,
+                merit_breakdown=merit_breakdown,
+            )
+        )
 
         return ScoreResponse(
             **base_response,
@@ -417,6 +432,7 @@ class ScoringPipeline:
             suggested_follow_up_question=llm_follow_up_question or committee_guidance.suggested_follow_up_question,
             evidence_spans=explanation_result.evidence_spans,
             explanation=explanation_result.explanation,
+            review_routing_shadow=review_routing_shadow.as_public_debug_dict(),
         )
 
     def score_candidate_trace(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
@@ -442,6 +458,14 @@ class ScoringPipeline:
         auth_result = context["auth_result"]
         scoring_trace = build_score_trace(merged_features, auth_result.authenticity_risk_raw, use_semantic_layer=True)
 
+        trace_shortlist_signals = build_shortlist_signals(
+            feature_map={**merged_features, **context["snapshot"]},
+            semantic_scores={key: to_display_score(value) for key, value in context["semantic_snapshot"].items()},
+            merit_score=context["scoring_result"].merit_score,
+            confidence_score=context["scoring_result"].confidence_score,
+            authenticity_risk=context["scoring_result"].authenticity_risk,
+            recommendation=context["recommendation_result"].recommendation,
+        )
         payload.update(
             {
                 "review_flags": context["recommendation_flags"],
@@ -483,6 +507,19 @@ class ScoringPipeline:
                     for key, value in context["semantic_result"].evidence.items()
                 },
                 "score_trace": scoring_trace,
+                "review_routing_shadow": score_review_routing_shadow(
+                    SimpleNamespace(
+                        merit_score=context["scoring_result"].merit_score,
+                        confidence_score=context["scoring_result"].confidence_score,
+                        authenticity_risk=context["scoring_result"].authenticity_risk,
+                        hidden_potential_score=trace_shortlist_signals.hidden_potential_score,
+                        support_needed_score=trace_shortlist_signals.support_needed_score,
+                        shortlist_priority_score=trace_shortlist_signals.shortlist_priority_score,
+                        evidence_coverage_score=trace_shortlist_signals.evidence_coverage_score,
+                        trajectory_score=trace_shortlist_signals.trajectory_score,
+                        merit_breakdown=context["merit_breakdown"],
+                    )
+                ).as_public_debug_dict(),
             }
         )
         return payload
