@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from app.schemas.decision import ReviewFlag
 from app.services.ai_detector import AIDetectorResult
+from app.services.llm_extractor import LLMAuthenticityAssist
 from app.utils.math_utils import clamp01
 
 
@@ -25,6 +26,7 @@ def estimate_authenticity_risk(
     features: dict[str, float | bool],
     diagnostics: dict[str, float | bool | int],
     ai_detector_result: AIDetectorResult | None = None,
+    llm_authenticity_assist: LLMAuthenticityAssist | None = None,
 ) -> AuthenticityResult:
     """Compute authenticity risk from transparent heuristic components."""
     genericness = float(features.get("genericness_score", 0.0))
@@ -68,6 +70,20 @@ def estimate_authenticity_risk(
             ai_penalty *= 0.5
         risk += ai_penalty
 
+    llm_influence = 0.0
+    if llm_authenticity_assist and llm_authenticity_assist.available:
+        llm_influence += llm_authenticity_assist.grounding_gap_score * 0.08
+        llm_influence += llm_authenticity_assist.section_mismatch_score * 0.07
+        llm_influence += llm_authenticity_assist.style_shift_score * 0.05
+        llm_influence += max(0.0, llm_authenticity_assist.risk_hint - 0.45) * 0.10
+        if llm_authenticity_assist.review_needed == "high":
+            llm_influence += 0.04
+        elif llm_authenticity_assist.review_needed == "medium":
+            llm_influence += 0.02
+        if evidence_count > 0.65 and consistency > 0.65:
+            llm_influence *= 0.55
+        risk += llm_influence
+
     # Reduce risk when strong grounded evidence is present.
     if evidence_count > 0.65 and consistency > 0.65:
         risk -= 0.12
@@ -101,6 +117,14 @@ def estimate_authenticity_risk(
         flags.append(ReviewFlag.CONTRADICTION_RISK)
         flags.append(ReviewFlag.POSSIBLE_CONTRADICTION)
         reasons.append("Possible contradictions or unsupported shifts appear across the narrative.")
+    if llm_authenticity_assist and llm_authenticity_assist.available:
+        if llm_authenticity_assist.section_mismatch_score >= 0.58 and ReviewFlag.CROSS_SECTION_MISMATCH not in flags:
+            flags.append(ReviewFlag.CROSS_SECTION_MISMATCH)
+        if llm_authenticity_assist.grounding_gap_score >= 0.58 and ReviewFlag.LOW_EVIDENCE_DENSITY not in flags:
+            flags.append(ReviewFlag.LOW_EVIDENCE_DENSITY)
+        for item in llm_authenticity_assist.reasons:
+            if item and item not in reasons:
+                reasons.append(item)
     if (
         ai_detector_result
         and ai_detector_result.applicable

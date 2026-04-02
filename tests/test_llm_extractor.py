@@ -87,6 +87,8 @@ def test_llm_extractor_repairs_wrapper_answer_response(monkeypatch) -> None:
     assert result.llm_metadata["prompt_version"] == PROMPT_VERSION
     assert result.rubric_assessment["leadership_potential"] == 4
     assert result.rubric_assessment["growth_trajectory"] == 4
+    assert result.authenticity_assist.available is True
+    assert result.authenticity_assist.review_needed == "low"
     assert result.committee_follow_up_question == "What changed after you started helping classmates?"
     assert result.strength_claims[0]["claim"] == "Shows initiative through peer support"
 
@@ -134,3 +136,4 @@ def test_llm_extractor_falls_back_to_deterministic_rubric_when_repair_is_still_u
     assert result.rubric_assessment["leadership_potential"] >= 3
     assert result.rubric_assessment["growth_trajectory"] == 5
     assert result.rubric_assessment["authenticity_review_needed"] == "low"
+    assert result.authenticity_assist.available is False
