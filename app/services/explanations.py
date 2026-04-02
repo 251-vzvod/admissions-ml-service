@@ -26,13 +26,20 @@ def _format_claim_with_evidence(item: dict[str, str]) -> str:
     claim = " ".join((item.get("claim") or "").split()).strip()
     source = (item.get("source") or "motivation_letter_text").strip() or "motivation_letter_text"
     snippet = _pick_snippet(item.get("snippet") or "", max_len=120)
+    source_label = {
+        "motivation_letter_text": "essay",
+        "motivation_questions": "Q&A",
+        "interview_text": "interview",
+        "video_interview_transcript_text": "video interview",
+        "video_presentation_transcript_text": "video presentation",
+    }.get(source, "application")
 
     if claim and snippet:
-        return f'{claim} [evidence: {source} -> "{snippet}"]'
+        return f'{claim} Evidence from {source_label}: "{snippet}"'
     if claim:
         return claim
     if snippet:
-        return f'evidence-only [{source}: "{snippet}"]'
+        return f'Evidence from {source_label}: "{snippet}"'
     return ""
 
 
@@ -51,6 +58,91 @@ def _normalize_uncertainty_claim(item: dict[str, str]) -> dict[str, str]:
     normalized = dict(item)
     normalized["claim"] = claim
     return normalized
+
+
+def _recommendation_summary_phrase(recommendation: Recommendation | str) -> str:
+    if recommendation == Recommendation.REVIEW_PRIORITY:
+        return "This looks like a strong candidate who should be reviewed with priority."
+    if recommendation == Recommendation.STANDARD_REVIEW:
+        return "This candidate shows some promising signals, but the case is not strong enough to fast-track."
+    if recommendation == Recommendation.MANUAL_REVIEW_REQUIRED:
+        return "This candidate may be promising, but the profile needs closer manual review before the committee can trust it."
+    if recommendation == Recommendation.INSUFFICIENT_EVIDENCE:
+        return "There is not enough concrete evidence yet for a confident committee decision."
+    if recommendation == Recommendation.INCOMPLETE_APPLICATION:
+        return "The application is incomplete, so the committee cannot assess it fairly yet."
+    if recommendation == Recommendation.INVALID:
+        return "The application does not currently meet the minimum requirements for substantive review."
+    return "This profile needs committee review."
+
+
+def _score_band(value: int | None) -> str:
+    if value is None:
+        return "unknown"
+    if value >= 70:
+        return "strong"
+    if value >= 55:
+        return "solid"
+    if value >= 40:
+        return "mixed"
+    return "weak"
+
+
+def _build_plain_language_summary(
+    recommendation: Recommendation | str,
+    merit_score: int | None,
+    confidence_score: int | None,
+    authenticity_risk: int | None,
+    review_signals: dict[str, float],
+) -> str:
+    lead = _recommendation_summary_phrase(recommendation)
+
+    growth = float(review_signals.get("growth_signal", 0.0))
+    agency = float(review_signals.get("agency_signal", 0.0))
+    evidence = float(review_signals.get("evidence_signal", 0.0))
+    authenticity = float(review_signals.get("authenticity_signal", 0.0))
+    hidden = float(review_signals.get("hidden_signal", 0.0))
+
+    strengths: list[str] = []
+    if growth >= 0.62:
+        strengths.append("clear growth and reflection")
+    if agency >= 0.56:
+        strengths.append("real initiative or ownership")
+    if evidence >= 0.60:
+        strengths.append("enough concrete evidence to support the case")
+    if hidden >= 0.58:
+        strengths.append("stronger underlying potential than presentation quality")
+
+    concerns: list[str] = []
+    if evidence < 0.45:
+        concerns.append("the evidence is still quite thin")
+    if authenticity_risk is not None and authenticity_risk >= 45:
+        concerns.append("some parts of the application need closer manual verification")
+    elif authenticity < 0.52:
+        concerns.append("there are some credibility or consistency questions to check")
+    if confidence_score is not None and confidence_score < 50:
+        concerns.append("the current assessment is only moderately reliable")
+
+    middle_parts: list[str] = []
+    if strengths:
+        joined_strengths = ", ".join(strengths[:2]) if len(strengths) > 1 else strengths[0]
+        middle_parts.append(f"The main positive signals are {joined_strengths}.")
+    else:
+        merit_band = _score_band(merit_score)
+        middle_parts.append(f"Overall substance currently looks {merit_band}.")
+
+    if concerns:
+        joined_concerns = ", ".join(concerns[:2]) if len(concerns) > 1 else concerns[0]
+        middle_parts.append(f"The main caution is that {joined_concerns}.")
+
+    metrics_sentence = ""
+    if merit_score is not None and confidence_score is not None and authenticity_risk is not None:
+        metrics_sentence = (
+            f" Current scores: merit {merit_score}/100, confidence {confidence_score}/100, "
+            f"authenticity risk {authenticity_risk}/100."
+        )
+
+    return " ".join([lead, *middle_parts]).strip() + metrics_sentence
 
 
 def build_explanation(
@@ -143,24 +235,12 @@ def build_explanation(
             if len(evidence_spans) >= 2:
                 break
 
-    mode_note = (
-        "using LLM-assisted feature extraction with deterministic internal scoring"
-        if extraction_mode in {"llm", "hybrid"}
-        else "using deterministic feature extraction with deterministic internal scoring"
-    )
-    score_suffix = ""
-    if merit_score is not None and confidence_score is not None and authenticity_risk is not None:
-        score_suffix = (
-            f" Scores: merit={merit_score}/100, confidence={confidence_score}/100, "
-            f"authenticity_risk={authenticity_risk}/100."
-        )
-
-    summary = (
-        f"This profile was scored {mode_note}. "
-        "The system separates candidate potential signals (merit), assessment reliability (confidence), "
-        "and review uncertainty (authenticity risk). "
-        f"Current routing recommendation: {recommendation}."
-        f"{score_suffix}"
+    summary = _build_plain_language_summary(
+        recommendation=recommendation,
+        merit_score=merit_score,
+        confidence_score=confidence_score,
+        authenticity_risk=authenticity_risk,
+        review_signals=review_signals,
     )
 
     scoring_notes = ExplanationNotes(

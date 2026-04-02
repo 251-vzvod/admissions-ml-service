@@ -238,6 +238,57 @@ def test_hidden_potential_is_not_punished_below_polished_low_signal_profile() ->
     assert hidden_result.merit_score >= polished_result.merit_score
 
 
+def test_public_summary_uses_plain_language_not_pipeline_jargon() -> None:
+    pipeline = ScoringPipeline()
+    payload = {
+        "candidate_id": "cand_summary_plain_language",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a peer tutoring routine, changed it after attendance dropped, and kept helping younger students."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this university?",
+                    "answer": "I want a place where I can keep building useful projects with other students.",
+                }
+            ],
+            "interview_text": "I can explain what changed after the first version failed and what support I would still need.",
+        },
+    }
+
+    result = pipeline.score_candidate(payload)
+
+    summary = result.explanation.summary.lower()
+    assert "deterministic feature extraction" not in summary
+    assert "deterministic internal scoring" not in summary
+    assert "this looks like" in summary or "this candidate" in summary or "there is not enough" in summary
+
+
+def test_top_strengths_and_main_gaps_use_ui_friendly_evidence_format() -> None:
+    pipeline = ScoringPipeline()
+    payload = {
+        "candidate_id": "cand_ui_friendly_strengths",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a peer tutoring group, changed the format after attendance dropped, and kept helping younger students."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What changed after a mistake?",
+                    "answer": "I learned to ask for feedback and adjust the plan instead of repeating the same mistake.",
+                }
+            ],
+            "interview_text": "I can explain what failed first and what changed after that.",
+        },
+    }
+
+    result = pipeline.score_candidate(payload)
+
+    joined = " ".join([*result.top_strengths, *result.main_gaps]).lower()
+    assert "[evidence:" not in joined
+    assert "->" not in joined
+
+
 def test_committee_guidance_surfaces_hidden_potential_and_follow_up_question() -> None:
     guidance = build_committee_guidance(
         review_signals={
