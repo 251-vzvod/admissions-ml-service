@@ -845,6 +845,995 @@ Without adjudicated human labels, pairwise comparisons, and batch shortlist task
 - ranking gains will be hard to trust
 - calibration work will remain noisy
 
+## Current Labeling And Research Progress Snapshot
+
+Date:
+
+- `2026-04-02`
+
+### Current Reviewed Label Pool
+
+Current individual-review file:
+
+- `data/ml_workbench/labels/human_labels_individual_llm_v2.csv`
+
+Current counts:
+
+- total labeled rows: `107`
+- seed English candidates: `18`
+- synthetic batch v1: `48`
+- contrastive batch v2: `24`
+- translated batch v3: `17`
+
+Interpretation:
+
+- the project now has a materially larger annotation pool than the original seed set
+- this pool is useful for offline prototyping, rubric stress-tests, and first ranking experiments
+- it is still not equivalent to multi-review committee ground truth
+
+### Current Bootstrap Supervision Artifacts
+
+Bootstrap artifact files:
+
+- `data/ml_workbench/labels/human_labels_adjudicated.csv`
+- `data/ml_workbench/labels/pairwise_labels.csv`
+- `data/ml_workbench/labels/batch_shortlist_tasks.jsonl`
+- `data/ml_workbench/labels/bootstrap_label_artifacts_summary.md`
+
+Current counts:
+
+- adjudicated rows written: `107`
+- pairwise rows written: `504`
+- batch shortlist tasks written: `18`
+- batch size: `8`
+
+Important caveat:
+
+- these are bootstrap weak-label artifacts derived from one reviewer stream
+- they are useful for offline ranking setup and evaluation plumbing
+- they are not a substitute for true multi-review adjudication or real committee pairwise judgments
+
+### Current Synthetic Expansion Snapshot
+
+Completed synthetic packs:
+
+- `synthetic_batch_v1`: generated, sanitized, and annotated
+- `contrastive_batch_v2`: generated, sanitized, and annotated
+
+Current translation work:
+
+- `research/scripts/generate_translated_batch_v3.py` is ready
+- Batch V3 has been generated from `17` Russian-only candidates in `data/candidates.json`
+- Batch V3 has now also been annotated and merged into the main individual-review pool
+- translated outputs should be treated as reviewer input packs, not as automatic labels
+
+Current translation batch outputs:
+
+- `data/ml_workbench/raw/generated/translated_batch_v3/translated_batch_v3_api_input.jsonl`
+- `data/ml_workbench/raw/generated/translated_batch_v3/translated_batch_v3_generation_manifest.jsonl`
+- `data/ml_workbench/raw/generated/translated_batch_v3/translated_batch_v3_summary.json`
+- `data/ml_workbench/processed/annotation_packs/translated_batch_v3/translated_batch_v3_annotation_pack.json`
+
+Current Batch V3 verification:
+
+- translated candidate count: `17`
+- raw and sanitized packs match one-to-one
+- reviewer pack contains no `metadata`
+- `behavioral_signals` now contains only:
+  - `completion_rate`
+  - `returned_to_edit`
+  - `skipped_optional_questions`
+- source-id leakage check: clean
+- English-only heuristic: clean
+- translation runtime: `cuda`
+
+Interpretation:
+
+- v1 covered broad archetype and ambiguity diversity
+- v2 added stronger contrastive supervision around evidence, polish, initiative, and manual-review ambiguity
+- v3 is the right next expansion because it increases domain realism without inventing entirely new underlying profiles
+
+### Current Best Next Step
+
+The current offline training export is now ready.
+
+Current export files:
+
+- `data/ml_workbench/exports/training_dataset_v1.jsonl`
+- `data/ml_workbench/exports/training_dataset_v1.csv`
+- `data/ml_workbench/exports/training_dataset_v1_manifest.json`
+
+Current split snapshot:
+
+- row count: `107`
+- train: `76`
+- validation: `17`
+- test: `14`
+
+The next research step now should be:
+
+1. train the first shortlist-ranker baseline on interpretable aggregate features only
+2. evaluate it against the current static offline ranker artifact
+3. use the frozen split for all before/after comparisons
+4. only then decide whether another synthetic expansion is still needed
+
+Interpretation:
+
+- more random synthetic generation is no longer the highest-value move
+- the project is now at the stage where better supervision structure matters more than raw candidate count
+
+## Iteration 1: Shortlist Ranker V1 Baseline
+
+- roadmap_phase: `Phase 1 -> Phase 3 bridge`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/eval_protocol.md`
+- added `research/scripts/train_shortlist_ranker_v1.py`
+- trained the first `LightGBM LGBMRanker` on deterministic aggregate runtime features only
+- saved offline outputs under `data/ml_workbench/exports/models/shortlist_ranker_v1/`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic scoring pipeline
+- deterministic aggregate feature extraction
+- no runtime ranking behavior was changed
+
+Data used:
+
+- `training_dataset_v1.csv`
+- projected split-local groups from `batch_shortlist_tasks.jsonl`
+- split-local pairs from `pairwise_labels.csv`
+
+Metrics before:
+
+- validation NDCG@3: `0.8212`
+- validation NDCG@5: `0.8570`
+- validation pairwise accuracy: `0.4839`
+- validation hidden-potential recall@3: `0.8611`
+
+Metrics after:
+
+- validation NDCG@3: `0.8905`
+- validation NDCG@5: `0.9140`
+- validation pairwise accuracy: `0.6774`
+- validation hidden-potential recall@3: `0.9167`
+
+Qualitative impact:
+
+- the first learned ranker already beats the static linear artifact on the current bootstrap validation view
+- this supports the roadmap decision to learn shortlist ordering before moving to embeddings or rerankers
+
+Risks / open questions:
+
+- supervision is still bootstrap-derived rather than true committee adjudication
+- validation groups are small
+- test-side ranking evidence remains weak and mostly pairwise
+- `best_iteration = 12` still suggests the current feature set is strong relative to dataset size
+
+Rollback path:
+
+- keep using `app/assets/offline_shortlist_ranker_v1.json`
+- treat `shortlist_ranker_v1` as offline research only until a deployment artifact and stronger supervision are ready
+
+## Iteration 2: Label Pool Expansion Through V6
+
+- roadmap_phase: `Phase 1 supervision expansion`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- cleaned remaining boilerplate and placeholder residue in `messy_batch_v5` and `messy_batch_v5_extension`
+- appended bootstrap annotations for all new reviewer packs:
+  - `messy_batch_v4`
+  - `messy_batch_v5`
+  - `messy_batch_v5_extension`
+  - `ordinary_batch_v6`
+- rebuilt `human_labels_adjudicated.csv`
+- rebuilt `pairwise_labels.csv`
+- rebuilt `batch_shortlist_tasks.jsonl`
+- built refreshed canonical exports:
+  - `data/ml_workbench/exports/training_dataset_v2.jsonl`
+  - `data/ml_workbench/exports/training_dataset_v2.csv`
+  - `data/ml_workbench/exports/training_dataset_v2_manifest.json`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic normalization and eligibility
+- deterministic runtime scoring pipeline
+- no runtime scoring or ranking behavior shipped to the API
+
+Data used:
+
+- existing `human_labels_individual_llm_v2.csv` base pool
+- sanitized reviewer packs for `messy_batch_v4`, `messy_batch_v5`, `messy_batch_v5_extension`, `ordinary_batch_v6`
+- bootstrap adjudication and ranking-task regeneration on the expanded pool
+
+Pool after expansion:
+
+- total labeled rows: `251`
+- source counts:
+  - `seed_pack`: `18`
+  - `synthetic_batch_v1`: `48`
+  - `contrastive_batch_v2`: `24`
+  - `translated_batch_v3`: `17`
+  - `messy_batch_v4`: `40`
+  - `messy_batch_v5`: `60`
+  - `messy_batch_v5_extension`: `20`
+  - `ordinary_batch_v6`: `24`
+
+Latest label distribution:
+
+- `review_priority`: `68`
+- `standard_review`: `164`
+- `manual_review_required`: `6`
+- `insufficient_evidence`: `13`
+- `shortlist_band=true`: `75`
+- `hidden_potential_band=true`: `107`
+- `support_needed_band=true`: `120`
+- `authenticity_review_band=true`: `6`
+
+Refreshed bootstrap artifacts:
+
+- adjudicated rows written: `251`
+- batch shortlist tasks written: `36`
+- pairwise rows written: `1008`
+
+Current canonical dataset:
+
+- `data/ml_workbench/exports/training_dataset_v2.jsonl`
+- `data/ml_workbench/exports/training_dataset_v2.csv`
+- `data/ml_workbench/exports/training_dataset_v2_manifest.json`
+
+Current split snapshot:
+
+- row count: `251`
+- train: `177`
+- validation: `39`
+- test: `35`
+
+Qualitative impact:
+
+- the pool now contains a much larger mix of ordinary, messy, low-polish, and disagreement-prone applications
+- `messy_batch_v5` and `messy_batch_v5_extension` are now clean of the earlier visible placeholders and admissions-boilerplate
+- `training_dataset_v2` is large enough to support a more credible second round of offline ranking experiments
+
+Risks / open questions:
+
+- these labels are still bootstrap single-review annotations, not true committee adjudication
+- the new batches increase realism coverage, but they also increase synthetic share of the pool
+- pairwise and batch artifacts are still derived rather than committee-authored
+
+Rollback path:
+
+- keep `training_dataset_v1` and the earlier `107`-row snapshot for before/after comparison
+- treat `training_dataset_v2` as the new offline working set, not as production ground truth
+
+## Iteration 3: Targeted Gap-Fill Batch And Final Working Set
+
+- roadmap_phase: `Phase 1 supervision expansion`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `gap_fill_batch_v7` as a targeted synthetic batch for underrepresented slices
+- cleaned its public payloads into the strict frozen contract shape by removing extra nullable `behavioral_signals` keys
+- appended bootstrap annotations for all `72` `syn_gap_v7_*` candidates
+- rebuilt `human_labels_adjudicated.csv`
+- rebuilt `pairwise_labels.csv`
+- rebuilt `batch_shortlist_tasks.jsonl`
+- built the current canonical exports:
+  - `data/ml_workbench/exports/training_dataset_v3.jsonl`
+  - `data/ml_workbench/exports/training_dataset_v3.csv`
+  - `data/ml_workbench/exports/training_dataset_v3_manifest.json`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic normalization and eligibility
+- deterministic runtime scoring pipeline
+- no runtime API behavior changed
+
+Data used:
+
+- the prior `251`-row reviewed pool
+- raw + sanitized payloads from `gap_fill_batch_v7`
+- targeted weak-label routing for gap slices:
+  - authenticity / manual-review
+  - insufficient-evidence-but-valid
+  - no-interview across quality levels
+  - translated-thinking English
+  - support-needed but not hidden-star
+
+Pool after expansion:
+
+- total labeled rows: `323`
+- source counts:
+  - `seed_pack`: `18`
+  - `synthetic_batch_v1`: `48`
+  - `contrastive_batch_v2`: `24`
+  - `translated_batch_v3`: `17`
+  - `messy_batch_v4`: `40`
+  - `messy_batch_v5`: `60`
+  - `messy_batch_v5_extension`: `20`
+  - `ordinary_batch_v6`: `24`
+  - `gap_fill_batch_v7`: `72`
+
+Latest label distribution:
+
+- `review_priority`: `71`
+- `standard_review`: `196`
+- `manual_review_required`: `24`
+- `insufficient_evidence`: `32`
+- `shortlist_band=true`: `78`
+- `hidden_potential_band=true`: `114`
+- `support_needed_band=true`: `143`
+- `authenticity_review_band=true`: `29`
+
+Gap-fill batch `v7` contribution:
+
+- `manual_review_required`: `16`
+- `insufficient_evidence`: `16`
+- `authenticity_review_band=true`: `18`
+- `has_interview_text=false`: `34`
+
+Refreshed bootstrap artifacts:
+
+- adjudicated rows written: `323`
+- batch shortlist tasks written: `48`
+- pairwise rows written: `1344`
+
+Current canonical dataset:
+
+- `data/ml_workbench/exports/training_dataset_v3.jsonl`
+- `data/ml_workbench/exports/training_dataset_v3.csv`
+- `data/ml_workbench/exports/training_dataset_v3_manifest.json`
+
+Current split snapshot:
+
+- row count: `323`
+- train: `227`
+- validation: `50`
+- test: `46`
+
+Qualitative impact:
+
+- the working set now has much better coverage of review-risk and thin-but-valid applications
+- the pool is less interview-dependent than before
+- the dataset now includes more modest support-needed candidates who are not framed as hidden stars
+- the current label mix is still synthetic-heavy, but it is much less biased toward strong review-priority narratives than earlier versions
+
+Risks / open questions:
+
+- `gap_fill_batch_v7` is still synthetic and weakly supervised, even though it targets real supervision gaps
+- manual-review and insufficient-evidence labels are stronger now, but still not committee-authored
+- before any runtime deployment changes, the shortlist ranker should be retrained and stress-tested on `training_dataset_v3`
+
+Rollback path:
+
+- keep `training_dataset_v2` as the previous canonical export
+- treat `training_dataset_v3` as the current offline working set, not as production ground truth
+
+## Iteration 4: Ranker Refit On Training Dataset V3
+
+- roadmap_phase: `Phase 1 -> Phase 3 bridge`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- updated `research/scripts/train_shortlist_ranker_v1.py` to consume `training_dataset_v3`
+- trained a new offline ranker run and saved outputs under:
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic runtime feature extraction
+- no embedding features added
+- no runtime API behavior changed
+
+Data used:
+
+- `training_dataset_v3.csv`
+- `pairwise_labels.csv`
+- `batch_shortlist_tasks.jsonl`
+
+Metrics before:
+
+- validation NDCG@3: `0.9817`
+- validation NDCG@5: `0.9817`
+- validation pairwise accuracy: `0.6667`
+- validation hidden-potential recall@3: `1.0000`
+
+Metrics after:
+
+- validation NDCG@3: `0.9908`
+- validation NDCG@5: `0.9908`
+- validation pairwise accuracy: `0.8095`
+- validation hidden-potential recall@3: `1.0000`
+- test NDCG@3: `0.9700`
+- test pairwise accuracy: `0.7813`
+
+Group counts:
+
+- train groups with size `>= 3`: `48`
+- validation groups with size `>= 3`: `3`
+- test groups with size `>= 2`: `15`
+- test groups with size `>= 3`: `7`
+
+Qualitative impact:
+
+- the learned ranker still improves over the static artifact on the enlarged pool
+- the gain is now modest on NDCG because validation ranking groups are few and already near ceiling
+- pairwise accuracy improved more clearly than NDCG on the new split
+
+Risks / open questions:
+
+- validation is still too small to support strong claims from NDCG alone
+- hidden-potential recall is saturated on the current validation groups
+- the next useful move is slice/error analysis, not immediate architecture churn
+
+Rollback path:
+
+- keep using the static runtime artifact
+- keep the earlier `shortlist_ranker_v1` research outputs for comparison
+- treat `shortlist_ranker_v1_training_dataset_v3` as the current offline reference run
+
+## Iteration 5: Slice Eval On Training Dataset V3
+
+- roadmap_phase: `Phase 3 validation`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/scripts/slice_eval_v1.py`
+- generated:
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/slice_eval_report.md`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/slice_eval_summary.json`
+
+What stayed deterministic:
+
+- frozen public input contract
+- aggregate deterministic runtime features
+- no embedding features
+- no runtime API changes
+
+Data used:
+
+- `training_dataset_v3.csv`
+- `pairwise_labels.csv`
+- `batch_shortlist_tasks.jsonl`
+- `candidate_predictions.csv`
+- `metrics_summary.json`
+
+Main findings:
+
+- validation pairwise accuracy still improves from `0.6667` to `0.8095`
+- test pairwise accuracy regresses from `0.8125` to `0.7813`
+- validation NDCG remains near ceiling because validation only has `3` projected groups with size `>= 3`
+- test-side weakness is concentrated rather than uniform
+
+Slice findings:
+
+- learned ranker improves validation on:
+  - `messy_batch_v5`
+  - `ordinary_batch_v6`
+  - hidden-potential positives
+  - support-needed positives
+- learned ranker regresses on test pairwise for:
+  - `messy_batch_v5`
+  - `seed_pack`
+- learned ranker improves test pairwise for:
+  - `messy_batch_v4`
+  - `messy_batch_v5_extension`
+
+Interpretation:
+
+- the project is not yet at the “ship the learned ranker” stage
+- the model is learning useful signals, but current supervision still creates slice instability
+- the next useful move is not immediate embeddings
+- the next useful move is targeted error analysis and feature inspection around:
+  - `messy_batch_v5`
+  - `seed_pack`
+  - standard-review negatives
+  - no-interview cases
+
+Recommended next step:
+
+1. inspect the misranked validation/test pairwise rows from `slice_eval_summary.json`
+2. compare baseline vs learned behavior on `messy_batch_v5` and `seed_pack`
+3. run feature ablations or feature audits before moving to Phase 2 embeddings
+
+Rollback path:
+
+- keep using the static runtime artifact as the trusted reference
+- treat slice-eval outputs as decision support for the next offline experiment
+
+## Iteration 6: Deterministic Feature Ablation And Ranker Stabilization
+
+- roadmap_phase: `Phase 3 validation`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/scripts/ablate_shortlist_ranker_v1.py`
+- made `research/scripts/train_shortlist_ranker_v1.py` deterministic:
+  - disabled stochastic bagging / feature subsampling
+  - enabled deterministic LightGBM settings
+- selected a stabilized aggregate-feature variant:
+  - `feature_variant_name = drop_support`
+  - excluded `support_needed_score` from the learned ranker feature set
+- regenerated:
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/metrics_summary.json`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/feature_importance.csv`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/candidate_predictions.csv`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/slice_eval_report.md`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/slice_eval_summary.json`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/ablation_summary.json`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/ablation_report.md`
+
+What stayed deterministic:
+
+- frozen public input contract
+- aggregate deterministic runtime features only
+- no embedding features
+- no runtime API changes
+- offline ranker remains the fallback reference
+
+Data used:
+
+- `training_dataset_v3.csv`
+- `pairwise_labels.csv`
+- `batch_shortlist_tasks.jsonl`
+- current payload pool up to `gap_fill_batch_v7`
+
+Metrics before:
+
+- baseline validation pairwise accuracy: `0.7143`
+- baseline test pairwise accuracy: `0.8125`
+- baseline test NDCG@3: `0.9739`
+
+Metrics after:
+
+- learned validation pairwise accuracy: `0.8095`
+- learned test pairwise accuracy: `0.8438`
+- learned test NDCG@3: `0.9862`
+- validation shortlist recall@3: unchanged at `1.0000`
+
+Qualitative impact:
+
+- overall ranking quality improved without changing the frozen contract
+- previous test-side regressions on `messy_batch_v5` and `seed_pack` were removed
+- the current learned ranker is now better than the static artifact on overall validation and overall test pairwise accuracy
+- the remaining visible weakness is concentrated in `messy_batch_v5_extension`
+
+Risks / open questions:
+
+- `messy_batch_v5_extension` still regresses on test pairwise from `0.8333` to `0.6667` over `6` rows
+- validation still has only `3` projected groups with size `>= 3`, so NDCG is near ceiling
+- manual-review positives remain small and noisy
+
+Rollback path:
+
+- keep `app/assets/offline_shortlist_ranker_v1.json` as the trusted static fallback
+- if the learned ranker is not promoted later, treat this run as the current best offline research artifact
+- use `ablation_summary.json` as the reference for future aggregate-feature variants
+
+## Iteration 7: Targeted Error Analysis On Remaining Weak Slices
+
+- roadmap_phase: `Phase 3 validation`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/scripts/error_analysis_v1.py`
+- generated:
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/error_analysis_report.md`
+  - `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/error_analysis_summary.json`
+- ran a temporary monotone LightGBM probe against the current shortlist feature set to stress-test the `messy_batch_v5_extension` slice
+
+What stayed deterministic:
+
+- frozen public input contract
+- aggregate-feature shortlist model only
+- no runtime API changes
+- no embedding features
+
+Data used:
+
+- `training_dataset_v3.csv`
+- `pairwise_labels.csv`
+- `candidate_predictions.csv`
+- current payload pool up to `gap_fill_batch_v7`
+
+Main findings:
+
+- `messy_batch_v5_extension` test regression is narrow:
+  - `2` learned-wrong pairs out of `6`
+  - both are trajectory-driven preferences
+- manual-review routing is the more important weakness:
+  - `4` validation/test manual-review pairs
+  - baseline gets all `4`
+  - learned shortlist ranker gets only `2`
+- both learned-wrong manual-review pairs prefer candidates with:
+  - `authenticity_review = true`
+  - `support_needed = true`
+
+Interpretation:
+
+- the shortlist ranker is now mostly doing shortlist ordering better than the static artifact
+- the remaining weakness is not generic ranking quality
+- the remaining weakness is that manual-review / review-risk positives should not be forced into the shortlist ranker objective
+- this strengthens the case for a separate Phase 4 manual-review / confidence sidecar
+
+Monotone probe result:
+
+- monotone constraints recovered `messy_batch_v5_extension` to baseline accuracy
+- but did not improve the overall shortlist model enough to justify promotion
+- therefore the monotone probe was not adopted as the main shortlist ranker
+
+Recommended next step:
+
+1. keep the current `drop_support` shortlist ranker as the best overall offline shortlist model
+2. stop trying to make the shortlist ranker solve manual-review routing
+3. train a dedicated Phase 4 probe for `manual_review_required`
+4. collect a tiny targeted pairwise / review-risk pack around:
+   - `messy_batch_v5_extension`
+   - manual-review positives
+
+Rollback path:
+
+- keep using the current deterministic shortlist artifact as the best aggregate-feature offline run
+- treat `error_analysis_summary.json` as guidance for the next phase rather than as a reason to rewrite the shortlist objective
+
+## Iteration 8: Manual Review Probe V1
+
+- roadmap_phase: `Phase 4 groundwork`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/scripts/train_manual_review_probe_v1.py`
+- generated:
+  - `data/ml_workbench/exports/models/manual_review_probe_v1_training_dataset_v3/metrics_summary.json`
+  - `data/ml_workbench/exports/models/manual_review_probe_v1_training_dataset_v3/coefficients.csv`
+  - `data/ml_workbench/exports/models/manual_review_probe_v1_training_dataset_v3/candidate_predictions.csv`
+  - `data/ml_workbench/exports/models/manual_review_probe_v1_training_dataset_v3/probe_report.md`
+
+What stayed deterministic:
+
+- frozen public input contract
+- aggregate deterministic features only
+- no runtime API changes
+- no shortlist model change
+
+Data used:
+
+- `training_dataset_v3.csv`
+- current payload pool up to `gap_fill_batch_v7`
+
+Target:
+
+- `final_recommendation == manual_review_required`
+
+Main findings:
+
+- the target remains too small and too noisy for a stable routing model:
+  - train positives: `16`
+  - validation positives: `6`
+  - test positives: `2`
+- simple `authenticity_risk` baseline remains weak, especially on test
+- logistic probe improves train discrimination but is unstable on validation:
+  - validation AP drops below the simple baseline
+  - test AUC improves, but positive support is too small for a reliable go/no-go decision
+
+Interpretation:
+
+- the right next move is more review-risk supervision, not more classifier complexity
+- Phase 4 is now justified, but the current dataset still under-supports a reliable manual-review model
+
+Recommended next step:
+
+1. add targeted manual-review positives and near-miss negatives
+2. collect more no-interview review-risk cases
+3. revisit the manual-review probe after the targeted label pack is added
+
+Rollback path:
+
+- keep using the existing deterministic review-risk logic
+- treat `manual_review_probe_v1_training_dataset_v3` as a diagnostic artifact only
+
+## Iteration 9: Split-Aware Targeted Shortlist Supervision And Blended Ranker
+
+- roadmap_phase: `Phase 3 validation`
+- date: `2026-04-02`
+
+What changed:
+
+- updated `research/scripts/build_bootstrap_label_artifacts.py` to:
+  - include `gap_fill_batch_v7` in generic source rotation
+  - add `6` split-aware targeted shortlist tasks around:
+    - `manual_review_required` positives
+    - `messy_batch_v5_extension` trajectory disagreements
+    - no-interview and authenticity-review edge cases
+- refreshed bootstrap artifacts:
+  - `batch_shortlist_tasks.jsonl` -> `54` tasks
+  - `pairwise_labels.csv` -> `1512` rows
+- updated `research/scripts/train_shortlist_ranker_v1.py`:
+  - kept `feature_variant_name = drop_support`
+  - selected `learned_blend_alpha = 0.4`
+- regenerated:
+  - `metrics_summary.json`
+  - `candidate_predictions.csv`
+  - `slice_eval_report.md`
+  - `slice_eval_summary.json`
+  - `error_analysis_report.md`
+  - `error_analysis_summary.json`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic runtime feature extraction
+- no embedding features
+- no runtime API behavior changes
+
+Data used:
+
+- `training_dataset_v3.csv`
+- refreshed `pairwise_labels.csv`
+- refreshed `batch_shortlist_tasks.jsonl`
+- current payload pool up to `gap_fill_batch_v7`
+
+Current selected shortlist variant:
+
+- aggregate feature set: `drop_support`
+- blend alpha: `0.4`
+
+Metrics before:
+
+- baseline validation pairwise accuracy: `0.6512`
+- baseline validation NDCG@3: `0.8725`
+- baseline test pairwise accuracy: `0.7556`
+- baseline test NDCG@3: `0.9299`
+- baseline test shortlist recall@3: `0.8000`
+
+Metrics after:
+
+- learned validation pairwise accuracy: `0.7209`
+- learned validation NDCG@3: `0.8946`
+- learned test pairwise accuracy: `0.7556`
+- learned test NDCG@3: `0.9384`
+- learned test shortlist recall@3: `1.0000`
+
+Slice-level impact:
+
+- `manual_review_required` validation/test pairwise accuracy improved from `0.6429` to `0.7143`
+- `messy_batch_v5_extension` test pairwise accuracy improved from `0.4000` to `0.6000`
+- `gap_fill_batch_v7` validation pairwise held flat at `0.7222`
+- remaining regression is concentrated in `messy_batch_v5` test pairs (`0.8333` -> `0.6667`)
+
+Qualitative impact:
+
+- targeted shortlist supervision now hits the right weak slices instead of only broad synthetic coverage
+- the selected blend is less aggressive than pure raw-model ranking and is better aligned with review-risk edge cases
+- shortlist recall on test projected groups improved without touching the deterministic runtime pipeline
+
+Risks / open questions:
+
+- pairwise gains are still bootstrap-derived, not committee-authored
+- `manual_review_required` cases are better represented, but still not supported by true multi-review adjudication
+- `messy_batch_v5` remains the main stubborn shortlist slice
+- `error_analysis_summary.json` now points to narrower problems than before, but not to a deploy-ready artifact
+
+Rollback path:
+
+- keep the static shortlist artifact as the trusted production fallback
+- keep `drop_support` with `learned_blend_alpha = 0.4` as the current offline-best research variant
+- if needed, revert to the plain baseline ordering by setting blend alpha back to `0.0` in research only
+
+## Iteration 10: Time-Boxed Ground Truth Freeze
+
+- roadmap_phase: `Phase 1 freeze for execution`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- accepted the current bootstrap supervision stack as the operational ground truth for the current project timebox
+- froze the current working set around:
+  - `training_dataset_v3`
+  - `human_labels_adjudicated.csv`
+  - `pairwise_labels.csv`
+  - `batch_shortlist_tasks.jsonl`
+- explicitly stopped waiting on additional human adjudication for this iteration
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic runtime scoring pipeline
+- deterministic shortlist fallback path
+- no runtime API behavior changed
+
+Data accepted as operational GT:
+
+- candidate pool: `323` rows in `training_dataset_v3`
+- bootstrap adjudicated labels: `323`
+- bootstrap pairwise rows: `1512`
+- bootstrap shortlist tasks: `54`
+
+Decision:
+
+- for the current delivery window, these artifacts are the working ground truth for offline training, evaluation, and research iteration
+- they are not equivalent to true committee-authored gold labels
+- they are accepted anyway because time no longer allows a real human re-annotation pass
+
+Qualitative impact:
+
+- the project can now move forward without keeping Phase 1 artificially open
+- ranker and calibration work should now optimize against the frozen dataset instead of waiting on better labels
+- future human adjudication, if it ever happens, should be treated as a later correction layer, not a blocker for current work
+
+Risks / open questions:
+
+- current GT remains bootstrap-derived and synthetic-heavy
+- manual-review and authenticity slices are still weaker than they would be under true committee adjudication
+- any runtime promotion should still be described as shipping against a time-boxed operational GT, not against final institutional truth
+
+Rollback path:
+
+- keep `training_dataset_v2` and the earlier `training_dataset_v3` artifacts for before/after comparison
+- if needed, reopen Phase 1 later and replace the operational GT with true human-reviewed labels
+
+## Iteration 11: Review-Routing Probe V2 On Frozen GT
+
+- roadmap_phase: `Phase 4 groundwork`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added `research/scripts/train_manual_review_probe_v2.py`
+- compared multiple routing targets instead of forcing the model to learn only strict `manual_review_required`
+- compared:
+  - `manual_review_required`
+  - `nonstandard_route = manual_review_required or insufficient_evidence`
+  - `review_risk_or_insufficient`
+- compared model families:
+  - balanced logistic regression
+  - balanced random forest
+- generated:
+  - `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/metrics_summary.json`
+  - `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/experiments.csv`
+  - `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/candidate_predictions.csv`
+  - `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/selected_model_features.csv`
+  - `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/probe_report.md`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic runtime scorer remains unchanged
+- no shortlist-ranker runtime behavior changed
+- no embedding features were added
+
+Data used:
+
+- `training_dataset_v3.csv`
+- frozen operational GT around `training_dataset_v3`, `pairwise_labels.csv`, and `batch_shortlist_tasks.jsonl`
+
+Selected probe:
+
+- target: `nonstandard_route`
+- meaning: `manual_review_required` or `insufficient_evidence`
+- model: `random_forest_balanced`
+- threshold (validation best F1): `0.45`
+
+Selected metrics:
+
+- validation AP: `0.6242`
+- validation ROC AUC: `0.7225`
+- test AP: `0.5287`
+- test ROC AUC: `0.7985`
+- tuned validation F1: `0.5714`
+- tuned test F1: `0.5556`
+
+Baseline comparison:
+
+- simple authenticity-risk-only routing baseline remains much weaker:
+  - validation AP: `0.3114`
+  - test AP: `0.2049`
+
+Interpretation:
+
+- strict `manual_review_required` is still too sparse and unstable to be the only learnable routing target
+- a broader non-standard routing sidecar is materially more learnable on the frozen GT
+- this supports a layered system design:
+  - deterministic scorer stays the backbone
+  - shortlist ranker handles ordering
+  - review-routing sidecar handles non-standard routing signals
+
+Risks / open questions:
+
+- the chosen target is broader than strict manual review and must be described honestly as routing support, not as a final authenticity decision
+- random forest is currently an offline probe, not a promoted runtime artifact
+- current GT is still bootstrap-derived and synthetic-heavy
+
+Rollback path:
+
+- keep using the existing deterministic recommendation routing
+- treat probe v2 as the current best offline routing-sidecar candidate, not as an automatic deployment decision
+
+## Iteration 12: Runtime Shadow Sidecar And Rank API Expansion
+
+- roadmap_phase: `Phase 3/4 runtime preparation`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- added optional runtime review-routing sidecar service:
+  - `app/services/review_routing_sidecar.py`
+- integrated that sidecar into `ScoringPipeline` in shadow mode only
+- the sidecar now runs alongside the deterministic scorer when enabled, but does not override `recommendation`
+- exported a runtime artifact pair:
+  - `app/assets/review_routing_sidecar_v1.joblib`
+  - `app/assets/review_routing_sidecar_v1.json`
+- expanded `/rank` so it can:
+  - return full ranked batches
+  - optionally truncate the returned list with `top_k`
+  - return compact `ranked_candidates` summaries instead of only IDs
+- updated public docs in `README.md`
+
+What stayed deterministic:
+
+- frozen public input contract
+- deterministic recommendation mapping remains authoritative
+- deterministic shortlist fallback remains intact
+- shadow sidecar does not change final routing labels
+
+Runtime behavior:
+
+- `/score` still returns the same public contract
+- `review_routing_shadow` is computed internally and kept out of the public JSON response
+- `score_candidate_trace()` now includes shadow-sidecar diagnostics for internal debugging
+- `/rank` still ranks the full batch first; `top_k` only truncates the returned ranked list
+
+Qualitative impact:
+
+- the system now has a safe path to compare deterministic routing vs ML routing hints without changing committee-visible behavior
+- `/rank` is now more practical for UI and backend consumers that only need ordered candidates, not full scoring payloads
+- shortlist logic and top-K retrieval are now clearly separated
+
+Verification:
+
+- `tests/test_rank_endpoint.py`
+- `tests/test_score_batch.py`
+- `tests/test_score_single.py`
+- `tests/test_review_routing_sidecar.py`
+- local result: `12 passed`
+
+Risks / open questions:
+
+- the sidecar runtime artifact depends on `scikit-learn`
+- the shadow-sidecar artifact is still trained on time-boxed operational GT, not institutional gold labels
+- no runtime override policy is enabled yet; this is observability-first integration
+
+Rollback path:
+
+- set `ENABLE_REVIEW_ROUTING_SIDECAR=false`
+- ignore `review_routing_shadow` diagnostics
+- continue using pure deterministic runtime routing and the existing `/rank` semantics without `top_k`
+
 ## Future Iteration Entry Template
 
 Copy this block for every roadmap iteration.

@@ -14,6 +14,7 @@ Use it when:
 This file is intentionally operational.
 The strategy lives in [roadmap.md](./roadmap.md).
 First-round reviewer instructions live in [annotation_guide_v1.md](./annotation_guide_v1.md).
+Synthetic expansion workflow lives in [synthetic_generation_spec.md](./synthetic_generation_spec.md).
 
 ## Current Active Scope
 
@@ -32,6 +33,14 @@ Reason:
 - this reduces language noise while we build the first reliable label program
 - multilingual expansion should happen after the first English-only baseline is stable
 - removing non-contract metadata also reduces leakage risk from synthetic hints such as `scenario_meta.archetype`
+
+Current working-set note:
+
+- the current canonical offline export is now `training_dataset_v3`
+- it contains English-direct synthetic and seed cases plus translated-to-English slices
+- for the current delivery window, this stack is accepted as the operational ground truth
+- it is enough for stronger offline ranking work without waiting for more human re-annotation
+- it still does not replace real adjudicated application data in the long run
 
 ## Core Principle
 
@@ -418,6 +427,38 @@ Important:
 
 - `admit / reject` is usually too entangled with capacity, budget, interview outcomes, and external constraints
 - for this product, shortlist and review-routing labels are better first targets than final admission outcome
+- for the current project timebox, the frozen bootstrap stack is the accepted operational GT even though it is not true committee-authored gold data
+
+## Synthetic Expansion Workflow
+
+Synthetic candidates are allowed in this project, but only under a strict workflow.
+
+Use synthetic data for:
+
+- annotation throughput
+- rubric coverage
+- scorer stress-tests
+- edge-case regression packs
+
+Do not use synthetic data as:
+
+- automatic ground truth
+- direct replacement for adjudicated labels
+- proof that a learned model is production-ready
+
+Required workflow:
+
+1. generate candidates in the frozen API-input shape
+2. keep hidden generation intent in a separate manifest
+3. sanitize the visible reviewer pack
+4. annotate the sanitized pack with the normal rubric
+5. only then treat the labeled subset as usable supervised data
+
+Important:
+
+- generator intent is not a label
+- hidden archetype metadata must never be exposed to annotators during review
+- disagreement on synthetic cases is still informative and should be preserved
 
 ## Recommended Build Order
 

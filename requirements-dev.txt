@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest==8.4.1
+scikit-learn==1.8.0
+lightgbm==4.6.0
