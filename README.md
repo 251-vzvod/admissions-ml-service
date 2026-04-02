@@ -4,6 +4,21 @@ FastAPI service for primary candidate screening support in the inVision U admiss
 
 This is a decision-support tool. It does not make autonomous admission decisions.
 
+## Current Snapshot
+
+| Area | Current state |
+| --- | --- |
+| Product role | Explainable decision-support service for inVision U admissions |
+| Public API | `GET /health`, `POST /score`, `POST /score/batch`, `POST /rank` |
+| Frozen operational GT | `training_dataset_v3` |
+| Labeled candidate rows | `323` |
+| Pairwise supervision rows | `1512` |
+| Batch shortlist tasks | `54` |
+| Runtime ranking posture | Static offline ranker artifact remains the safe runtime default |
+| Learned shortlist status | Offline-best aggregate-feature ranker exists and outperforms baseline on key metrics |
+| Review-routing status | Separate sidecar exists in shadow mode only |
+| Decision policy | Final routing remains deterministic and human-in-the-loop |
+
 ## Docs
 
 - [FEATURE_DICTIONARY.md](FEATURE_DICTIONARY.md): meaning of public scores and signals
@@ -14,10 +29,12 @@ This is a decision-support tool. It does not make autonomous admission decisions
 
 Routes:
 
-- `GET /health`
-- `POST /score`
-- `POST /score/batch`
-- `POST /rank`
+| Route | Purpose |
+| --- | --- |
+| `GET /health` | Health check |
+| `POST /score` | Full score response for one candidate |
+| `POST /score/batch` | Full score responses for many candidates, preserving input order |
+| `POST /rank` | Batch ranking with shortlist-oriented outputs and optional `top_k` |
 
 `/rank` behavior:
 
@@ -384,3 +401,103 @@ Recommended Railway posture:
 - `guides/`: JSON request/response examples only
 - `.local/`: ignored local workspace for research, scripts, and archive docs
 - `tests/`: API and scoring tests
+
+## Research Snapshot
+
+This repository now includes a full offline experimentation layer used to compare the deterministic baseline against learned ranking and routing improvements.
+
+### Current Offline Data Snapshot
+
+Source artifact: `data/ml_workbench/exports/training_dataset_v3_manifest.json`
+
+| Item | Value |
+| --- | --- |
+| Canonical dataset | `training_dataset_v3` |
+| Candidate rows | `323` |
+| Train split | `227` |
+| Validation split | `50` |
+| Test split | `46` |
+| Pairwise rows | `1512` |
+| Batch shortlist tasks | `54` |
+
+Current source coverage:
+
+| Source | Rows |
+| --- | ---: |
+| `seed_pack` | 18 |
+| `synthetic_batch_v1` | 48 |
+| `contrastive_batch_v2` | 24 |
+| `translated_batch_v3` | 17 |
+| `messy_batch_v4` | 40 |
+| `messy_batch_v5` | 60 |
+| `messy_batch_v5_extension` | 20 |
+| `ordinary_batch_v6` | 24 |
+| `gap_fill_batch_v7` | 72 |
+
+### Main Experiment Results: Shortlist Ranker
+
+Source artifact: `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/metrics_summary.json`
+
+Current selected offline-best variant:
+
+- feature variant: `drop_support`
+- learned blend alpha: `0.4`
+- feature count: `11`
+
+| Metric | Baseline | Learned | Delta |
+| --- | ---: | ---: | ---: |
+| Validation NDCG@3 | `0.8725` | `0.8946` | `+0.0221` |
+| Validation NDCG@5 | `0.9271` | `0.9361` | `+0.0090` |
+| Validation pairwise accuracy | `0.6512` | `0.7209` | `+0.0698` |
+| Validation hidden-potential recall@3 | `0.8333` | `0.8333` | `+0.0000` |
+| Test NDCG@2 | `0.9332` | `0.9289` | `-0.0043` |
+| Test NDCG@3 | `0.9299` | `0.9384` | `+0.0084` |
+| Test pairwise accuracy | `0.7556` | `0.7556` | `+0.0000` |
+
+Interpretation:
+
+- the learned shortlist ranker improves validation ranking quality over the static baseline
+- test-side quality improves on NDCG@3 and holds pairwise flat
+- this is enough to show measurable `Baseline & improvements` in a demo or presentation
+- the runtime service still keeps the safer static artifact as the default deployment posture
+
+### Main Experiment Results: Review-Routing Sidecar
+
+Source artifact: `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/metrics_summary.json`
+
+Current selected offline-best routing sidecar:
+
+- target: `nonstandard_route`
+- meaning: `manual_review_required OR insufficient_evidence`
+- model: `random_forest_balanced`
+- tuned validation threshold: `0.4`
+
+Comparison below uses the simple `authenticity_risk_only` baseline versus the selected sidecar.
+
+| Metric | Baseline | Sidecar | Delta |
+| --- | ---: | ---: | ---: |
+| Validation average precision | `0.3114` | `0.5950` | `+0.2836` |
+| Validation ROC AUC | `0.6000` | `0.7300` | `+0.1300` |
+| Test average precision | `0.2049` | `0.6091` | `+0.4042` |
+| Test ROC AUC | `0.5897` | `0.8791` | `+0.2894` |
+
+Interpretation:
+
+- routing for non-standard cases is learnable and materially better than a simple authenticity-only baseline
+- this sidecar remains shadow-only by design because routing is higher-risk than shortlist ordering
+- it is used for internal comparison and future calibration work, not as an autonomous decision layer
+
+### Caveats
+
+| Topic | Current truth |
+| --- | --- |
+| Ground truth quality | Time-boxed operational GT, not institutional gold |
+| Supervision mix | Real reviewed rows plus synthetic and translated coverage |
+| Runtime decision ownership | Deterministic recommendation logic remains authoritative |
+| ML role | Ranking and routing support, not autonomous admission decisions |
+
+If you need the full experiment narrative, see:
+
+- `research/roadmap.md`
+- `research/baseline_log.md`
+- `research/eval_protocol.md`
