@@ -7,6 +7,7 @@ We will update this checklist as work lands.
 
 Operational data collection and labeling details live in [data_collection_spec.md](./data_collection_spec.md).
 Baseline snapshots and per-iteration change notes live in [baseline_log.md](./baseline_log.md).
+Synthetic batch design and generation workflow live in [synthetic_generation_spec.md](./synthetic_generation_spec.md).
 
 The direction is explicit:
 
@@ -80,8 +81,8 @@ This is the intended direction because it preserves explainability while still a
 This is the highest-priority bottleneck.
 Without real human labels, additional ML will mostly optimize against synthetic assumptions.
 
-- [ ] Freeze the offline evaluation protocol before training more models.
-- [ ] Define one canonical human label pack for reviewed candidates.
+- [x] Freeze the offline evaluation protocol before training more models.
+- [x] Define one canonical human label pack for reviewed candidates.
 - [ ] Collect committee labels for:
   - recommendation
   - shortlist priority band
@@ -91,7 +92,7 @@ Without real human labels, additional ML will mostly optimize against synthetic 
 - [ ] Collect pairwise comparison labels inside realistic shortlist batches.
 - [ ] Prefer batch-level and pairwise labels over only one scalar score.
 - [ ] Add adjudication for disagreement between reviewers.
-- [ ] Create a held-out evaluation split.
+- [x] Create a held-out evaluation split.
 - [ ] Track slice-based evaluation by:
   - language profile
   - text length
@@ -102,6 +103,28 @@ Without real human labels, additional ML will mostly optimize against synthetic 
   - pairwise accuracy
   - hidden-potential recall@K
   - calibration error for review-risk outputs
+
+Current bootstrap status:
+
+- [x] Build a first reviewed label pool for English seed and synthetic packs.
+- [x] Build bootstrap weak-label artifacts for `human_labels_adjudicated.csv`, `pairwise_labels.csv`, and `batch_shortlist_tasks.jsonl`.
+- [x] Build the first canonical `training_dataset_v1` export and freeze a candidate-level split.
+- [x] Expand the reviewed pool with `messy_batch_v4`, `messy_batch_v5`, `messy_batch_v5_extension`, and `ordinary_batch_v6`.
+- [x] Build the refreshed canonical `training_dataset_v2` export.
+- [x] Add a targeted gap-fill batch for manual-review, insufficient-evidence, no-interview, translated-thinking-English, and support-needed-not-hidden-star coverage.
+- [x] Build the current canonical `training_dataset_v3` export.
+- [x] Freeze the current bootstrap stack as the time-boxed operational ground truth for the current delivery window.
+- [ ] Replace bootstrap adjudication with true multi-review adjudication.
+- [ ] Replace bootstrap pairwise and batch artifacts with reviewer- or committee-produced judgments.
+
+Current note:
+
+- the project now has `323` reviewed rows plus bootstrap pairwise and batch supervision artifacts
+- bootstrap artifacts are now refreshed to `54` shortlist tasks and `1512` pairwise rows
+- `training_dataset_v3` is the current canonical export for offline work
+- for the current timebox, this stack is accepted as the operational ground truth
+- this is enough to keep iterating on offline experiments without waiting on more human annotation
+- Phase 1 is still not institutionally complete, but it is operationally frozen for the current delivery window
 
 ## Phase 2: NLP / Semantic Layer Upgrade
 
@@ -147,7 +170,7 @@ What stays the same:
 
 What changes:
 
-- [ ] Train the first supervised ranker on current aggregate features.
+- [x] Train the first supervised ranker on current aggregate features.
 - [ ] Then train a second version on aggregate features plus embedding-derived features.
 - [ ] Compare both against the current static offline ranker artifact.
 - [ ] Keep runtime deployment artifact-based and offline-trained.
@@ -165,6 +188,20 @@ Why this is the first learned model to ship:
 - tree rankers work well on medium-sized labeled datasets
 - they preserve feature-level interpretability better than end-to-end text models
 
+Current practical next step:
+
+- [x] Run slice/error analysis on `training_dataset_v3`.
+- [x] Run deterministic feature ablation on the aggregate-feature ranker.
+- [x] Resolve the earlier test-side regressions on `messy_batch_v5` and `seed_pack`.
+- [x] Inspect the remaining disagreement cluster on `messy_batch_v5_extension` and manual-review positives.
+- [x] Run a first separate manual-review probe on aggregate features.
+- [x] Add split-aware targeted shortlist supervision around `messy_batch_v5_extension` and manual-review positives.
+- [x] Refit the shortlist ranker with a more conservative blend (`drop_support`, alpha `0.4`) after targeted supervision.
+- [x] Freeze the current bootstrap supervision as the operational GT for this timebox instead of blocking on more human review.
+- [ ] Re-run slice/error analysis and additional ranker iterations against the frozen operational GT.
+- [ ] Revisit the manual-review probe using the frozen GT, but do not wait for new human labels.
+- [ ] Keep Phase 2 embeddings paused until aggregate-feature improvements plateau against the frozen GT.
+
 ## Phase 4: Authenticity Risk And Confidence Calibration
 
 Goal:
@@ -174,6 +211,8 @@ This is not a cheating detector.
 This is a review-priority and uncertainty model.
 
 - [ ] Train a separate model for manual-review risk.
+- [x] Run an initial offline probe for manual-review risk on aggregate features.
+- [x] Run a broader review-routing probe against the frozen operational GT and compare target definitions.
 - [ ] Train or recalibrate confidence as an assessment-reliability signal.
 - [ ] Keep hard contradiction and invalidity rules deterministic.
 - [ ] Calibrate probabilities with Platt scaling or isotonic regression.
@@ -183,6 +222,15 @@ Target outcome:
 
 - high authenticity risk should mean "needs manual verification"
 - it should not mean "the system thinks the candidate is dishonest"
+
+Current practical note:
+
+- strict `manual_review_required` remains too sparse to be the only learnable target
+- the current best offline routing-sidecar candidate is a broader `nonstandard_route` probe:
+  - `manual_review_required` or `insufficient_evidence`
+  - model family: balanced random forest
+- this should be treated as routing support only, not as a replacement for deterministic recommendation rules
+- a shadow-mode runtime integration path now exists for this sidecar without changing public recommendation behavior
 
 ## Phase 5: Top-K Reranker
 
@@ -223,7 +271,7 @@ Rationale:
 - [ ] Do not train an end-to-end black-box essay scorer on weak labels.
 - [ ] Do not replace deterministic eligibility or privacy logic with ML.
 - [ ] Do not let an LLM write the final recommendation label directly in production.
-- [ ] Do not use synthetic labels as the main source of truth for ranking.
+- [ ] Do not confuse the current time-boxed operational GT with true institutional ground truth.
 - [ ] Do not add a heavy cross-encoder to the full request path before proving offline value.
 - [ ] Do not optimize only average score correlation if shortlist behavior is still wrong.
 

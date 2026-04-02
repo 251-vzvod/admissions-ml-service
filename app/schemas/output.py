@@ -55,6 +55,19 @@ class LLMRubricAssessmentPayload(BaseModel):
     authenticity_review_needed: str | None = None
 
 
+class ReviewRoutingShadowPayload(BaseModel):
+    enabled: bool
+    available: bool
+    artifact_name: str | None = None
+    artifact_version: str | None = None
+    target_name: str | None = None
+    model_name: str | None = None
+    probability: float | None = None
+    threshold: float | None = None
+    predicted_positive: bool | None = None
+    note: str | None = None
+
+
 class ScoreResponse(BaseModel):
     candidate_id: str
     scoring_run_id: str
@@ -96,25 +109,41 @@ class ScoreResponse(BaseModel):
     authenticity_review_reasons: list[str] = Field(default_factory=list, exclude=True)
     ai_detector: AIDetectorPayload | None = Field(default=None, exclude=True)
     evidence_spans: list[EvidenceSpan] = Field(default_factory=list, exclude=True)
+    review_routing_shadow: ReviewRoutingShadowPayload | None = Field(default=None, exclude=True)
 
 
 class BatchScoreResponse(BaseModel):
     scoring_run_id: str
     scoring_version: str
     count: int
-    ranked_candidate_ids: list[str] = Field(default_factory=list)
-    shortlist_candidate_ids: list[str] = Field(default_factory=list)
-    hidden_potential_candidate_ids: list[str] = Field(default_factory=list)
-    support_needed_candidate_ids: list[str] = Field(default_factory=list)
-    authenticity_review_candidate_ids: list[str] = Field(default_factory=list)
     results: list[ScoreResponse]
+
+
+class RankedCandidateSummary(BaseModel):
+    candidate_id: str
+    rank_position: int
+    recommendation: Recommendation
+    merit_score: int
+    confidence_score: int
+    authenticity_risk: int
+    shortlist_priority_score: int
+    hidden_potential_score: int
+    support_needed_score: int
+    evidence_coverage_score: int
+    trajectory_score: int
+    is_shortlist_candidate: bool = False
+    is_hidden_potential_candidate: bool = False
+    is_support_needed_candidate: bool = False
+    is_authenticity_review_candidate: bool = False
 
 
 class RankResponse(BaseModel):
     scoring_run_id: str
     scoring_version: str
     count: int
+    returned_count: int
     ranked_candidate_ids: list[str] = Field(default_factory=list)
+    ranked_candidates: list[RankedCandidateSummary] = Field(default_factory=list)
     shortlist_candidate_ids: list[str] = Field(default_factory=list)
     hidden_potential_candidate_ids: list[str] = Field(default_factory=list)
     support_needed_candidate_ids: list[str] = Field(default_factory=list)

@@ -1,0 +1,24 @@
+{
+  "artifact_name": "review_routing_sidecar_v1",
+  "artifact_version": "review-routing-sidecar-v1",
+  "target_name": "nonstandard_route",
+  "target_description": "Non-standard routing: manual review or insufficient evidence.",
+  "model_name": "random_forest_balanced",
+  "threshold": 0.39999999999999997,
+  "feature_names": [
+    "merit_score",
+    "confidence_score",
+    "authenticity_risk_neg",
+    "hidden_potential_score",
+    "support_needed_score",
+    "shortlist_priority_score",
+    "evidence_coverage_score",
+    "trajectory_score",
+    "community_values_axis",
+    "leadership_axis",
+    "potential_axis",
+    "trust_axis"
+  ],
+  "generated_from": "C:\\Users\\Admin\\Desktop\\decentrathon\\ml-service\\data\\ml_workbench\\exports\\models\\manual_review_probe_v2_training_dataset_v3",
+  "note": "Shadow-mode routing sidecar. Does not override deterministic recommendation logic."
+}

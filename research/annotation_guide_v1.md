@@ -15,6 +15,7 @@ Use this guide with:
 
 - annotate the candidate, not the writing polish alone
 - do not try to guess what the current model would predict
+- do not use ML outputs, `/score`, baseline logs, roadmap notes, or prior labels as evidence for your decision
 - do not infer hidden metadata not present in the pack
 - treat this as shortlist support, not final admission
 - notes should reference evidence from the application, not vague impressions
@@ -23,6 +24,7 @@ Important:
 
 - this pack is intentionally sanitized
 - synthetic hints and non-contract metadata were removed to reduce leakage
+- existing rows in `human_labels_individual.csv` may be used only as a column template or for post-hoc comparison, never as ground truth during annotation
 
 ## What To Read
 
