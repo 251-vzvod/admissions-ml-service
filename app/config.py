@@ -11,7 +11,7 @@ from typing import Any
 SCORING_VERSION = "v1.4.0"
 SCORING_CONFIG_VERSION = "cfg-v1.5.0"
 WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v3"
-PROMPT_VERSION: str | None = None
+PROMPT_VERSION: str | None = "llm-explainability-v2-evidence-first"
 
 
 def _strip_wrapping_quotes(value: str) -> str:

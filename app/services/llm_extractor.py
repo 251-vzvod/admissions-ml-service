@@ -8,6 +8,7 @@ from app.config import CONFIG
 from app.services.llm_client import LLMClientError, LLMRequest, build_llm_client
 from app.services.llm_parser import LLMExplainabilityOutput, LLMParseError, parse_llm_extraction_json
 from app.services.llm_prompts import (
+    PROMPT_VERSION,
     REPAIR_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_extraction_user_prompt,
@@ -202,6 +203,7 @@ def extract_explainability_with_llm(
         "provider": response.provider,
         "model": response.model,
         "latency_ms": response.latency_ms,
+        "prompt_version": CONFIG.prompt_version or PROMPT_VERSION,
     }
 
     if not _has_substantive_extraction(parsed):

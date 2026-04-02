@@ -1,6 +1,7 @@
 from app.services.llm_extractor import extract_explainability_with_llm
 from app.services.llm_client import LLMResponse
 from app.services.preprocessing import preprocess_text_inputs
+from app.services.llm_prompts import PROMPT_VERSION
 
 
 class FakeClient:
@@ -83,6 +84,7 @@ def test_llm_extractor_repairs_wrapper_answer_response(monkeypatch) -> None:
     assert len(fake_client.requests) == 2
     assert result.llm_metadata["repair_attempted"] == "true"
     assert result.llm_metadata["repair_used"] == "true"
+    assert result.llm_metadata["prompt_version"] == PROMPT_VERSION
     assert result.rubric_assessment["leadership_potential"] == 4
     assert result.rubric_assessment["growth_trajectory"] == 4
     assert result.committee_follow_up_question == "What changed after you started helping classmates?"
@@ -128,6 +130,7 @@ def test_llm_extractor_falls_back_to_deterministic_rubric_when_repair_is_still_u
     assert result.llm_metadata["repair_attempted"] == "true"
     assert result.llm_metadata["repair_used"] == "false"
     assert result.llm_metadata["deterministic_rubric_fallback"] == "true"
+    assert result.llm_metadata["prompt_version"] == PROMPT_VERSION
     assert result.rubric_assessment["leadership_potential"] >= 3
     assert result.rubric_assessment["growth_trajectory"] == 5
     assert result.rubric_assessment["authenticity_review_needed"] == "low"
