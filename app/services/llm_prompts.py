@@ -73,6 +73,9 @@ Core rules:
 - do not use school prestige, geography, family background, or expensive opportunities as merit
 - authenticity risk is a review signal, not proof of cheating
 - if evidence is thin, say that evidence is thin
+- explicitly look for unsupported strong claims, cross-section mismatch, and suspicious style/tone shifts
+- treat section-to-section inconsistency as important only when it affects trust or groundedness, not just because one section is shorter or rougher
+- if one section sounds much more polished or consultant-like than the others, mention that only as a review uncertainty, not as proof
 - only use evidence that is present in the provided package
 - deterministic_text_signals are hints, not evidence
 - never cite deterministic_text_signals as proof
@@ -146,6 +149,7 @@ def build_extraction_user_prompt(
         "Do not treat deterministic_text_signals as evidence and do not mention them in snippets.\n"
         "Good claim style: concrete action, grounded in one visible source.\n"
         "Bad claim style: generic verdict without text support.\n"
+        "When relevant, use `main_gap_signals` or `uncertainty_signals` to capture: unsupported strong claims, sections that do not align, or tone/style shifts across sections.\n"
         "If the candidate sounds rough, translated-in-thinking, or modest, do not mistake that for weak merit or authenticity problems by itself.\n"
         "Return a single JSON object with these exact top-level keys:\n"
         f"{json.dumps(EXPLAINABILITY_SCHEMA, ensure_ascii=False)}\n"

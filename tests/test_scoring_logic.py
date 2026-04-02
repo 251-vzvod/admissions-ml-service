@@ -1,7 +1,9 @@
 from copy import deepcopy
 
+from app.config import CONFIG
 from app.schemas.decision import Recommendation
 from app.services.committee_guidance import build_committee_guidance
+from app.services.llm_extractor import LLMAuthenticityAssist, LLMExplainabilityResult
 from app.services.policy import build_policy_snapshot
 from app.services.pipeline import ScoringPipeline
 
@@ -110,6 +112,82 @@ def test_section_mismatch_increases_authenticity_risk() -> None:
     inconsistent_result = pipeline.score_candidate(inconsistent_payload)
 
     assert inconsistent_result.authenticity_risk >= consistent_result.authenticity_risk
+
+
+def test_llm_authenticity_assist_can_raise_risk_without_public_contract_change(monkeypatch) -> None:
+    pipeline = ScoringPipeline()
+    payload = {
+        "candidate_id": "cand_llm_auth_assist",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I want to create meaningful change and I believe this university will help me unlock my potential."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Tell us about your initiative.",
+                    "answer": "I care about growth and impact but I did not describe one concrete project in detail.",
+                }
+            ],
+            "interview_text": "I want to join a strong community and become a leader in the future.",
+        },
+    }
+
+    old_enabled = CONFIG.llm.enabled
+    try:
+        CONFIG.llm.enabled = False
+        baseline = pipeline.score_candidate(payload)
+
+        CONFIG.llm.enabled = True
+        monkeypatch.setattr(
+            "app.services.pipeline.extract_explainability_with_llm",
+            lambda **_: LLMExplainabilityResult(
+                strength_claims=[],
+                gap_claims=[
+                    {
+                        "claim": "Sections do not align well and strong claims remain under-supported.",
+                        "source": "motivation_questions",
+                        "snippet": "I did not describe one concrete project in detail.",
+                    }
+                ],
+                uncertainty_claims=[
+                    {
+                        "claim": "Tone feels more polished than the amount of grounded evidence provided.",
+                        "source": "motivation_letter_text",
+                        "snippet": "unlock my potential",
+                    }
+                ],
+                evidence_spans=[],
+                rationale="Sections do not align strongly and the tone is more polished than grounded.",
+                rubric_assessment={
+                    "leadership_potential": 3,
+                    "growth_trajectory": 3,
+                    "motivation_authenticity": 2,
+                    "evidence_strength": 2,
+                    "hidden_potential_hint": 2,
+                    "authenticity_review_needed": "high",
+                },
+                committee_follow_up_question="What is one concrete project you personally led from start to adjustment?",
+                llm_metadata={"provider": "openai", "model": "gpt-4o-mini", "latency_ms": 1, "prompt_version": "test"},
+                authenticity_assist=LLMAuthenticityAssist(
+                    available=True,
+                    review_needed="high",
+                    risk_hint=0.84,
+                    grounding_gap_score=0.78,
+                    section_mismatch_score=0.71,
+                    style_shift_score=0.63,
+                    reasons=[
+                        "Sections do not align well and strong claims remain under-supported.",
+                        "Tone feels more polished than the amount of grounded evidence provided.",
+                    ],
+                ),
+            ),
+        )
+        assisted = pipeline.score_candidate(payload)
+    finally:
+        CONFIG.llm.enabled = old_enabled
+
+    assert assisted.authenticity_risk >= baseline.authenticity_risk
+    assert "ai_detector" not in assisted.model_dump(mode="python")
 
 
 def test_hidden_potential_is_not_punished_below_polished_low_signal_profile() -> None:

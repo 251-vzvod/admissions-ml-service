@@ -43,7 +43,11 @@ class ScoringPipeline:
             payload = asdict(model)
         return payload if isinstance(payload, dict) else {}
 
-    def _prepare_scoring_context(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
+    def _prepare_scoring_context(
+        self,
+        candidate_payload: dict[str, Any],
+        enable_llm_explainability: bool = False,
+    ) -> dict[str, Any]:
         normalized_payload = normalize_candidate_payload(candidate_payload)
         projected, excluded_hits = merit_safe_projection(normalized_payload)
 
@@ -86,6 +90,22 @@ class ScoringPipeline:
         semantic_result = extract_semantic_rubric_features(bundle=bundle, heuristic_features=merged_features)
         merged_features.update(semantic_result.features)
 
+        llm_result = None
+        llm_metadata: dict[str, str | int | float] | None = None
+        if enable_llm_explainability:
+            try:
+                llm_result = extract_explainability_with_llm(
+                    bundle=bundle,
+                    deterministic_signals=text_result.features,
+                )
+                llm_metadata = llm_result.llm_metadata
+            except RuntimeError as exc:
+                llm_metadata = {
+                    "provider": CONFIG.llm.provider,
+                    "model": CONFIG.llm.model,
+                    "fallback_reason": str(exc),
+                }
+
         ai_detector_result = detect_ai_generated_text(bundle=bundle)
         if ai_detector_result.probability_ai_generated is not None:
             merged_features["ai_detector_probability"] = ai_detector_result.probability_ai_generated
@@ -95,6 +115,7 @@ class ScoringPipeline:
             features=merged_features,
             diagnostics=text_result.diagnostics,
             ai_detector_result=ai_detector_result,
+            llm_authenticity_assist=llm_result.authenticity_assist if llm_result else None,
         )
         merged_features["authenticity_risk_raw"] = auth_result.authenticity_risk_raw
 
@@ -169,6 +190,8 @@ class ScoringPipeline:
                 "merged_features": merged_features,
                 "auth_result": auth_result,
                 "ai_detector_result": ai_detector_result,
+                "llm_result": llm_result,
+                "llm_metadata": llm_metadata,
                 "semantic_result": semantic_result,
                 "scoring_result": scoring_result,
                 "recommendation_result": recommendation_result,
@@ -192,7 +215,10 @@ class ScoringPipeline:
         scoring_run_id = scoring_run_id or generate_scoring_run_id()
         if enable_llm_explainability is None:
             enable_llm_explainability = CONFIG.llm.enabled
-        context = self._prepare_scoring_context(candidate_payload)
+        context = self._prepare_scoring_context(
+            candidate_payload,
+            enable_llm_explainability=bool(enable_llm_explainability),
+        )
 
         projected = context["projected"]
         excluded_hits = context["excluded_hits"]
@@ -289,7 +315,8 @@ class ScoringPipeline:
         auth_result = context["auth_result"]
         ai_detector_result = context["ai_detector_result"]
 
-        llm_metadata: dict[str, str | int | float] | None = None
+        llm_result = context.get("llm_result")
+        llm_metadata: dict[str, str | int | float] | None = context.get("llm_metadata")
         llm_strength_claims: list[dict[str, str]] | None = None
         llm_gap_claims: list[dict[str, str]] | None = None
         llm_uncertainty_claims: list[dict[str, str]] | None = None
@@ -298,26 +325,14 @@ class ScoringPipeline:
         llm_rubric_assessment: dict[str, int | str] | None = None
         llm_follow_up_question: str | None = None
 
-        if enable_llm_explainability:
-            try:
-                llm_result = extract_explainability_with_llm(
-                    bundle=bundle,
-                    deterministic_signals=text_result.features,
-                )
-                llm_metadata = llm_result.llm_metadata
-                llm_strength_claims = llm_result.strength_claims
-                llm_gap_claims = llm_result.gap_claims
-                llm_uncertainty_claims = llm_result.uncertainty_claims
-                llm_evidence_spans = llm_result.evidence_spans
-                extractor_rationale = llm_result.rationale
-                llm_rubric_assessment = llm_result.rubric_assessment or None
-                llm_follow_up_question = llm_result.committee_follow_up_question or None
-            except RuntimeError as exc:
-                llm_metadata = {
-                    "provider": CONFIG.llm.provider,
-                    "model": CONFIG.llm.model,
-                    "fallback_reason": str(exc),
-                }
+        if llm_result is not None:
+            llm_strength_claims = llm_result.strength_claims
+            llm_gap_claims = llm_result.gap_claims
+            llm_uncertainty_claims = llm_result.uncertainty_claims
+            llm_evidence_spans = llm_result.evidence_spans
+            extractor_rationale = llm_result.rationale
+            llm_rubric_assessment = llm_result.rubric_assessment or None
+            llm_follow_up_question = llm_result.committee_follow_up_question or None
 
         explanation_result = build_explanation(
             review_signals=reviewer_signals,
@@ -437,7 +452,10 @@ class ScoringPipeline:
 
     def score_candidate_trace(self, candidate_payload: dict[str, Any]) -> dict[str, Any]:
         """Return full deterministic score trace for auditing/debugging."""
-        context = self._prepare_scoring_context(candidate_payload)
+        context = self._prepare_scoring_context(
+            candidate_payload,
+            enable_llm_explainability=CONFIG.llm.enabled,
+        )
 
         projected = context["projected"]
         eligibility = context["eligibility"]
@@ -476,6 +494,28 @@ class ScoringPipeline:
                     "authenticity_risk_raw": round(auth_result.authenticity_risk_raw, 6),
                     "review_flags": context["auth_result"].review_flags,
                     "review_reasons": context["auth_result"].review_reasons,
+                    "llm_authenticity_assist": (
+                        {
+                            "available": context["llm_result"].authenticity_assist.available,
+                            "review_needed": context["llm_result"].authenticity_assist.review_needed,
+                            "risk_hint": round(context["llm_result"].authenticity_assist.risk_hint, 6),
+                            "grounding_gap_score": round(
+                                context["llm_result"].authenticity_assist.grounding_gap_score,
+                                6,
+                            ),
+                            "section_mismatch_score": round(
+                                context["llm_result"].authenticity_assist.section_mismatch_score,
+                                6,
+                            ),
+                            "style_shift_score": round(
+                                context["llm_result"].authenticity_assist.style_shift_score,
+                                6,
+                            ),
+                            "reasons": context["llm_result"].authenticity_assist.reasons,
+                        }
+                        if context.get("llm_result") is not None
+                        else None
+                    ),
                     "ai_detector": {
                         "enabled": context["ai_detector_result"].enabled,
                         "applicable": context["ai_detector_result"].applicable,
