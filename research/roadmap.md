@@ -151,6 +151,7 @@ Why this layer matters:
 - the current semantic layer is prototype-based and useful, but limited
 - better embeddings should reduce keyword dependence
 - better embeddings should help with English, Russian, mixed-language, and lower-polish applications
+- LLM explainability prompting should keep improving evidence-grounded committee summaries even before embeddings are promoted
 
 Decision rule:
 

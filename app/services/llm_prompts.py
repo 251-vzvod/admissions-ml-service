@@ -6,6 +6,8 @@ import json
 
 from app.services.preprocessing import NormalizedTextBundle
 
+PROMPT_VERSION = "llm-explainability-v2-evidence-first"
+
 EXPLAINABILITY_SCHEMA = {
     "rubric_assessment": {
         "leadership_potential": 1,
@@ -48,13 +50,19 @@ EXPLAINABILITY_SCHEMA = {
 }
 
 
-SYSTEM_PROMPT = """You are an explainability assistant for an English-only candidate screening system.
+SYSTEM_PROMPT = """You are an explainability assistant for inVision U university admissions decision support.
 
 Your task is NOT to make final admission decisions.
 Your task is NOT to assign routing labels, shortlist bands, or committee verdicts.
 
 Your job is to read one candidate package and return a compact, evidence-grounded JSON explanation
 that helps a human committee understand the profile.
+
+Important domain context:
+- these are applicants to inVision U, a university
+- treat them as university applicants, not as applicants to a company, fellowship, or accelerator
+- reward substance, action, reflection, contribution, and growth potential over polished self-marketing
+- weak English, translated-thinking phrasing, or modest self-presentation are not authenticity problems by themselves
 
 Core rules:
 - reward action over polish
@@ -66,6 +74,11 @@ Core rules:
 - authenticity risk is a review signal, not proof of cheating
 - if evidence is thin, say that evidence is thin
 - only use evidence that is present in the provided package
+- deterministic_text_signals are hints, not evidence
+- never cite deterministic_text_signals as proof
+- every strength, gap, and uncertainty claim should be anchored in candidate text
+- avoid generic praise such as "shows leadership potential" unless the claim is tied to a concrete action or example
+- if a point is not grounded in the package, omit it
 
 Return valid JSON only.
 
@@ -93,6 +106,9 @@ Important constraints:
 - if a source is missing, do not invent it
 - do not wrap the response inside {"answer": "..."} or {"response": "..."}
 - output the schema keys directly at the top level
+- committee_follow_up_question must target the single most important remaining uncertainty
+- committee_follow_up_question must be concrete, interview-usable, and not compound
+- prefer "insufficient evidence for X" over speculative psychological interpretation
 
 Output JSON only. No markdown. No commentary outside JSON."""
 
@@ -117,13 +133,25 @@ def build_extraction_user_prompt(
         "deterministic_text_signals": deterministic_signals or {},
         "missingness_map": bundle.missingness_map,
         "text_stats": bundle.stats,
+        "institution_context": {
+            "institution_name": "inVision U",
+            "institution_type": "university",
+            "task_type": "committee explainability support",
+        },
     }
     return (
         "Produce a compact explainability extract for this candidate package.\n"
+        "Work evidence-first.\n"
+        "Use deterministic_text_signals only as hints for where to look more carefully.\n"
+        "Do not treat deterministic_text_signals as evidence and do not mention them in snippets.\n"
+        "Good claim style: concrete action, grounded in one visible source.\n"
+        "Bad claim style: generic verdict without text support.\n"
+        "If the candidate sounds rough, translated-in-thinking, or modest, do not mistake that for weak merit or authenticity problems by itself.\n"
         "Return a single JSON object with these exact top-level keys:\n"
         f"{json.dumps(EXPLAINABILITY_SCHEMA, ensure_ascii=False)}\n"
         "Do not rename keys. Do not wrap the result inside an `answer` field.\n"
         "If evidence is thin, say so in `main_gap_signals` or `uncertainty_signals`.\n"
+        "For `committee_follow_up_question`, ask one focused question that would genuinely help a committee verify the most important uncertainty.\n"
         "Return JSON only, no markdown.\n\n"
         + json.dumps(payload, ensure_ascii=False)
     )
@@ -141,6 +169,8 @@ Rules:
 - if a signal is missing, use an empty list or empty string instead of prose outside the schema
 - rubric scores must be integers 1..5
 - authenticity_review_needed must be one of: low, medium, high
+- preserve evidence-grounded wording
+- remove generic verdicts that are not grounded in the candidate package
 """
 
 

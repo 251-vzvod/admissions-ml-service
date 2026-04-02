@@ -1834,6 +1834,63 @@ Rollback path:
 - ignore `review_routing_shadow` diagnostics
 - continue using pure deterministic runtime routing and the existing `/rank` semantics without `top_k`
 
+## Iteration 13: LLM Explainability Prompt V2
+
+- roadmap_phase: `Phase 2 / committee explainability quality`
+- date: `2026-04-02`
+- owner: `Codex`
+
+What changed:
+
+- upgraded the runtime LLM explainability prompt to an evidence-first variant
+- made the prompt explicitly inVision U and university-admissions aware
+- added stronger constraints against generic praise and unsupported verdict language
+- clarified that `deterministic_text_signals` are hints, not evidence
+- tightened the `committee_follow_up_question` requirement so it targets one concrete uncertainty
+- added prompt versioning:
+  - `prompt_version = llm-explainability-v2-evidence-first`
+- added prompt-layer tests:
+  - `tests/test_llm_prompts.py`
+  - extended `tests/test_llm_extractor.py`
+
+What stayed deterministic:
+
+- recommendation mapping remains deterministic
+- LLM still does not assign routing labels or shortlist bands
+- rubric fallback remains deterministic when the model output is weak or malformed
+- no public score semantics changed
+
+Data used:
+
+- runtime candidate package only
+- existing deterministic text signals as non-authoritative hints
+
+Qualitative impact:
+
+- committee-facing explanations are now more strongly biased toward evidence extraction instead of generic evaluation language
+- prompt instructions now better reflect inVision U as a university context rather than a generic screening use case
+- awkward English, translated-thinking phrasing, and modest self-presentation are less likely to be over-penalized by the explainability layer
+- prompt metadata is now explicit in extractor output for debugging and experiment tracking
+
+Verification:
+
+- `tests/test_llm_extractor.py`
+- `tests/test_llm_parser.py`
+- `tests/test_llm_prompts.py`
+- full local test run: `45 passed`
+
+Risks / open questions:
+
+- this improves explainability quality, not core ranking or routing metrics directly
+- no offline committee-utility benchmark exists yet for compare-and-promote prompt variants
+- the LLM path remains optional and provider-dependent
+
+Rollback path:
+
+- revert prompt templates in `app/services/llm_prompts.py`
+- keep deterministic explanation path as the source of truth
+- prompt versioning makes the change easy to isolate in future experiments
+
 ## Future Iteration Entry Template
 
 Copy this block for every roadmap iteration.
