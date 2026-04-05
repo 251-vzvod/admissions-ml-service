@@ -50,6 +50,8 @@ def test_score_single_candidate() -> None:
     assert isinstance(result["why_candidate_surfaced"], list)
     assert isinstance(result["what_to_verify_manually"], list)
     assert isinstance(result["suggested_follow_up_question"], str)
+    assert "ai_probability_ai_generated" in result
+    assert "text_ai_probabilities" in result
     assert isinstance(result["evidence_highlights"], list)
     assert 0 <= result["hidden_potential_score"] <= 100
     assert 0 <= result["support_needed_score"] <= 100
@@ -62,6 +64,41 @@ def test_score_single_candidate() -> None:
     assert "merit_breakdown" not in result
     assert "ai_detector" not in result
     assert "llm_rubric_assessment" not in result
+
+
+def test_score_response_exposes_source_level_ai_probabilities_for_text_inputs() -> None:
+    payload = {
+        "candidate_id": "cand_ai_probs_001",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I organized peer study sessions every week, tracked attendance, and changed the format after low turnout."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this program?",
+                    "answer": "I want a practical environment where I can keep building useful projects with other students.",
+                }
+            ],
+            "interview_text": "I can explain what failed first and what changed after that.",
+            "video_interview_transcript_text": "I described one concrete project and the results after I adjusted the plan.",
+            "video_presentation_transcript_text": "My presentation focused on how I organize work and learn from failed attempts.",
+        },
+    }
+
+    response = client.post("/score", json=payload)
+    assert response.status_code == 200
+    result = response.json()
+
+    assert "ai_probability_ai_generated" in result
+    assert "text_ai_probabilities" in result
+    assert set(result["text_ai_probabilities"].keys()) == {
+        "motivation_letter_text",
+        "interview_text",
+        "video_interview_transcript_text",
+        "video_presentation_transcript_text",
+        "motivation_questions",
+    }
+    assert isinstance(result["text_ai_probabilities"]["motivation_questions"], list)
 
 
 def test_score_single_candidate_with_canonical_profile_contract() -> None:

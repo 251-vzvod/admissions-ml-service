@@ -180,6 +180,8 @@ class PublicTextInputs(BaseModel):
     motivation_letter_text: str | None = None
     motivation_questions: list[MotivationAnswer] = Field(default_factory=list)
     interview_text: str | None = None
+    video_interview_transcript_text: str | None = None
+    video_presentation_transcript_text: str | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -213,6 +215,8 @@ class CandidateInput(BaseModel):
             "motivation_letter_text": narratives.get("motivation_letter_text"),
             "motivation_questions": narratives.get("motivation_questions") or [],
             "interview_text": narratives.get("interview_text"),
+            "video_interview_transcript_text": narratives.get("video_interview_transcript_text"),
+            "video_presentation_transcript_text": narratives.get("video_presentation_transcript_text"),
         }
         normalized["behavioral_signals"] = profile.get("process_signals")
         normalized["metadata"] = profile.get("metadata")

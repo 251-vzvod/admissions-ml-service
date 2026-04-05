@@ -49,6 +49,14 @@ EXPLAINABILITY_SCHEMA = {
     "extractor_rationale": "one short sentence on why these signals were selected",
 }
 
+COMMITTEE_WRITER_SCHEMA = {
+    "summary": "plain-language committee summary",
+    "top_strengths": ["short reviewer-facing strengths"],
+    "main_gaps": ["short reviewer-facing gaps"],
+    "what_to_verify_manually": ["short reviewer-facing verification priorities"],
+    "suggested_follow_up_question": "one concrete follow-up question",
+}
+
 
 SYSTEM_PROMPT = """You are an explainability assistant for inVision U university admissions decision support.
 
@@ -178,6 +186,32 @@ Rules:
 """
 
 
+COMMITTEE_WRITER_SYSTEM_PROMPT = """You are a committee-writing assistant for inVision U admissions support.
+
+You do not assign scores.
+You do not assign recommendation labels.
+You do not make final decisions.
+
+Your job is to rewrite structured candidate findings into clear reviewer-facing language.
+
+Rules:
+- write in plain committee language, not model or pipeline jargon
+- be concise by default
+- if the case is straightforward, keep the summary short
+- if the case is high-uncertainty or manual-review heavy, write a slightly fuller summary
+- emphasize the most decision-relevant facts first
+- prefer interview and Q&A evidence over polished essay phrasing when there is tension
+- do not invent evidence
+- do not mention internal feature names, model names, or hidden heuristics
+- do not restate every score unless it helps clarify uncertainty
+- authenticity risk is a review signal, not proof
+- avoid generic praise
+- every strength or gap should be meaningfully grounded in the provided evidence summary
+- suggested_follow_up_question must be one concrete interview-usable question
+
+Return valid JSON only using the exact top-level keys in the required schema."""
+
+
 def build_repair_user_prompt(
     bundle: NormalizedTextBundle,
     prior_response: str,
@@ -205,4 +239,74 @@ def build_repair_user_prompt(
     return "Repair the previous answer into the exact required schema. Return JSON only.\n\n" + json.dumps(
         payload,
         ensure_ascii=False,
+    )
+
+
+def build_committee_writer_user_prompt(
+    *,
+    detail_level: str,
+    candidate_id: str,
+    recommendation: str,
+    merit_score: int,
+    confidence_score: int,
+    authenticity_risk: int,
+    review_flags: list[str],
+    committee_cohorts: list[str],
+    why_candidate_surfaced: list[str],
+    what_to_verify_manually: list[str],
+    suggested_follow_up_question: str,
+    top_strengths: list[str],
+    main_gaps: list[str],
+    uncertainties: list[str],
+    evidence_highlights: list[dict[str, str]],
+    bundle: NormalizedTextBundle,
+) -> str:
+    payload = {
+        "required_schema": COMMITTEE_WRITER_SCHEMA,
+        "detail_level": detail_level,
+        "candidate_id": candidate_id,
+        "current_outputs": {
+            "recommendation": recommendation,
+            "merit_score": merit_score,
+            "confidence_score": confidence_score,
+            "authenticity_risk": authenticity_risk,
+            "review_flags": review_flags,
+            "committee_cohorts": committee_cohorts,
+            "why_candidate_surfaced": why_candidate_surfaced,
+            "what_to_verify_manually": what_to_verify_manually,
+            "suggested_follow_up_question": suggested_follow_up_question,
+            "top_strengths": top_strengths,
+            "main_gaps": main_gaps,
+            "uncertainties": uncertainties,
+            "evidence_highlights": evidence_highlights,
+        },
+        "source_priority": [
+            "interview_text",
+            "video_interview_transcript_text",
+            "motivation_questions",
+            "motivation_letter_text",
+            "video_presentation_transcript_text",
+        ],
+        "candidate_package": {
+            "motivation_letter_text": bundle.motivation_letter_original,
+            "motivation_questions": [
+                {
+                    "question": bundle.qa_questions_original[idx] if idx < len(bundle.qa_questions_original) else "",
+                    "answer": answer,
+                }
+                for idx, answer in enumerate(bundle.motivation_answers_original)
+            ],
+            "interview_text": bundle.interview_original,
+            "video_interview_transcript_text": bundle.video_interview_transcript_original,
+            "video_presentation_transcript_text": bundle.video_presentation_transcript_original,
+        },
+    }
+    return (
+        "Rewrite the current candidate-facing outputs into cleaner committee-facing language.\n"
+        "If detail_level is `brief`, write 2-3 sentences max in `summary`.\n"
+        "If detail_level is `standard`, write one compact paragraph.\n"
+        "If detail_level is `detailed`, write one fuller but still compact paragraph focused on the main decision logic and the main uncertainty.\n"
+        "Keep `top_strengths`, `main_gaps`, and `what_to_verify_manually` short, readable, and useful for reviewers.\n"
+        "Return JSON only.\n\n"
+        + json.dumps(payload, ensure_ascii=False)
     )

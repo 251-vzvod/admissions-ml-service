@@ -11,5 +11,5 @@ data_ver2/
 .local/
 data/external/
 data/archive/external/raw/
-
+data/experiments
 data/ml_workbench/
