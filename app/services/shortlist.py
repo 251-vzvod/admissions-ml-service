@@ -216,6 +216,12 @@ def _support_needed_raw(
     confidence_score: int,
 ) -> float:
     support_gap = clamp01(1.0 - (confidence_score / 100.0))
+    academic_readiness = weighted_average_normalized(
+        [
+            (float(feature_map.get("english_score_normalized", 0.5)), 0.52),
+            (float(feature_map.get("certificate_score_normalized", 0.5)), 0.48),
+        ]
+    )
     adaptation_signal = weighted_average_normalized(
         [
             (float(feature_map.get("growth_trajectory", 0.0)), 0.22),
@@ -227,7 +233,8 @@ def _support_needed_raw(
         ]
     )
     promise_floor = clamp01(merit_score / 100.0)
-    raw = (support_gap * 0.50) + (adaptation_signal * 0.20) + (promise_floor * 0.30)
+    readiness_protection = academic_readiness * 0.24
+    raw = (support_gap * 0.48) + (adaptation_signal * 0.18) + (promise_floor * 0.30) - readiness_protection
     return clamp01(raw)
 
 

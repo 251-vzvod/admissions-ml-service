@@ -269,13 +269,15 @@ def _community_items(feature_map: dict[str, float | bool], use_semantic_layer: b
 
 def _experience_items(feature_map: dict[str, float | bool]) -> list[tuple[str, float, float]]:
     return [
+        ("certificate_score_normalized", float(feature_map.get("certificate_score_normalized", 0.5)), 0.20),
+        ("english_score_normalized", float(feature_map.get("english_score_normalized", 0.5)), 0.18),
         ("specificity_score", float(feature_map.get("specificity_score", 0.0)), 0.24),
-        ("evidence_count", float(feature_map.get("evidence_count", 0.0)), 0.20),
-        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.18),
-        ("project_mentions_count", float(feature_map.get("project_mentions_count", 0.0)), 0.14),
+        ("evidence_count", float(feature_map.get("evidence_count", 0.0)), 0.14),
+        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.10),
+        ("project_mentions_count", float(feature_map.get("project_mentions_count", 0.0)), 0.10),
         ("achievement_mentions_count", float(feature_map.get("achievement_mentions_count", 0.0)), 0.08),
-        ("trajectory_outcome_score", float(feature_map.get("trajectory_outcome_score", 0.0)), 0.08),
-        ("trajectory_adaptation_score", float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.08),
+        ("trajectory_outcome_score", float(feature_map.get("trajectory_outcome_score", 0.0)), 0.10),
+        ("trajectory_adaptation_score", float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.10),
     ]
 
 
