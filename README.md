@@ -103,6 +103,11 @@ Optional local installs:
 - heavier semantic mode: `python -m pip install -r requirements-semantic.txt`
 - AI detector experiments: `python -m pip install -r requirements-ai-detector.txt`
 
+Core production dependencies now already include:
+
+- `huggingface_hub`
+- `langdetect`
+
 OpenAPI docs:
 
 - `http://127.0.0.1:8000/docs`
@@ -113,8 +118,8 @@ Base deploy-safe defaults:
 
 ```env
 ENABLE_LLM=false
-SEMANTIC_BACKEND=hash
-AI_DETECTOR_ENABLED=false
+SEMANTIC_BACKEND=tfidf-char-ngram
+AI_DETECTOR_ENABLED=true
 ENABLE_REVIEW_ROUTING_SIDECAR=false
 ```
 
@@ -144,6 +149,19 @@ Optional heavier semantic mode:
 SEMANTIC_BACKEND=sentence-transformer
 SEMANTIC_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ```
+
+Recommended lightweight production semantic mode:
+
+```env
+SEMANTIC_BACKEND=tfidf-char-ngram
+```
+
+Why this is the current production recommendation:
+
+- materially stronger lexical-semantic matching than plain `hash`
+- still uses `scikit-learn`, which is already in the main deploy
+- avoids `torch` and `sentence-transformers` in production
+- keeps Railway-friendly image size and startup time
 
 Optional review-routing shadow mode:
 
@@ -381,8 +399,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 Recommended Railway posture:
 
-- keep `SEMANTIC_BACKEND=hash`
-- do not install `requirements-semantic.txt`
+- keep `SEMANTIC_BACKEND=tfidf-char-ngram`
+- do not install heavy transformer dependencies in the main service
 - keep `AI_DETECTOR_ENABLED=false`
 - if enabling LLM in deploy, use an OpenAI-compatible remote endpoint such as Ollama Cloud:
   - `ENABLE_LLM=true`
@@ -496,8 +514,67 @@ Interpretation:
 | Runtime decision ownership | Deterministic recommendation logic remains authoritative |
 | ML role | Ranking and routing support, not autonomous admission decisions |
 
+### Deployment Experiment Notes
+
+The team also tested a separate `sentence-transformers` service for heavier semantic features.
+
+Key result:
+
+- this was not selected for production deployment because the Railway image exceeded the free-tier build limit
+- current operational choice is therefore `SEMANTIC_BACKEND=tfidf-char-ngram`
+- this gives a better quality/simplicity tradeoff than plain `hash` while staying deploy-safe
+
 If you need the full experiment narrative, see:
 
 - `research/roadmap.md`
 - `research/baseline_log.md`
 - `research/eval_protocol.md`
+
+## GT Results: `SEMANTIC_BACKEND=tfidf-char-ngram` (2026-04-05)
+
+Run configuration:
+
+- `SEMANTIC_BACKEND=tfidf-char-ngram`
+- `ENABLE_LLM=false`
+- scripts:
+  - `research/scripts/train_shortlist_ranker_v1.py`
+  - `research/scripts/train_manual_review_probe_v2.py`
+
+Artifacts used for metrics:
+
+- `data/ml_workbench/exports/models/shortlist_ranker_v1_training_dataset_v3/metrics_summary.json`
+- `data/ml_workbench/exports/models/manual_review_probe_v2_training_dataset_v3/metrics_summary.json`
+
+### Shortlist Ranker (baseline vs learned)
+
+| Metric | Baseline | Learned | Delta |
+| --- | ---: | ---: | ---: |
+| Validation NDCG@3 | `0.8794` | `0.8946` | `+0.0152` |
+| Validation NDCG@5 | `0.9218` | `0.9361` | `+0.0143` |
+| Validation pairwise accuracy | `0.6512` | `0.6977` | `+0.0465` |
+| Test NDCG@3 | `0.9252` | `0.9433` | `+0.0181` |
+| Test pairwise accuracy | `0.7556` | `0.7778` | `+0.0222` |
+
+### Review-Routing Sidecar Snapshot
+
+Selected sidecar from this tfidf run:
+
+- target: `review_risk_or_insufficient`
+- model: `random_forest_balanced`
+- tuned threshold: `0.35`
+
+Comparison (baseline `authenticity_risk_only` vs selected sidecar default-threshold metrics):
+
+| Metric | Baseline | Sidecar | Delta |
+| --- | ---: | ---: | ---: |
+| Validation average precision | `0.3234` | `0.5088` | `+0.1854` |
+| Validation ROC AUC | `0.5793` | `0.8089` | `+0.2296` |
+| Test average precision | `0.2041` | `0.4830` | `+0.2790` |
+| Test ROC AUC | `0.5897` | `0.7729` | `+0.1832` |
+
+Why `tfidf-char-ngram` for production (instead of `hash`, without `sentence-transformers`):
+
+- stronger lexical matching than plain hashing while keeping deterministic behavior
+- relies on `scikit-learn` already present in the main service dependencies
+- avoids heavy `torch` / `sentence-transformers` production footprint
+- keeps deploy image and startup profile suitable for lightweight Railway-style hosting

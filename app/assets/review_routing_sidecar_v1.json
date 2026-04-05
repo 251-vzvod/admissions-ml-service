@@ -1,10 +1,10 @@
 {
   "artifact_name": "review_routing_sidecar_v1",
   "artifact_version": "review-routing-sidecar-v1",
-  "target_name": "nonstandard_route",
-  "target_description": "Non-standard routing: manual review or insufficient evidence.",
+  "target_name": "review_risk_or_insufficient",
+  "target_description": "Review-risk or insufficient-evidence routing target.",
   "model_name": "random_forest_balanced",
-  "threshold": 0.39999999999999997,
+  "threshold": 0.35,
   "feature_names": [
     "merit_score",
     "confidence_score",

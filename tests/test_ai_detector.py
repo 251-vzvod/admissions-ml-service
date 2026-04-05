@@ -22,7 +22,7 @@ def test_ai_detector_disabled_by_default() -> None:
         CONFIG.ai_detector.enabled = old_enabled
 
 
-def test_ai_detector_english_applicability_with_mock(monkeypatch) -> None:
+def test_ai_detector_applicability_with_mock(monkeypatch) -> None:
     old_enabled = CONFIG.ai_detector.enabled
     old_min_words = CONFIG.ai_detector.min_words
     try:
@@ -85,4 +85,118 @@ def test_authenticity_risk_uses_ai_detector_as_weak_signal() -> None:
     )
 
     assert with_detector.authenticity_risk_raw > without_detector.authenticity_risk_raw
-    assert "Auxiliary English-only AI detector assigned elevated AI-likeness; treat this only as a manual review signal." in with_detector.review_reasons
+    assert "Auxiliary AI detector assigned elevated AI-likeness; treat this only as a manual review signal." in with_detector.review_reasons
+
+
+def test_authenticity_risk_protects_grounded_case_from_overpenalized_polish() -> None:
+    grounded_features = {
+        "genericness_score": 0.52,
+        "evidence_count": 0.74,
+        "consistency_score": 0.81,
+        "polished_but_empty_score": 0.46,
+        "cross_section_mismatch_score": 0.18,
+        "section_claim_overlap_score": 0.72,
+        "section_role_consistency_score": 0.84,
+        "section_time_consistency_score": 0.79,
+        "contradiction_flag": False,
+    }
+    grounded_diagnostics = {"long_but_thin": False, "section_pair_count": 3}
+
+    thin_features = {
+        **grounded_features,
+        "evidence_count": 0.22,
+        "consistency_score": 0.38,
+        "polished_but_empty_score": 0.72,
+        "section_claim_overlap_score": 0.18,
+        "section_role_consistency_score": 0.42,
+        "section_time_consistency_score": 0.40,
+        "cross_section_mismatch_score": 0.63,
+    }
+    thin_diagnostics = {"long_but_thin": True, "section_pair_count": 3}
+
+    grounded = estimate_authenticity_risk(grounded_features, grounded_diagnostics)
+    thin = estimate_authenticity_risk(thin_features, thin_diagnostics)
+
+    assert grounded.authenticity_risk_raw < 0.45
+    assert thin.authenticity_risk_raw > grounded.authenticity_risk_raw
+
+
+def test_authenticity_risk_keeps_ai_penalty_small_when_evidence_is_strong() -> None:
+    strong_grounded_features = {
+        "genericness_score": 0.18,
+        "evidence_count": 0.83,
+        "consistency_score": 0.86,
+        "polished_but_empty_score": 0.14,
+        "cross_section_mismatch_score": 0.08,
+        "section_claim_overlap_score": 0.79,
+        "section_role_consistency_score": 0.88,
+        "section_time_consistency_score": 0.82,
+        "contradiction_flag": False,
+    }
+    diagnostics = {"long_but_thin": False, "section_pair_count": 3}
+
+    without_detector = estimate_authenticity_risk(strong_grounded_features, diagnostics)
+    with_detector = estimate_authenticity_risk(
+        strong_grounded_features,
+        diagnostics,
+        ai_detector_result=type(
+            "DetectorStub",
+            (),
+            {
+                "enabled": True,
+                "applicable": True,
+                "language": "en",
+                "probability_ai_generated": 0.96,
+                "provider": "huggingface-inference",
+                "model": "fakespot-ai/roberta-base-ai-text-detection-v1:fastest",
+                "source_results": [],
+                "note": "ok",
+            },
+        )(),
+    )
+
+    assert with_detector.authenticity_risk_raw <= 0.05
+    assert with_detector.authenticity_risk_raw >= without_detector.authenticity_risk_raw
+    assert "Auxiliary AI detector assigned elevated AI-likeness; treat this only as a manual review signal." in with_detector.review_reasons
+
+
+def test_ai_detector_chunks_long_letter_and_avoids_single_hf_call_failure(monkeypatch) -> None:
+    old_enabled = CONFIG.ai_detector.enabled
+    old_min_words = CONFIG.ai_detector.min_words
+    calls: list[str] = []
+
+    try:
+        CONFIG.ai_detector.enabled = True
+        CONFIG.ai_detector.min_words = 20
+
+        def fake_predict_probability(text: str) -> float:
+            calls.append(text)
+            assert len(text.split()) <= 230
+            return 0.81
+
+        monkeypatch.setattr("app.services.ai_detector._detect_language", lambda text: "en")
+        monkeypatch.setattr("app.services.ai_detector._predict_probability", fake_predict_probability)
+
+        long_letter = " ".join(
+            [
+                "I built a community study initiative, documented what changed, and reflected on each weekly iteration."
+                for _ in range(40)
+            ]
+        )
+        bundle = preprocess_text_inputs(
+            {
+                "motivation_letter_text": long_letter,
+                "interview_text": "I can explain one concrete failure and what I changed after feedback.",
+            }
+        )
+
+        result = detect_ai_generated_text(bundle)
+        motivation_result = next(item for item in result.source_results if item.source_key == "motivation_letter_text")
+
+        assert result.applicable is True
+        assert motivation_result.applicable is True
+        assert motivation_result.probability_ai_generated is not None
+        assert len(calls) >= 2
+    finally:
+        CONFIG.ai_detector.enabled = old_enabled
+        CONFIG.ai_detector.min_words = old_min_words
