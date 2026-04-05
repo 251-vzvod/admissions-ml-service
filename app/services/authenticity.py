@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from app.schemas.decision import ReviewFlag
 from app.services.ai_detector import AIDetectorResult
 from app.services.llm_extractor import LLMAuthenticityAssist
-from app.utils.math_utils import clamp01
+from app.utils.math_utils import clamp01, weighted_average_normalized
 
 
 @dataclass(slots=True)
@@ -20,6 +20,16 @@ class AuthenticityResult:
     review_flags: list[ReviewFlag]
     review_reasons: list[str]
     ai_detector_result: AIDetectorResult | None = None
+
+
+def _append_unique_flag(flags: list[ReviewFlag], flag: ReviewFlag) -> None:
+    if flag not in flags:
+        flags.append(flag)
+
+
+def _append_unique_reason(reasons: list[str], reason: str) -> None:
+    if reason and reason not in reasons:
+        reasons.append(reason)
 
 
 def estimate_authenticity_risk(
@@ -44,101 +54,130 @@ def estimate_authenticity_risk(
     section_pair_count = int(diagnostics.get("section_pair_count", 0))
 
     polished_but_empty_pattern = long_but_thin and genericness > 0.55 and evidence_count < 0.35
-    fairness_discount = 0.0
-    if evidence_count >= 0.25 and consistency >= 0.45:
-        fairness_discount = clamp01(
-            (section_claim_overlap_score * 0.55)
-            + (section_role_consistency_score * 0.25)
-            + (section_time_consistency_score * 0.20)
-        ) * 0.16
+    evidence_strength_credit = weighted_average_normalized(
+        [
+            (evidence_count, 0.42),
+            (consistency, 0.24),
+            (section_claim_overlap_score if section_pair_count > 0 else consistency, 0.16),
+            (section_role_consistency_score if section_pair_count > 0 else 1.0, 0.10),
+            (section_time_consistency_score if section_pair_count > 0 else 1.0, 0.08),
+        ],
+        default=0.0,
+    )
 
-    risk = 0.0
-    risk += genericness * 0.35 * (1.0 - fairness_discount)
-    risk += (1.0 - evidence_count) * 0.25
-    risk += (1.0 - consistency) * 0.18
-    risk += polished_but_empty_score * 0.12 * (1.0 - (fairness_discount * 0.85))
-    risk += cross_section_mismatch_score * 0.10
+    grounding_risk = weighted_average_normalized(
+        [
+            (genericness, 0.34),
+            (1.0 - evidence_count, 0.34),
+            (polished_but_empty_score, 0.22),
+            (1.0 - consistency, 0.10),
+        ],
+        default=0.0,
+    )
+    if polished_but_empty_pattern:
+        grounding_risk = clamp01(grounding_risk + 0.10)
+
+    coherence_risk = cross_section_mismatch_score * 0.55
     if section_pair_count > 0:
-        risk += (1.0 - section_claim_overlap_score) * 0.06
-        risk += (1.0 - section_role_consistency_score) * 0.04
-        risk += (1.0 - section_time_consistency_score) * 0.03
-    risk += 0.12 if polished_but_empty_pattern else 0.0
-    risk += 0.15 if contradiction_flag else 0.0
+        coherence_risk += weighted_average_normalized(
+            [
+                (1.0 - section_claim_overlap_score, 0.44),
+                (1.0 - section_role_consistency_score, 0.32),
+                (1.0 - section_time_consistency_score, 0.24),
+            ],
+            default=0.0,
+        ) * 0.35
+    else:
+        coherence_risk += max(0.0, 1.0 - consistency - 0.35) * 0.15
+    coherence_risk = clamp01(coherence_risk)
+
+    contradiction_risk = 1.0 if contradiction_flag else 0.0
+
+    evidence_discount = 0.20 * clamp01(max(0.0, evidence_strength_credit - 0.40) / 0.60)
+    if evidence_count >= 0.65 and consistency >= 0.65:
+        evidence_discount += 0.04
+
+    risk = (
+        (grounding_risk * 0.48)
+        + (coherence_risk * 0.22)
+        + (contradiction_risk * 0.18)
+        - evidence_discount
+    )
+
+    ai_influence = 0.0
     if ai_detector_result and ai_detector_result.applicable and ai_probability is not None:
-        ai_penalty = max(0.0, ai_probability - 0.72) * 0.12
-        if evidence_count > 0.65 and consistency > 0.65:
-            ai_penalty *= 0.5
-        risk += ai_penalty
+        ai_influence = max(0.0, ai_probability - 0.78) * 0.16
+        if grounding_risk < 0.45 and evidence_strength_credit > 0.58:
+            ai_influence *= 0.35
+        elif grounding_risk < 0.35 and consistency > 0.70:
+            ai_influence *= 0.20
+        risk += ai_influence
 
     llm_influence = 0.0
     if llm_authenticity_assist and llm_authenticity_assist.available:
-        llm_influence += llm_authenticity_assist.grounding_gap_score * 0.08
-        llm_influence += llm_authenticity_assist.section_mismatch_score * 0.07
-        llm_influence += llm_authenticity_assist.style_shift_score * 0.05
-        llm_influence += max(0.0, llm_authenticity_assist.risk_hint - 0.45) * 0.10
+        llm_influence += llm_authenticity_assist.grounding_gap_score * 0.07
+        llm_influence += llm_authenticity_assist.section_mismatch_score * 0.06
+        llm_influence += llm_authenticity_assist.style_shift_score * 0.04
+        llm_influence += max(0.0, llm_authenticity_assist.risk_hint - 0.48) * 0.08
         if llm_authenticity_assist.review_needed == "high":
             llm_influence += 0.04
         elif llm_authenticity_assist.review_needed == "medium":
             llm_influence += 0.02
-        if evidence_count > 0.65 and consistency > 0.65:
+        if evidence_strength_credit > 0.60 and grounding_risk < 0.45:
             llm_influence *= 0.55
         risk += llm_influence
-
-    # Reduce risk when strong grounded evidence is present.
-    if evidence_count > 0.65 and consistency > 0.65:
-        risk -= 0.12
 
     risk = clamp01(risk)
 
     flags: list[ReviewFlag] = []
     reasons: list[str] = []
     if polished_but_empty_pattern:
-        flags.append(ReviewFlag.POLISHED_BUT_EMPTY_PATTERN)
-        reasons.append("Long and polished text has limited grounded evidence.")
+        _append_unique_flag(flags, ReviewFlag.POLISHED_BUT_EMPTY_PATTERN)
+        _append_unique_reason(reasons, "Long and polished text has limited grounded evidence.")
     if polished_but_empty_score > 0.60:
-        flags.append(ReviewFlag.HIGH_POLISHED_BUT_EMPTY)
-        reasons.append("Text looks polished relative to the amount of concrete evidence provided.")
+        _append_unique_flag(flags, ReviewFlag.HIGH_POLISHED_BUT_EMPTY)
+        _append_unique_reason(reasons, "Text looks polished relative to the amount of concrete evidence provided.")
     if genericness > 0.60:
-        flags.append(ReviewFlag.HIGH_GENERICNESS)
-        reasons.append("Language is relatively generic and low-specificity.")
+        _append_unique_flag(flags, ReviewFlag.HIGH_GENERICNESS)
+        _append_unique_reason(reasons, "Language is relatively generic and low-specificity.")
     if cross_section_mismatch_score > 0.55:
-        flags.append(ReviewFlag.CROSS_SECTION_MISMATCH)
-        reasons.append("Different sections vary too much in evidence and groundedness.")
+        _append_unique_flag(flags, ReviewFlag.CROSS_SECTION_MISMATCH)
+        _append_unique_reason(reasons, "Different sections vary too much in evidence and groundedness.")
     if section_pair_count > 0 and section_claim_overlap_score < 0.16:
-        flags.append(ReviewFlag.SECTION_MISMATCH)
-        reasons.append("Different sections do not reinforce the same concrete claims strongly enough.")
+        _append_unique_flag(flags, ReviewFlag.SECTION_MISMATCH)
+        _append_unique_reason(reasons, "Different sections do not reinforce the same concrete claims strongly enough.")
     if evidence_count < 0.35:
-        flags.append(ReviewFlag.LOW_EVIDENCE_DENSITY)
-        reasons.append("Claims are under-supported by concrete actions, examples, or outcomes.")
+        _append_unique_flag(flags, ReviewFlag.LOW_EVIDENCE_DENSITY)
+        _append_unique_reason(reasons, "Claims are under-supported by concrete actions, examples, or outcomes.")
     if consistency < 0.45 or (section_pair_count > 0 and section_role_consistency_score < 0.35):
-        flags.append(ReviewFlag.SECTION_MISMATCH)
-        reasons.append("Application sections do not align well enough for high-confidence trust.")
+        _append_unique_flag(flags, ReviewFlag.SECTION_MISMATCH)
+        _append_unique_reason(reasons, "Application sections do not align well enough for high-confidence trust.")
     if contradiction_flag:
-        flags.append(ReviewFlag.CONTRADICTION_RISK)
-        flags.append(ReviewFlag.POSSIBLE_CONTRADICTION)
-        reasons.append("Possible contradictions or unsupported shifts appear across the narrative.")
+        _append_unique_flag(flags, ReviewFlag.CONTRADICTION_RISK)
+        _append_unique_flag(flags, ReviewFlag.POSSIBLE_CONTRADICTION)
+        _append_unique_reason(reasons, "Possible contradictions or unsupported shifts appear across the narrative.")
     if llm_authenticity_assist and llm_authenticity_assist.available:
         if llm_authenticity_assist.section_mismatch_score >= 0.58 and ReviewFlag.CROSS_SECTION_MISMATCH not in flags:
-            flags.append(ReviewFlag.CROSS_SECTION_MISMATCH)
+            _append_unique_flag(flags, ReviewFlag.CROSS_SECTION_MISMATCH)
         if llm_authenticity_assist.grounding_gap_score >= 0.58 and ReviewFlag.LOW_EVIDENCE_DENSITY not in flags:
-            flags.append(ReviewFlag.LOW_EVIDENCE_DENSITY)
+            _append_unique_flag(flags, ReviewFlag.LOW_EVIDENCE_DENSITY)
         for item in llm_authenticity_assist.reasons:
-            if item and item not in reasons:
-                reasons.append(item)
+            _append_unique_reason(reasons, item)
     if (
         ai_detector_result
         and ai_detector_result.applicable
         and ai_probability is not None
         and ai_probability >= 0.80
     ):
-        flags.append(ReviewFlag.AUXILIARY_AI_GENERATION_SIGNAL)
-        reasons.append(
+        _append_unique_flag(flags, ReviewFlag.AUXILIARY_AI_GENERATION_SIGNAL)
+        _append_unique_reason(
+            reasons,
             "Auxiliary English-only AI detector assigned elevated AI-likeness; treat this only as a manual review signal."
         )
     if 0.45 <= risk < 0.70:
-        flags.append(ReviewFlag.MODERATE_AUTHENTICITY_RISK)
+        _append_unique_flag(flags, ReviewFlag.MODERATE_AUTHENTICITY_RISK)
     if risk >= 0.70:
-        flags.append(ReviewFlag.HIGH_AUTHENTICITY_RISK)
+        _append_unique_flag(flags, ReviewFlag.HIGH_AUTHENTICITY_RISK)
 
     return AuthenticityResult(
         authenticity_risk_raw=risk,

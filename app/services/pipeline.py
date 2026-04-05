@@ -434,6 +434,10 @@ class ScoringPipeline:
             hidden_potential_score=shortlist_signals.hidden_potential_score,
             evidence_coverage_score=shortlist_signals.evidence_coverage_score,
             trajectory_score=shortlist_signals.trajectory_score,
+            llm_strength_claims=llm_strength_claims,
+            llm_gap_claims=llm_gap_claims,
+            llm_uncertainty_claims=llm_uncertainty_claims,
+            llm_evidence_spans=llm_evidence_spans,
         )
         supported_claim_dicts = [asdict(item) for item in claim_evidence.supported_claims]
         weak_claim_dicts = [asdict(item) for item in claim_evidence.weakly_supported_claims]
@@ -462,9 +466,22 @@ class ScoringPipeline:
                     why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
                     what_to_verify_manually=committee_guidance.what_to_verify_manually,
                     suggested_follow_up_question=llm_follow_up_question or committee_guidance.suggested_follow_up_question,
+                    supported_claims=supported_claim_dicts,
+                    weakly_supported_claims=weak_claim_dicts,
                     top_strengths=explanation_result.top_strengths,
                     main_gaps=explanation_result.main_gaps,
                     uncertainties=explanation_result.uncertainties,
+                    authenticity_review_reasons=auth_result.review_reasons,
+                    semantic_rubric_scores={key: to_display_score(value) for key, value in semantic_snapshot.items()},
+                    review_signals={key: round(float(value), 4) for key, value in reviewer_signals.items()},
+                    policy_bands={
+                        "priority_band": policy.priority_band,
+                        "shortlist_band": policy.shortlist_band,
+                        "hidden_potential_band": policy.hidden_potential_band,
+                        "support_needed_band": policy.support_needed_band,
+                        "authenticity_review_band": policy.authenticity_review_band,
+                        "insufficient_evidence_band": policy.insufficient_evidence_band,
+                    },
                     evidence_highlights=evidence_highlights,
                     bundle=bundle,
                 )
@@ -526,7 +543,11 @@ class ScoringPipeline:
                 if llm_narrative is not None and llm_narrative.main_gaps
                 else explanation_result.main_gaps
             ),
-            uncertainties=explanation_result.uncertainties,
+            uncertainties=(
+                llm_narrative.uncertainties
+                if llm_narrative is not None and llm_narrative.uncertainties
+                else explanation_result.uncertainties
+            ),
             authenticity_review_reasons=auth_result.review_reasons,
             ai_detector={
                 "enabled": ai_detector_result.enabled,
@@ -539,8 +560,16 @@ class ScoringPipeline:
                 "model": ai_detector_result.model,
                 "note": ai_detector_result.note,
             },
-            committee_cohorts=committee_guidance.cohorts,
-            why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
+            committee_cohorts=(
+                llm_narrative.committee_cohorts
+                if llm_narrative is not None and llm_narrative.committee_cohorts
+                else committee_guidance.cohorts
+            ),
+            why_candidate_surfaced=(
+                llm_narrative.why_candidate_surfaced
+                if llm_narrative is not None and llm_narrative.why_candidate_surfaced
+                else committee_guidance.why_candidate_surfaced
+            ),
             what_to_verify_manually=(
                 llm_narrative.what_to_verify_manually
                 if llm_narrative is not None and llm_narrative.what_to_verify_manually

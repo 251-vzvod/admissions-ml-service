@@ -323,12 +323,20 @@ def test_llm_committee_writer_can_override_public_narrative_fields_without_contr
                     "This candidate shows credible growth and practical initiative. "
                     "The main remaining question is how consistently that initiative translated into results for other students."
                 ),
+                committee_cohorts=["Trajectory-led candidate", "Community-oriented builder"],
+                why_candidate_surfaced=[
+                    "Shows grounded growth through a concrete tutoring example.",
+                    "Deserves attention because the initiative is supported by adaptation rather than polish alone.",
+                ],
                 top_strengths=[
                     "Shows practical initiative backed by a concrete tutoring example.",
                     "Reflects on what failed and what changed afterward.",
                 ],
                 main_gaps=[
                     "The strongest claims would be easier to trust with one more concrete outcome.",
+                ],
+                uncertainties=[
+                    "The exact scale of impact still needs one concrete measurable outcome.",
                 ],
                 what_to_verify_manually=[
                     "Ask for one measurable result from the tutoring group and the candidate's exact role in it.",
@@ -344,8 +352,11 @@ def test_llm_committee_writer_can_override_public_narrative_fields_without_contr
 
     public = result.model_dump(mode="python")
     assert result.explanation.summary.startswith("This candidate shows credible growth")
+    assert result.committee_cohorts == ["Trajectory-led candidate", "Community-oriented builder"]
+    assert result.why_candidate_surfaced[0].startswith("Shows grounded growth")
     assert result.top_strengths[0].startswith("Shows practical initiative")
     assert result.main_gaps[0].startswith("The strongest claims")
+    assert result.uncertainties[0].startswith("The exact scale of impact")
     assert result.what_to_verify_manually[0].startswith("Ask for one measurable result")
     assert result.suggested_follow_up_question == "What changed in the tutoring group after you adjusted the first format?"
     assert "llm_metadata" not in public
@@ -445,6 +456,91 @@ def test_claim_evidence_extraction_returns_supported_or_weak_claims() -> None:
         assert first.source
         assert first.snippet
         assert 0 <= first.support_score <= 100
+
+
+def test_llm_claims_can_enrich_evidence_highlights_without_contract_change(monkeypatch) -> None:
+    pipeline = ScoringPipeline()
+    payload = {
+        "candidate_id": "cand_llm_claim_evidence",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a student support notebook and updated it after classmates told me what was still confusing."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What changed after your first attempt?",
+                    "answer": "I changed the plan after feedback and tracked which explanations helped more students return.",
+                }
+            ],
+            "interview_text": "I can explain what I changed, why I changed it, and what improved after that.",
+        },
+    }
+
+    old_enabled = CONFIG.llm.enabled
+    try:
+        CONFIG.llm.enabled = True
+        monkeypatch.setattr(
+            "app.services.pipeline.extract_explainability_with_llm",
+            lambda **_: LLMExplainabilityResult(
+                strength_claims=[
+                    {
+                        "claim": "Candidate adapts based on feedback and keeps responsibility after an initial weak result.",
+                        "source": "interview_text",
+                        "snippet": "I can explain what I changed, why I changed it, and what improved after that.",
+                    }
+                ],
+                gap_claims=[],
+                uncertainty_claims=[],
+                evidence_spans=[
+                    {
+                        "dimension": "growth_trajectory",
+                        "source": "interview_text",
+                        "snippet": "I can explain what I changed, why I changed it, and what improved after that.",
+                    }
+                ],
+                rationale="The strongest signal is adaptation grounded in one specific change process.",
+                rubric_assessment={
+                    "leadership_potential": 4,
+                    "growth_trajectory": 4,
+                    "motivation_authenticity": 3,
+                    "evidence_strength": 3,
+                    "hidden_potential_hint": 3,
+                    "authenticity_review_needed": "low",
+                },
+                committee_follow_up_question="What specifically improved after you changed the support notebook format?",
+                llm_metadata={"provider": "openai", "model": "gpt-4o-mini", "latency_ms": 1, "prompt_version": "test"},
+                authenticity_assist=LLMAuthenticityAssist(
+                    available=True,
+                    review_needed="low",
+                    risk_hint=0.18,
+                    grounding_gap_score=0.22,
+                    section_mismatch_score=0.10,
+                    style_shift_score=0.06,
+                    reasons=[],
+                ),
+            ),
+        )
+        monkeypatch.setattr(
+            "app.services.pipeline.generate_committee_narrative_with_llm",
+            lambda **_: LLMCommitteeNarrativeResult(
+                summary="This candidate shows grounded adaptation after feedback.",
+                committee_cohorts=["Trajectory-led candidate"],
+                why_candidate_surfaced=["Shows one concrete example of adapting after feedback."],
+                top_strengths=["Adapts based on feedback and explains what changed."],
+                main_gaps=["The committee should still verify the exact outcome."],
+                uncertainties=["The measurable outcome still needs one concrete example."],
+                what_to_verify_manually=["Ask for the clearest result after the plan changed."],
+                suggested_follow_up_question="What specifically improved after you changed the support notebook format?",
+                llm_metadata={"provider": "openai", "model": "gpt-4o-mini", "latency_ms": 1, "writer_mode": "committee_narrative_v1"},
+            ),
+        )
+
+        result = pipeline.score_candidate(payload)
+    finally:
+        CONFIG.llm.enabled = old_enabled
+
+    assert result.evidence_highlights
+    assert any("adapts based on feedback" in item.claim.lower() for item in result.evidence_highlights)
 
 
 def test_community_oriented_candidate_outscores_self_advancement_only_motivation() -> None:

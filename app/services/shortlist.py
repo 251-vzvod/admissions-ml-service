@@ -285,12 +285,11 @@ def build_shortlist_signals(
     )
     shortlist_priority_raw = weighted_average_normalized(
         [
-            (merit_score / 100.0, 0.38),
-            (trajectory_raw, 0.18),
-            (hidden_potential_raw, 0.18),
+            (merit_score / 100.0, 0.40),
+            (trajectory_raw, 0.20),
+            (hidden_potential_raw, 0.20),
             (evidence_coverage_raw, 0.12),
             (confidence_score / 100.0, 0.08),
-            (1.0 if recommendation == Recommendation.REVIEW_PRIORITY else 0.0, 0.06),
         ]
     )
     shortlist_priority_raw -= max(0.0, (authenticity_risk / 100.0) - 0.70) * 0.22

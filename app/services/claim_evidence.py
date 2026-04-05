@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app.services.preprocessing import NormalizedTextBundle
 from app.services.semantic_rubrics import SemanticEvidence, SemanticRubricResult
@@ -51,6 +52,14 @@ WEAK_DIMENSION_LABELS = {
     "community_orientation": "Community-oriented intent exists, but the concrete contribution to other people is still under-supported.",
 }
 
+SOURCE_RELIABILITY = {
+    "interview_text": 0.88,
+    "video_interview_transcript_text": 0.84,
+    "motivation_questions": 0.76,
+    "motivation_letter_text": 0.66,
+    "video_presentation_transcript_text": 0.62,
+}
+
 
 def _snippet(text: str, max_len: int = 160) -> str:
     cleaned = " ".join((text or "").split())
@@ -95,6 +104,96 @@ def _build_item(
     )
 
 
+def _dedupe_claim_items(items: list[ClaimEvidenceItem]) -> list[ClaimEvidenceItem]:
+    seen: set[tuple[str, str]] = set()
+    deduped: list[ClaimEvidenceItem] = []
+    for item in items:
+        key = (" ".join(item.claim.lower().split()), item.source)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _best_llm_snippet(
+    claim: str,
+    source: str,
+    direct_snippet: str,
+    llm_evidence_spans: list[dict[str, str]] | None,
+) -> str:
+    snippet = _snippet(direct_snippet)
+    if snippet:
+        return snippet
+    for span in llm_evidence_spans or []:
+        if str(span.get("source", "")).strip() != source:
+            continue
+        candidate = _snippet(str(span.get("snippet", "") or span.get("text", "")))
+        if candidate:
+            return candidate
+    return _snippet(claim)
+
+
+def _llm_claim_support_raw(
+    *,
+    source: str,
+    review_signals: dict[str, float],
+    bundle: NormalizedTextBundle,
+    has_direct_snippet: bool,
+) -> float:
+    source_groups = clamp01(float(bundle.stats.get("logical_source_groups_present", 0)) / 3.0)
+    source_reliability = float(SOURCE_RELIABILITY.get(source, 0.58))
+    return weighted_average_normalized(
+        [
+            (source_reliability, 0.34),
+            (float(review_signals.get("evidence_signal", 0.0)), 0.28),
+            (float(review_signals.get("authenticity_signal", 0.0)), 0.18),
+            (source_groups, 0.10),
+            (1.0 if has_direct_snippet else 0.45, 0.10),
+        ],
+        default=0.0,
+    )
+
+
+def _build_llm_claim_items(
+    *,
+    llm_claims: list[dict[str, str]] | None,
+    support_level: str,
+    rationale: str,
+    review_signals: dict[str, float],
+    bundle: NormalizedTextBundle,
+    llm_evidence_spans: list[dict[str, str]] | None,
+    min_support_raw: float,
+) -> list[ClaimEvidenceItem]:
+    items: list[ClaimEvidenceItem] = []
+    for claim_item in llm_claims or []:
+        claim = " ".join(str(claim_item.get("claim", "")).split()).strip()
+        source = str(claim_item.get("source", "motivation_letter_text")).strip() or "motivation_letter_text"
+        raw_snippet = str(claim_item.get("snippet", "")).strip()
+        if not claim:
+            continue
+        snippet = _best_llm_snippet(claim, source, raw_snippet, llm_evidence_spans)
+        support_raw = _llm_claim_support_raw(
+            source=source,
+            review_signals=review_signals,
+            bundle=bundle,
+            has_direct_snippet=bool(raw_snippet),
+        )
+        if support_raw < min_support_raw:
+            continue
+        items.append(
+            ClaimEvidenceItem(
+                claim=claim,
+                support_level=support_level,
+                source=source,
+                snippet=snippet,
+                support_score=to_display_score(support_raw),
+                rationale=rationale,
+            )
+        )
+    return items
+
+
 def build_claim_evidence_map(
     *,
     bundle: NormalizedTextBundle,
@@ -103,6 +202,10 @@ def build_claim_evidence_map(
     hidden_potential_score: int,
     evidence_coverage_score: int,
     trajectory_score: int,
+    llm_strength_claims: list[dict[str, str]] | None = None,
+    llm_gap_claims: list[dict[str, str]] | None = None,
+    llm_uncertainty_claims: list[dict[str, str]] | None = None,
+    llm_evidence_spans: list[dict[str, str]] | None = None,
 ) -> ClaimEvidenceResult:
     supported_claims: list[ClaimEvidenceItem] = []
     weakly_supported_claims: list[ClaimEvidenceItem] = []
@@ -187,7 +290,29 @@ def build_claim_evidence_map(
                 ),
             )
 
+    llm_supported_claims = _build_llm_claim_items(
+        llm_claims=llm_strength_claims,
+        support_level="moderate",
+        rationale="LLM extraction surfaced this strength from candidate text; support score reflects source grounding and current evidence reliability.",
+        review_signals=review_signals,
+        bundle=bundle,
+        llm_evidence_spans=llm_evidence_spans,
+        min_support_raw=0.40,
+    )
+    llm_weak_claims = _build_llm_claim_items(
+        llm_claims=[*(llm_gap_claims or []), *(llm_uncertainty_claims or [])],
+        support_level="weak",
+        rationale="LLM extraction identified this as a review-relevant point that still needs stronger grounding or manual verification.",
+        review_signals=review_signals,
+        bundle=bundle,
+        llm_evidence_spans=llm_evidence_spans,
+        min_support_raw=0.26,
+    )
+
+    supported_claims = _dedupe_claim_items([*llm_supported_claims, *supported_claims])[:3]
+    weakly_supported_claims = _dedupe_claim_items([*llm_weak_claims, *weakly_supported_claims])[:3]
+
     return ClaimEvidenceResult(
-        supported_claims=supported_claims[:3],
-        weakly_supported_claims=weakly_supported_claims[:3],
+        supported_claims=supported_claims,
+        weakly_supported_claims=weakly_supported_claims,
     )

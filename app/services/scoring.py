@@ -143,20 +143,16 @@ def _committee_calibration_signal(
 
     base = weighted_average_normalized(
         [
-            (float(feature_map.get("specificity_score", 0.0)), 0.13),
-            (float(feature_map.get("consistency_score", 0.0)), 0.12),
-            (float(feature_map.get("completeness_score", 0.0)), 0.08),
-            (float(feature_map.get("evidence_richness", 0.0)), 0.12),
-            (float(feature_map.get("evidence_count", 0.0)), 0.09),
-            (practical_action, 0.16),
-            (float(feature_map.get("growth_trajectory", 0.0)), 0.08),
-            (float(feature_map.get("resilience", 0.0)), 0.06),
-            (float(feature_map.get("leadership_impact", 0.0)), 0.05),
-            (float(feature_map.get("community_value_orientation", 0.0)), 0.06),
-            (float(feature_map.get("semantic_authenticity_groundedness", 0.0)), 0.02),
-            (float(feature_map.get("semantic_growth_trajectory", 0.0)), 0.02),
-            (float(feature_map.get("semantic_community_orientation", 0.0)), 0.05),
-            (float(feature_map.get("program_fit", 0.0)), 0.06),
+            (source_support, 0.12),
+            (float(feature_map.get("evidence_richness", 0.0)), 0.16),
+            (float(feature_map.get("evidence_count", 0.0)), 0.10),
+            (practical_action, 0.18),
+            (float(feature_map.get("growth_trajectory", 0.0)), 0.14),
+            (float(feature_map.get("trajectory_reflection_score", 0.0)), 0.08),
+            (float(feature_map.get("resilience", 0.0)), 0.08),
+            (float(feature_map.get("community_value_orientation", 0.0)), 0.08),
+            (float(feature_map.get("semantic_authenticity_groundedness", 0.0)), 0.03),
+            (float(feature_map.get("semantic_growth_trajectory", 0.0)), 0.03),
         ]
     )
 
@@ -193,19 +189,20 @@ def _committee_calibration_signal(
 
 def _potential_items(feature_map: dict[str, float | bool], use_semantic_layer: bool) -> list[tuple[str, float, float]]:
     items = [
-        ("growth_trajectory", float(feature_map.get("growth_trajectory", 0.0)), 0.22),
-        ("resilience", float(feature_map.get("resilience", 0.0)), 0.18),
-        ("initiative", float(feature_map.get("initiative", 0.0)), 0.14),
-        ("leadership_impact", float(feature_map.get("leadership_impact", 0.0)), 0.10),
+        ("growth_trajectory", float(feature_map.get("growth_trajectory", 0.0)), 0.20),
+        ("resilience", float(feature_map.get("resilience", 0.0)), 0.16),
+        ("trajectory_adaptation_score", float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.12),
+        ("trajectory_reflection_score", float(feature_map.get("trajectory_reflection_score", 0.0)), 0.10),
+        ("initiative", float(feature_map.get("initiative", 0.0)), 0.10),
+        ("leadership_impact", float(feature_map.get("leadership_impact", 0.0)), 0.08),
         ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.08),
-        ("program_fit", float(feature_map.get("program_fit", 0.0)), 0.06),
     ]
     if use_semantic_layer:
         items.extend(
             [
-                ("semantic_growth_trajectory", float(feature_map.get("semantic_growth_trajectory", 0.0)), 0.12),
-                ("semantic_leadership_potential", float(feature_map.get("semantic_leadership_potential", 0.0)), 0.08),
-                ("semantic_hidden_potential", float(feature_map.get("semantic_hidden_potential", 0.0)), 0.12),
+                ("semantic_growth_trajectory", float(feature_map.get("semantic_growth_trajectory", 0.0)), 0.08),
+                ("semantic_leadership_potential", float(feature_map.get("semantic_leadership_potential", 0.0)), 0.06),
+                ("semantic_hidden_potential", float(feature_map.get("semantic_hidden_potential", 0.0)), 0.10),
             ]
         )
     return items
@@ -422,7 +419,7 @@ def build_score_trace(
     merit_rows, merit_base_raw = _component_rows(merit_components)
 
     committee_signal, committee_diagnostics = _committee_calibration_signal(f, authenticity_risk_raw)
-    merit_raw = clamp01((merit_base_raw * 0.56) + (committee_signal * 0.44))
+    merit_raw = clamp01((merit_base_raw * 0.72) + (committee_signal * 0.28))
 
     confidence_items = _confidence_items(f, use_semantic_layer, source_support)
     confidence_rows, confidence_base = _component_rows(confidence_items)
@@ -436,14 +433,14 @@ def build_score_trace(
 
     return {
         "formulas": {
-            "potential": "weighted_average([growth_trajectory,resilience,initiative,program_fit,evidence_richness,semantic_growth_trajectory?,semantic_leadership_potential?,semantic_hidden_potential?])",
+            "potential": "weighted_average([growth_trajectory,resilience,trajectory_adaptation_score,trajectory_reflection_score,initiative,leadership_impact,evidence_richness,semantic_growth_trajectory?,semantic_leadership_potential?,semantic_hidden_potential?])",
             "motivation": "weighted_average([motivation_clarity,program_fit,evidence_richness,specificity_score,semantic_motivation_authenticity?])",
             "leadership_agency": "weighted_average([initiative,leadership_impact,evidence_richness,evidence_count,project_mentions_count,semantic_leadership_potential?,semantic_hidden_potential?])",
             "community_values": "weighted_average([community_value_orientation,program_fit,motivation_clarity,leadership_impact,evidence_richness,semantic_community_orientation?])",
             "experience_skills": "weighted_average([specificity_score,evidence_count,evidence_richness,project_mentions_count,trajectory_outcome_score,trajectory_adaptation_score])",
             "trust_completeness": "clamp01(weighted_average(trust_features) - trust_penalty)",
             "committee_calibration_signal": "clamp01(weighted_average(priority_features) + hidden_bonus - calibration_penalties)",
-            "merit": "clamp01(0.56 * merit_base + 0.44 * committee_calibration_signal)",
+            "merit": "clamp01(0.72 * merit_base + 0.28 * committee_calibration_signal)",
             "confidence": "clamp01(weighted_average(confidence_features) - confidence_penalty)",
         },
         "components": {
@@ -513,7 +510,7 @@ def compute_scores(
         [(value, CONFIG.weights.merit_breakdown[key]) for key, value in merit_breakdown_raw.items()]
     )
     committee_signal, _committee_diagnostics = _committee_calibration_signal(f, authenticity_risk_raw)
-    merit_raw = clamp01((merit_base_raw * 0.56) + (committee_signal * 0.44))
+    merit_raw = clamp01((merit_base_raw * 0.72) + (committee_signal * 0.28))
 
     confidence_base = _component_raw(_confidence_items(f, use_semantic_layer, source_support))
     confidence_penalty = sum(

@@ -21,8 +21,11 @@ from app.services.preprocessing import NormalizedTextBundle
 @dataclass(slots=True)
 class LLMCommitteeNarrativeResult:
     summary: str
+    committee_cohorts: list[str]
+    why_candidate_surfaced: list[str]
     top_strengths: list[str]
     main_gaps: list[str]
+    uncertainties: list[str]
     what_to_verify_manually: list[str]
     suggested_follow_up_question: str
     llm_metadata: dict[str, str | int | float]
@@ -34,11 +37,29 @@ def _to_result(
 ) -> LLMCommitteeNarrativeResult:
     return LLMCommitteeNarrativeResult(
         summary=output.summary,
+        committee_cohorts=output.committee_cohorts[:3],
+        why_candidate_surfaced=output.why_candidate_surfaced[:3],
         top_strengths=output.top_strengths[:3],
         main_gaps=output.main_gaps[:3],
+        uncertainties=output.uncertainties[:3],
         what_to_verify_manually=output.what_to_verify_manually[:3],
         suggested_follow_up_question=output.suggested_follow_up_question,
         llm_metadata=llm_metadata,
+    )
+
+
+def _has_substantive_committee_narrative(output: LLMCommitteeNarrativeOutput) -> bool:
+    return any(
+        [
+            bool(output.summary),
+            bool(output.committee_cohorts),
+            bool(output.why_candidate_surfaced),
+            bool(output.top_strengths),
+            bool(output.main_gaps),
+            bool(output.uncertainties),
+            bool(output.what_to_verify_manually),
+            bool(output.suggested_follow_up_question),
+        ]
     )
 
 
@@ -55,9 +76,15 @@ def generate_committee_narrative_with_llm(
     why_candidate_surfaced: list[str],
     what_to_verify_manually: list[str],
     suggested_follow_up_question: str,
+    supported_claims: list[dict[str, str]],
+    weakly_supported_claims: list[dict[str, str]],
     top_strengths: list[str],
     main_gaps: list[str],
     uncertainties: list[str],
+    authenticity_review_reasons: list[str],
+    semantic_rubric_scores: dict[str, int],
+    review_signals: dict[str, float],
+    policy_bands: dict[str, bool],
     evidence_highlights: list[dict[str, str]],
     bundle: NormalizedTextBundle,
 ) -> LLMCommitteeNarrativeResult:
@@ -81,9 +108,15 @@ def generate_committee_narrative_with_llm(
         why_candidate_surfaced=why_candidate_surfaced,
         what_to_verify_manually=what_to_verify_manually,
         suggested_follow_up_question=suggested_follow_up_question,
+        supported_claims=supported_claims,
+        weakly_supported_claims=weakly_supported_claims,
         top_strengths=top_strengths,
         main_gaps=main_gaps,
         uncertainties=uncertainties,
+        authenticity_review_reasons=authenticity_review_reasons,
+        semantic_rubric_scores=semantic_rubric_scores,
+        review_signals=review_signals,
+        policy_bands=policy_bands,
         evidence_highlights=evidence_highlights,
         bundle=bundle,
     )
@@ -104,6 +137,9 @@ def generate_committee_narrative_with_llm(
         parsed = parse_llm_committee_json(response.content)
     except (LLMClientError, LLMParseError) as exc:
         raise RuntimeError("committee_writer_failed") from exc
+
+    if not _has_substantive_committee_narrative(parsed):
+        raise RuntimeError("committee_writer_empty")
 
     return _to_result(
         parsed,
