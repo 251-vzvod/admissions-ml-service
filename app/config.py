@@ -77,12 +77,12 @@ class ScoringWeights:
 
     merit_breakdown: dict[str, float] = field(
         default_factory=lambda: {
-            "potential": 0.22,
-            "motivation": 0.15,
+            "potential": 0.24,
+            "motivation": 0.18,
             "leadership_agency": 0.18,
-            "community_values": 0.18,
-            "experience_skills": 0.15,
-            "trust_completeness": 0.12,
+            "community_values": 0.20,
+            "experience_skills": 0.14,
+            "trust_completeness": 0.06,
         }
     )
     confidence_components: dict[str, float] = field(
