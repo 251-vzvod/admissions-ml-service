@@ -660,3 +660,40 @@ def test_academic_readiness_reduces_support_needed_for_equal_text_signal() -> No
     strong_result = pipeline.score_candidate(strong_academic_payload)
 
     assert strong_result.support_needed_score < base_result.support_needed_score
+
+
+def test_single_source_application_reduces_confidence_more_than_merit() -> None:
+    pipeline = ScoringPipeline()
+
+    core_story = (
+        "I organized a peer study routine for younger students, changed the plan after feedback, "
+        "and tracked what helped them return each week."
+    )
+    single_source_payload = {
+        "candidate_id": "cand_single_source_confidence",
+        "text_inputs": {
+            "motivation_letter_text": core_story,
+            "motivation_questions": [],
+            "interview_text": "",
+        },
+    }
+
+    multi_source_payload = {
+        "candidate_id": "cand_multi_source_confidence",
+        "text_inputs": {
+            "motivation_letter_text": core_story,
+            "motivation_questions": [
+                {
+                    "question": "What changed after feedback?",
+                    "answer": "I changed the study plan after students told me which parts still confused them.",
+                }
+            ],
+            "interview_text": "I can explain what failed first, what I changed, and what improved after that.",
+        },
+    }
+
+    single_result = pipeline.score_candidate(single_source_payload)
+    multi_result = pipeline.score_candidate(multi_source_payload)
+
+    assert single_result.confidence_score < multi_result.confidence_score
+    assert single_result.evidence_coverage_score <= multi_result.evidence_coverage_score
