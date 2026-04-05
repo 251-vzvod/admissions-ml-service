@@ -15,9 +15,12 @@ def test_extraction_prompt_includes_invision_context_and_evidence_first_rules() 
         deterministic_signals={"initiative": 0.7, "growth_trajectory": 0.6},
     )
 
-    assert PROMPT_VERSION == "llm-explainability-v2-evidence-first"
+    assert PROMPT_VERSION == "llm-explainability-v3-invision-agenda"
     assert "inVision U" in prompt
     assert "Work evidence-first." in prompt
     assert "Do not treat deterministic_text_signals as evidence" in prompt
     assert "committee_follow_up_question" in prompt
     assert "institution_type" in prompt
+    assert "trajectory over polish" in prompt
+    assert "leadership means willingness to give more than take" in prompt
+    assert "false positives" in prompt

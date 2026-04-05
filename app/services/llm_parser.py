@@ -358,8 +358,11 @@ class LLMParseError(RuntimeError):
 
 class LLMCommitteeNarrativeOutput(BaseModel):
     summary: str = ""
+    committee_cohorts: list[str] = Field(default_factory=list)
+    why_candidate_surfaced: list[str] = Field(default_factory=list)
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
+    uncertainties: list[str] = Field(default_factory=list)
     what_to_verify_manually: list[str] = Field(default_factory=list)
     suggested_follow_up_question: str = ""
 
@@ -380,6 +383,17 @@ class LLMCommitteeNarrativeOutput(BaseModel):
             normalized["top_strengths"] = normalized.get("strengths") or []
         if "main_gaps" not in normalized:
             normalized["main_gaps"] = normalized.get("gaps") or []
+        if "committee_cohorts" not in normalized:
+            normalized["committee_cohorts"] = normalized.get("cohorts") or normalized.get("review_cohorts") or []
+        if "why_candidate_surfaced" not in normalized:
+            normalized["why_candidate_surfaced"] = (
+                normalized.get("surface_reasons")
+                or normalized.get("why_surfaced")
+                or normalized.get("committee_rationale_points")
+                or []
+            )
+        if "uncertainties" not in normalized:
+            normalized["uncertainties"] = normalized.get("open_questions") or normalized.get("uncertainty_points") or []
         if "what_to_verify_manually" not in normalized:
             normalized["what_to_verify_manually"] = (
                 normalized.get("manual_verification_focus")
@@ -400,7 +414,15 @@ class LLMCommitteeNarrativeOutput(BaseModel):
     def normalize_follow_up_question(cls, value: Any) -> str:
         return _normalize_question_text(value)
 
-    @field_validator("top_strengths", "main_gaps", "what_to_verify_manually", mode="before")
+    @field_validator(
+        "committee_cohorts",
+        "why_candidate_surfaced",
+        "top_strengths",
+        "main_gaps",
+        "uncertainties",
+        "what_to_verify_manually",
+        mode="before",
+    )
     @classmethod
     def normalize_string_list(cls, value: Any) -> list[str]:
         if not isinstance(value, list):

@@ -86,3 +86,75 @@ def test_authenticity_risk_uses_ai_detector_as_weak_signal() -> None:
 
     assert with_detector.authenticity_risk_raw > without_detector.authenticity_risk_raw
     assert "Auxiliary English-only AI detector assigned elevated AI-likeness; treat this only as a manual review signal." in with_detector.review_reasons
+
+
+def test_authenticity_risk_protects_grounded_case_from_overpenalized_polish() -> None:
+    grounded_features = {
+        "genericness_score": 0.52,
+        "evidence_count": 0.74,
+        "consistency_score": 0.81,
+        "polished_but_empty_score": 0.46,
+        "cross_section_mismatch_score": 0.18,
+        "section_claim_overlap_score": 0.72,
+        "section_role_consistency_score": 0.84,
+        "section_time_consistency_score": 0.79,
+        "contradiction_flag": False,
+    }
+    grounded_diagnostics = {"long_but_thin": False, "section_pair_count": 3}
+
+    thin_features = {
+        **grounded_features,
+        "evidence_count": 0.22,
+        "consistency_score": 0.38,
+        "polished_but_empty_score": 0.72,
+        "section_claim_overlap_score": 0.18,
+        "section_role_consistency_score": 0.42,
+        "section_time_consistency_score": 0.40,
+        "cross_section_mismatch_score": 0.63,
+    }
+    thin_diagnostics = {"long_but_thin": True, "section_pair_count": 3}
+
+    grounded = estimate_authenticity_risk(grounded_features, grounded_diagnostics)
+    thin = estimate_authenticity_risk(thin_features, thin_diagnostics)
+
+    assert grounded.authenticity_risk_raw < 0.45
+    assert thin.authenticity_risk_raw > grounded.authenticity_risk_raw
+
+
+def test_authenticity_risk_keeps_ai_penalty_small_when_evidence_is_strong() -> None:
+    strong_grounded_features = {
+        "genericness_score": 0.18,
+        "evidence_count": 0.83,
+        "consistency_score": 0.86,
+        "polished_but_empty_score": 0.14,
+        "cross_section_mismatch_score": 0.08,
+        "section_claim_overlap_score": 0.79,
+        "section_role_consistency_score": 0.88,
+        "section_time_consistency_score": 0.82,
+        "contradiction_flag": False,
+    }
+    diagnostics = {"long_but_thin": False, "section_pair_count": 3}
+
+    without_detector = estimate_authenticity_risk(strong_grounded_features, diagnostics)
+    with_detector = estimate_authenticity_risk(
+        strong_grounded_features,
+        diagnostics,
+        ai_detector_result=type(
+            "DetectorStub",
+            (),
+            {
+                "enabled": True,
+                "applicable": True,
+                "language": "en",
+                "probability_ai_generated": 0.96,
+                "provider": "huggingface-inference",
+                "model": "fakespot-ai/roberta-base-ai-text-detection-v1:fastest",
+                "source_results": [],
+                "note": "ok",
+            },
+        )(),
+    )
+
+    assert with_detector.authenticity_risk_raw <= 0.05
+    assert with_detector.authenticity_risk_raw >= without_detector.authenticity_risk_raw
+    assert "Auxiliary English-only AI detector assigned elevated AI-likeness; treat this only as a manual review signal." in with_detector.review_reasons
