@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+from html import unescape
 import math
 import re
 from typing import Any
@@ -25,6 +26,22 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 TOKEN_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
+SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+CODE_BLOCK_RE = re.compile(r"```.*?```", flags=re.DOTALL)
+INLINE_CODE_RE = re.compile(r"`[^`]*`")
+IMAGE_RE = re.compile(r"!\[.*?\]\(.*?\)")
+LINK_RE = re.compile(r"\[([^\]]+)\]\(.*?\)")
+BOLD_RE = re.compile(r"(\*\*|__)(.*?)\1")
+ITALIC_RE = re.compile(r"(\*|_)(.*?)\1")
+HEADING_RE = re.compile(r"#+\s+")
+BLOCKQUOTE_RE = re.compile(r"^>.*$", flags=re.MULTILINE)
+LIST_MARKER_RE = re.compile(r"^(\s*[-*+]|\d+\.)\s+", flags=re.MULTILINE)
+HORIZONTAL_RULE_RE = re.compile(r"^\s*[-*_]{3,}\s*$", flags=re.MULTILINE)
+TABLE_RE = re.compile(r"\|.*?\|")
+HTML_TAG_RE = re.compile(r"<.*?>")
+
+MAX_WORDS_PER_CHUNK = 220
+MAX_CHUNKS_PER_SOURCE = 4
 
 
 @dataclass(slots=True)
@@ -64,6 +81,24 @@ def _normalize_text(raw: str | None) -> str:
     return " ".join((raw or "").split()).strip()
 
 
+def _clean_detector_text(text: str) -> str:
+    cleaned = text or ""
+    cleaned = CODE_BLOCK_RE.sub(" ", cleaned)
+    cleaned = INLINE_CODE_RE.sub(" ", cleaned)
+    cleaned = IMAGE_RE.sub(" ", cleaned)
+    cleaned = LINK_RE.sub(r"\1", cleaned)
+    cleaned = BOLD_RE.sub(r"\2", cleaned)
+    cleaned = ITALIC_RE.sub(r"\2", cleaned)
+    cleaned = HEADING_RE.sub("", cleaned)
+    cleaned = BLOCKQUOTE_RE.sub(" ", cleaned)
+    cleaned = LIST_MARKER_RE.sub("", cleaned)
+    cleaned = HORIZONTAL_RULE_RE.sub(" ", cleaned)
+    cleaned = TABLE_RE.sub(" ", cleaned)
+    cleaned = HTML_TAG_RE.sub(" ", cleaned)
+    cleaned = unescape(cleaned)
+    return _normalize_text(cleaned)
+
+
 def _runtime_model_name() -> str:
     raw = (CONFIG.ai_detector.model or "").strip()
     if ":" in raw:
@@ -73,6 +108,37 @@ def _runtime_model_name() -> str:
 
 def _token_count(text: str) -> int:
     return len(TOKEN_RE.findall(text))
+
+
+def _split_detector_chunks(text: str) -> list[str]:
+    cleaned = _clean_detector_text(text)
+    if not cleaned:
+        return []
+    if _token_count(cleaned) <= MAX_WORDS_PER_CHUNK:
+        return [cleaned]
+
+    sentences = [item.strip() for item in SENTENCE_RE.split(cleaned) if item.strip()]
+    if not sentences:
+        words = cleaned.split()
+        return [" ".join(words[:MAX_WORDS_PER_CHUNK])]
+
+    chunks: list[str] = []
+    current: list[str] = []
+    current_word_count = 0
+    for sentence in sentences:
+        sentence_words = _token_count(sentence)
+        if current and current_word_count + sentence_words > MAX_WORDS_PER_CHUNK:
+            chunks.append(" ".join(current))
+            if len(chunks) >= MAX_CHUNKS_PER_SOURCE:
+                break
+            current = [sentence]
+            current_word_count = sentence_words
+        else:
+            current.append(sentence)
+            current_word_count += sentence_words
+    if current and len(chunks) < MAX_CHUNKS_PER_SOURCE:
+        chunks.append(" ".join(current))
+    return [chunk for chunk in chunks if _token_count(chunk) > 0]
 
 
 def _detect_language(text: str) -> str | None:
@@ -180,12 +246,28 @@ def _predict_probability(text: str) -> float:
     return _parse_classification_response(response)
 
 
+def _predict_probability_for_unit(unit: _NamedTextUnit) -> float:
+    chunks = _split_detector_chunks(unit.text)
+    if not chunks:
+        raise RuntimeError("empty_detector_text_after_cleaning")
+
+    probabilities: list[tuple[float, float]] = []
+    for chunk in chunks:
+        probability = _predict_probability(chunk)
+        chunk_tokens = _token_count(chunk)
+        length_weight = min(1.25, max(0.75, math.log(max(16, chunk_tokens), 16)))
+        probabilities.append((probability, length_weight))
+
+    return clamp01(weighted_average_normalized(probabilities, default=0.0))
+
+
 def _build_source_result(unit: _NamedTextUnit, *, language: str | None) -> AIDetectorSourceResult:
     cfg = CONFIG.ai_detector
     provider = cfg.provider
     model = cfg.model
 
-    if _token_count(unit.text) < cfg.min_words:
+    cleaned_text = _clean_detector_text(unit.text)
+    if _token_count(cleaned_text) < cfg.min_words:
         return AIDetectorSourceResult(
             source_key=unit.source_key,
             source_label=unit.source_label,
@@ -198,7 +280,7 @@ def _build_source_result(unit: _NamedTextUnit, *, language: str | None) -> AIDet
         )
 
     try:
-        probability = _predict_probability(unit.text)
+        probability = _predict_probability_for_unit(unit)
     except Exception as exc:
         return AIDetectorSourceResult(
             source_key=unit.source_key,
