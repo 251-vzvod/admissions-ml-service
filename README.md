@@ -103,6 +103,11 @@ Optional local installs:
 - heavier semantic mode: `python -m pip install -r requirements-semantic.txt`
 - AI detector experiments: `python -m pip install -r requirements-ai-detector.txt`
 
+Core production dependencies now already include:
+
+- `huggingface_hub`
+- `langdetect`
+
 OpenAPI docs:
 
 - `http://127.0.0.1:8000/docs`
@@ -114,7 +119,7 @@ Base deploy-safe defaults:
 ```env
 ENABLE_LLM=false
 SEMANTIC_BACKEND=tfidf-char-ngram
-AI_DETECTOR_ENABLED=false
+AI_DETECTOR_ENABLED=true
 ENABLE_REVIEW_ROUTING_SIDECAR=false
 ```
 
