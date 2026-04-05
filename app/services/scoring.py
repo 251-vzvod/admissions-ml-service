@@ -81,9 +81,9 @@ def _unsupported_narrative_penalty(feature_map: dict[str, float | bool]) -> floa
     )
     narrative_signal = weighted_average_normalized(
         [
-            (float(feature_map.get("program_fit", 0.0)), 0.48),
-            (float(feature_map.get("motivation_clarity", 0.0)), 0.32),
-            (float(feature_map.get("community_value_orientation", 0.0)), 0.20),
+            (float(feature_map.get("program_fit", 0.0)), 0.30),
+            (float(feature_map.get("motivation_clarity", 0.0)), 0.38),
+            (float(feature_map.get("community_value_orientation", 0.0)), 0.32),
         ]
     )
     gap = max(0.0, narrative_signal - supported_signal)
@@ -128,6 +128,18 @@ def _committee_calibration_signal(
     fairness_discount = _language_fairness_discount(feature_map)
     thin_evidence_gap = _thin_evidence_gap(feature_map)
     unsupported_narrative_penalty = _unsupported_narrative_penalty(feature_map)
+    single_source_substance_credit = 0.0
+    if float(feature_map.get("text_completeness_score", 0.0)) <= 0.34:
+        substance_signal = weighted_average_normalized(
+            [
+                (practical_action, 0.40),
+                (float(feature_map.get("growth_trajectory", 0.0)), 0.26),
+                (float(feature_map.get("trajectory_reflection_score", 0.0)), 0.18),
+                (float(feature_map.get("community_value_orientation", 0.0)), 0.16),
+            ]
+        )
+        if substance_signal >= 0.34 and float(feature_map.get("evidence_count", 0.0)) >= 0.20:
+            single_source_substance_credit = min(0.05, 0.02 + ((substance_signal - 0.34) * 0.18))
     low_evidence_with_low_support_penalty = 0.0
     if bool(feature_map.get("low_evidence_flag", False)) and source_support < 0.35:
         growth_discount = float(feature_map.get("growth_trajectory", 0.0)) * 0.08
@@ -167,10 +179,11 @@ def _committee_calibration_signal(
         + authenticity_penalty
     )
 
-    signal = clamp01(base + hidden_bonus - total_penalty)
+    signal = clamp01(base + hidden_bonus + single_source_substance_credit - total_penalty)
     diagnostics = {
         "source_support_score": round(source_support, 6),
         "hidden_signal_bonus": round(hidden_bonus, 6),
+        "single_source_substance_credit": round(single_source_substance_credit, 6),
         "practical_action_score": round(practical_action, 6),
         "thin_evidence_gap": round(thin_evidence_gap, 6),
         "unsupported_narrative_penalty": round(unsupported_narrative_penalty, 6),
@@ -211,9 +224,9 @@ def _potential_items(feature_map: dict[str, float | bool], use_semantic_layer: b
 def _motivation_items(feature_map: dict[str, float | bool], use_semantic_layer: bool) -> list[tuple[str, float, float]]:
     items = [
         ("motivation_clarity", float(feature_map.get("motivation_clarity", 0.0)), 0.20),
-        ("program_fit", float(feature_map.get("program_fit", 0.0)), 0.12),
-        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.16),
-        ("specificity_score", float(feature_map.get("specificity_score", 0.0)), 0.12),
+        ("program_fit", float(feature_map.get("program_fit", 0.0)), 0.08),
+        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.18),
+        ("specificity_score", float(feature_map.get("specificity_score", 0.0)), 0.14),
         ("consistency_score", float(feature_map.get("consistency_score", 0.0)), 0.10),
     ]
     if use_semantic_layer:
@@ -251,12 +264,12 @@ def _leadership_items(
 
 def _community_items(feature_map: dict[str, float | bool], use_semantic_layer: bool) -> list[tuple[str, float, float]]:
     items = [
-        ("community_value_orientation", float(feature_map.get("community_value_orientation", 0.0)), 0.34),
-        ("program_fit", float(feature_map.get("program_fit", 0.0)), 0.14),
+        ("community_value_orientation", float(feature_map.get("community_value_orientation", 0.0)), 0.40),
+        ("program_fit", float(feature_map.get("program_fit", 0.0)), 0.08),
         ("motivation_clarity", float(feature_map.get("motivation_clarity", 0.0)), 0.10),
-        ("leadership_impact", float(feature_map.get("leadership_impact", 0.0)), 0.10),
+        ("leadership_impact", float(feature_map.get("leadership_impact", 0.0)), 0.12),
         ("initiative", float(feature_map.get("initiative", 0.0)), 0.10),
-        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.12),
+        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.10),
     ]
     if use_semantic_layer:
         items.extend(
@@ -269,13 +282,15 @@ def _community_items(feature_map: dict[str, float | bool], use_semantic_layer: b
 
 def _experience_items(feature_map: dict[str, float | bool]) -> list[tuple[str, float, float]]:
     return [
+        ("certificate_score_normalized", float(feature_map.get("certificate_score_normalized", 0.5)), 0.20),
+        ("english_score_normalized", float(feature_map.get("english_score_normalized", 0.5)), 0.18),
         ("specificity_score", float(feature_map.get("specificity_score", 0.0)), 0.24),
-        ("evidence_count", float(feature_map.get("evidence_count", 0.0)), 0.20),
-        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.18),
-        ("project_mentions_count", float(feature_map.get("project_mentions_count", 0.0)), 0.14),
+        ("evidence_count", float(feature_map.get("evidence_count", 0.0)), 0.14),
+        ("evidence_richness", float(feature_map.get("evidence_richness", 0.0)), 0.10),
+        ("project_mentions_count", float(feature_map.get("project_mentions_count", 0.0)), 0.10),
         ("achievement_mentions_count", float(feature_map.get("achievement_mentions_count", 0.0)), 0.08),
-        ("trajectory_outcome_score", float(feature_map.get("trajectory_outcome_score", 0.0)), 0.08),
-        ("trajectory_adaptation_score", float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.08),
+        ("trajectory_outcome_score", float(feature_map.get("trajectory_outcome_score", 0.0)), 0.10),
+        ("trajectory_adaptation_score", float(feature_map.get("trajectory_adaptation_score", 0.0)), 0.10),
     ]
 
 
@@ -348,9 +363,13 @@ def _confidence_penalty_components(
     source_support: float,
     authenticity_risk_raw: float,
 ) -> dict[str, float]:
+    single_source_penalty = 0.0
+    if float(feature_map.get("text_completeness_score", 0.0)) <= 0.34 and float(feature_map.get("evidence_count", 0.0)) < 0.50:
+        single_source_penalty = 0.05
     return {
         "contradiction_flag": 0.15 if bool(feature_map.get("contradiction_flag", False)) else 0.0,
         "low_evidence_flag": (0.10 if source_support < 0.35 else 0.04) if bool(feature_map.get("low_evidence_flag", False)) else 0.0,
+        "single_source_penalty": single_source_penalty,
         "authenticity_risk_penalty": max(0.0, authenticity_risk_raw - 0.60) * 0.12,
     }
 

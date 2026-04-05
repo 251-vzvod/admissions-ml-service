@@ -81,7 +81,7 @@ class ScoringWeights:
             "motivation": 0.18,
             "leadership_agency": 0.18,
             "community_values": 0.20,
-            "experience_skills": 0.14,
+            "experience_skills": 0.18,
             "trust_completeness": 0.06,
         }
     )

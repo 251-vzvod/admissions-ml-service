@@ -588,3 +588,112 @@ def test_community_oriented_candidate_outscores_self_advancement_only_motivation
 
     assert community_result.merit_score >= self_advancement_result.merit_score
     assert community_result.semantic_rubric_scores["community_orientation"] >= self_advancement_result.semantic_rubric_scores["community_orientation"]
+
+
+def test_academic_readiness_strengthens_merit_for_equal_text_signal() -> None:
+    pipeline = ScoringPipeline()
+
+    base_payload = {
+        "candidate_id": "cand_academic_ready_base",
+        "structured_data": {
+            "education": {
+                "english_proficiency": {"type": "ielts", "score": 6.0},
+                "school_certificate": {"type": "unt", "score": 90},
+            }
+        },
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I organized a small peer study group, improved the format after feedback, and kept helping classmates prepare."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What did you change after feedback?",
+                    "answer": "I changed the study plan after seeing what confused students most.",
+                }
+            ],
+            "interview_text": "I can explain what changed, why I changed it, and what improved.",
+        },
+    }
+
+    strong_academic_payload = deepcopy(base_payload)
+    strong_academic_payload["candidate_id"] = "cand_academic_ready_strong"
+    strong_academic_payload["structured_data"]["education"]["english_proficiency"] = {"type": "ielts", "score": 9.0}
+    strong_academic_payload["structured_data"]["education"]["school_certificate"] = {"type": "unt", "score": 140}
+
+    base_result = pipeline.score_candidate(base_payload)
+    strong_result = pipeline.score_candidate(strong_academic_payload)
+
+    assert strong_result.merit_score > base_result.merit_score
+
+
+def test_academic_readiness_reduces_support_needed_for_equal_text_signal() -> None:
+    pipeline = ScoringPipeline()
+
+    base_payload = {
+        "candidate_id": "cand_support_need_base",
+        "structured_data": {
+            "education": {
+                "english_proficiency": {"type": "ielts", "score": 5.5},
+                "school_certificate": {"type": "unt", "score": 85},
+            }
+        },
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I kept trying after the first version of my study plan failed and I asked for feedback each week."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "What is difficult for you?",
+                    "answer": "I still need support to adapt quickly, but I change my approach when I see a problem.",
+                }
+            ],
+            "interview_text": "I can explain what support helps me perform better at the start.",
+        },
+    }
+
+    strong_academic_payload = deepcopy(base_payload)
+    strong_academic_payload["candidate_id"] = "cand_support_need_strong"
+    strong_academic_payload["structured_data"]["education"]["english_proficiency"] = {"type": "ielts", "score": 8.5}
+    strong_academic_payload["structured_data"]["education"]["school_certificate"] = {"type": "unt", "score": 135}
+
+    base_result = pipeline.score_candidate(base_payload)
+    strong_result = pipeline.score_candidate(strong_academic_payload)
+
+    assert strong_result.support_needed_score < base_result.support_needed_score
+
+
+def test_single_source_application_reduces_confidence_more_than_merit() -> None:
+    pipeline = ScoringPipeline()
+
+    core_story = (
+        "I organized a peer study routine for younger students, changed the plan after feedback, "
+        "and tracked what helped them return each week."
+    )
+    single_source_payload = {
+        "candidate_id": "cand_single_source_confidence",
+        "text_inputs": {
+            "motivation_letter_text": core_story,
+            "motivation_questions": [],
+            "interview_text": "",
+        },
+    }
+
+    multi_source_payload = {
+        "candidate_id": "cand_multi_source_confidence",
+        "text_inputs": {
+            "motivation_letter_text": core_story,
+            "motivation_questions": [
+                {
+                    "question": "What changed after feedback?",
+                    "answer": "I changed the study plan after students told me which parts still confused them.",
+                }
+            ],
+            "interview_text": "I can explain what failed first, what I changed, and what improved after that.",
+        },
+    }
+
+    single_result = pipeline.score_candidate(single_source_payload)
+    multi_result = pipeline.score_candidate(multi_source_payload)
+
+    assert single_result.confidence_score < multi_result.confidence_score
+    assert single_result.evidence_coverage_score <= multi_result.evidence_coverage_score
