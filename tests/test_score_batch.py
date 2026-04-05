@@ -43,6 +43,8 @@ def test_score_batch() -> None:
     assert result["count"] == 2
     assert len(result["results"]) == 2
     assert all("recommendation" in item for item in result["results"])
+    assert all("ai_probability_ai_generated" in item for item in result["results"])
+    assert all("text_ai_probabilities" in item for item in result["results"])
     assert [item["candidate_id"] for item in result["results"]] == ["cand_batch_001", "cand_batch_002"]
 
 

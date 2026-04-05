@@ -16,6 +16,7 @@ from app.services.claim_evidence import build_claim_evidence_map
 from app.services.committee_guidance import build_committee_guidance
 from app.services.eligibility import evaluate_eligibility
 from app.services.explanations import build_explanation
+from app.services.llm_committee_writer import generate_committee_narrative_with_llm
 from app.services.llm_extractor import extract_explainability_with_llm
 from app.services.policy import build_policy_snapshot
 from app.services.preprocessing import preprocess_text_inputs
@@ -42,6 +43,55 @@ class ScoringPipeline:
         else:
             payload = asdict(model)
         return payload if isinstance(payload, dict) else {}
+
+    @staticmethod
+    def _build_text_ai_probabilities(ai_detector_result: Any) -> dict[str, Any] | None:
+        source_results = getattr(ai_detector_result, "source_results", None) or []
+        if not source_results:
+            return None
+
+        payload: dict[str, Any] = {
+            "motivation_letter_text": None,
+            "interview_text": None,
+            "video_interview_transcript_text": None,
+            "video_presentation_transcript_text": None,
+            "motivation_questions": [],
+        }
+        for item in source_results:
+            source_payload = {
+                "source_key": item.source_key,
+                "source_label": item.source_label,
+                "applicable": item.applicable,
+                "probability_ai_generated": round(item.probability_ai_generated, 4)
+                if item.probability_ai_generated is not None
+                else None,
+                "note": item.note,
+                "question": item.question,
+            }
+            if item.source_key.startswith("motivation_questions["):
+                payload["motivation_questions"].append(source_payload)
+            elif item.source_key in payload:
+                payload[item.source_key] = source_payload
+        return payload
+
+    @staticmethod
+    def _llm_narrative_detail_level(
+        *,
+        recommendation: Recommendation | str,
+        confidence_score: int,
+        authenticity_risk: int,
+        review_flags: list[ReviewFlag | str],
+    ) -> str:
+        flag_names = {str(item) for item in review_flags}
+        if recommendation in {Recommendation.MANUAL_REVIEW_REQUIRED, Recommendation.INSUFFICIENT_EVIDENCE}:
+            return "detailed"
+        if authenticity_risk >= 45 or confidence_score < 50:
+            return "detailed"
+        if {"possible_contradiction", "contradiction_risk", "section_mismatch", "cross_section_mismatch"} & flag_names:
+            return "detailed"
+        if recommendation == Recommendation.REVIEW_PRIORITY:
+            return "standard"
+        return "brief"
 
     def _prepare_scoring_context(
         self,
@@ -390,6 +440,43 @@ class ScoringPipeline:
         evidence_highlights = supported_claim_dicts[:2]
         if len(evidence_highlights) < 3:
             evidence_highlights.extend(weak_claim_dicts[: 3 - len(evidence_highlights)])
+        text_ai_probabilities = self._build_text_ai_probabilities(ai_detector_result)
+
+        llm_narrative = None
+        if bool(enable_llm_explainability) and llm_metadata and "fallback_reason" not in llm_metadata:
+            try:
+                llm_narrative = generate_committee_narrative_with_llm(
+                    detail_level=self._llm_narrative_detail_level(
+                        recommendation=recommendation_result.recommendation,
+                        confidence_score=scoring_result.confidence_score,
+                        authenticity_risk=scoring_result.authenticity_risk,
+                        review_flags=recommendation_flags,
+                    ),
+                    candidate_id=str(projected.get("candidate_id", "")),
+                    recommendation=str(recommendation_result.recommendation),
+                    merit_score=scoring_result.merit_score,
+                    confidence_score=scoring_result.confidence_score,
+                    authenticity_risk=scoring_result.authenticity_risk,
+                    review_flags=[str(item) for item in recommendation_flags],
+                    committee_cohorts=committee_guidance.cohorts,
+                    why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
+                    what_to_verify_manually=committee_guidance.what_to_verify_manually,
+                    suggested_follow_up_question=llm_follow_up_question or committee_guidance.suggested_follow_up_question,
+                    top_strengths=explanation_result.top_strengths,
+                    main_gaps=explanation_result.main_gaps,
+                    uncertainties=explanation_result.uncertainties,
+                    evidence_highlights=evidence_highlights,
+                    bundle=bundle,
+                )
+                llm_metadata = {
+                    **llm_metadata,
+                    "narrative_provider": llm_narrative.llm_metadata.get("provider", ""),
+                    "narrative_model": llm_narrative.llm_metadata.get("model", ""),
+                    "narrative_latency_ms": llm_narrative.llm_metadata.get("latency_ms", 0),
+                    "narrative_writer_mode": llm_narrative.llm_metadata.get("writer_mode", ""),
+                }
+            except RuntimeError as exc:
+                llm_metadata = {**llm_metadata, "narrative_fallback_reason": str(exc)}
 
         base_response["llm_metadata"] = llm_metadata
         review_routing_shadow = score_review_routing_shadow(
@@ -411,6 +498,9 @@ class ScoringPipeline:
             merit_score=scoring_result.merit_score,
             confidence_score=scoring_result.confidence_score,
             authenticity_risk=scoring_result.authenticity_risk,
+            ai_probability_ai_generated=round(ai_detector_result.probability_ai_generated, 4)
+            if ai_detector_result.probability_ai_generated is not None
+            else None,
             recommendation=recommendation_result.recommendation,
             review_flags=recommendation_flags,
             llm_rubric_assessment=llm_rubric_assessment,
@@ -426,8 +516,16 @@ class ScoringPipeline:
             evidence_highlights=evidence_highlights,
             supported_claims=supported_claim_dicts,
             weakly_supported_claims=weak_claim_dicts,
-            top_strengths=explanation_result.top_strengths,
-            main_gaps=explanation_result.main_gaps,
+            top_strengths=(
+                llm_narrative.top_strengths
+                if llm_narrative is not None and llm_narrative.top_strengths
+                else explanation_result.top_strengths
+            ),
+            main_gaps=(
+                llm_narrative.main_gaps
+                if llm_narrative is not None and llm_narrative.main_gaps
+                else explanation_result.main_gaps
+            ),
             uncertainties=explanation_result.uncertainties,
             authenticity_review_reasons=auth_result.review_reasons,
             ai_detector={
@@ -443,10 +541,26 @@ class ScoringPipeline:
             },
             committee_cohorts=committee_guidance.cohorts,
             why_candidate_surfaced=committee_guidance.why_candidate_surfaced,
-            what_to_verify_manually=committee_guidance.what_to_verify_manually,
-            suggested_follow_up_question=llm_follow_up_question or committee_guidance.suggested_follow_up_question,
+            what_to_verify_manually=(
+                llm_narrative.what_to_verify_manually
+                if llm_narrative is not None and llm_narrative.what_to_verify_manually
+                else committee_guidance.what_to_verify_manually
+            ),
+            suggested_follow_up_question=(
+                llm_narrative.suggested_follow_up_question
+                if llm_narrative is not None and llm_narrative.suggested_follow_up_question
+                else llm_follow_up_question or committee_guidance.suggested_follow_up_question
+            ),
+            text_ai_probabilities=text_ai_probabilities,
             evidence_spans=explanation_result.evidence_spans,
-            explanation=explanation_result.explanation,
+            explanation=(
+                {
+                    "summary": llm_narrative.summary,
+                    "scoring_notes": explanation_result.explanation.scoring_notes,
+                }
+                if llm_narrative is not None and llm_narrative.summary
+                else explanation_result.explanation
+            ),
             review_routing_shadow=review_routing_shadow.as_public_debug_dict(),
         )
 

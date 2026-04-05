@@ -1,8 +1,10 @@
 from copy import deepcopy
+from types import SimpleNamespace
 
 from app.config import CONFIG
 from app.schemas.decision import Recommendation
 from app.services.committee_guidance import build_committee_guidance
+from app.services.llm_committee_writer import LLMCommitteeNarrativeResult
 from app.services.llm_extractor import LLMAuthenticityAssist, LLMExplainabilityResult
 from app.services.policy import build_policy_snapshot
 from app.services.pipeline import ScoringPipeline
@@ -262,6 +264,92 @@ def test_public_summary_uses_plain_language_not_pipeline_jargon() -> None:
     assert "deterministic feature extraction" not in summary
     assert "deterministic internal scoring" not in summary
     assert "this looks like" in summary or "this candidate" in summary or "there is not enough" in summary
+
+
+def test_llm_committee_writer_can_override_public_narrative_fields_without_contract_change(monkeypatch) -> None:
+    pipeline = ScoringPipeline()
+    payload = {
+        "candidate_id": "cand_committee_writer_override",
+        "text_inputs": {
+            "motivation_letter_text": (
+                "I started a peer tutoring group, changed the format after attendance dropped, and kept helping younger students."
+            ),
+            "motivation_questions": [
+                {
+                    "question": "Why this university?",
+                    "answer": "I want a place where I can keep building useful projects with other students.",
+                }
+            ],
+            "interview_text": "I can explain what failed first and what changed after that.",
+        },
+    }
+
+    old_enabled = CONFIG.llm.enabled
+    try:
+        CONFIG.llm.enabled = True
+        monkeypatch.setattr(
+            "app.services.pipeline.extract_explainability_with_llm",
+            lambda **_: LLMExplainabilityResult(
+                strength_claims=[],
+                gap_claims=[],
+                uncertainty_claims=[],
+                evidence_spans=[],
+                rationale="Evidence is grounded but still needs one verification step.",
+                rubric_assessment={
+                    "leadership_potential": 4,
+                    "growth_trajectory": 4,
+                    "motivation_authenticity": 4,
+                    "evidence_strength": 3,
+                    "hidden_potential_hint": 3,
+                    "authenticity_review_needed": "low",
+                },
+                committee_follow_up_question="What changed after the first tutoring format failed?",
+                llm_metadata={"provider": "openai", "model": "gpt-4o-mini", "latency_ms": 1, "prompt_version": "test"},
+                authenticity_assist=LLMAuthenticityAssist(
+                    available=True,
+                    review_needed="low",
+                    risk_hint=0.14,
+                    grounding_gap_score=0.18,
+                    section_mismatch_score=0.08,
+                    style_shift_score=0.05,
+                    reasons=[],
+                ),
+            ),
+        )
+        monkeypatch.setattr(
+            "app.services.pipeline.generate_committee_narrative_with_llm",
+            lambda **_: LLMCommitteeNarrativeResult(
+                summary=(
+                    "This candidate shows credible growth and practical initiative. "
+                    "The main remaining question is how consistently that initiative translated into results for other students."
+                ),
+                top_strengths=[
+                    "Shows practical initiative backed by a concrete tutoring example.",
+                    "Reflects on what failed and what changed afterward.",
+                ],
+                main_gaps=[
+                    "The strongest claims would be easier to trust with one more concrete outcome.",
+                ],
+                what_to_verify_manually=[
+                    "Ask for one measurable result from the tutoring group and the candidate's exact role in it.",
+                ],
+                suggested_follow_up_question="What changed in the tutoring group after you adjusted the first format?",
+                llm_metadata={"provider": "openai", "model": "gpt-4o-mini", "latency_ms": 1, "writer_mode": "committee_narrative_v1"},
+            ),
+        )
+
+        result = pipeline.score_candidate(payload)
+    finally:
+        CONFIG.llm.enabled = old_enabled
+
+    public = result.model_dump(mode="python")
+    assert result.explanation.summary.startswith("This candidate shows credible growth")
+    assert result.top_strengths[0].startswith("Shows practical initiative")
+    assert result.main_gaps[0].startswith("The strongest claims")
+    assert result.what_to_verify_manually[0].startswith("Ask for one measurable result")
+    assert result.suggested_follow_up_question == "What changed in the tutoring group after you adjusted the first format?"
+    assert "llm_metadata" not in public
+    assert "supported_claims" not in public
 
 
 def test_top_strengths_and_main_gaps_use_ui_friendly_evidence_format() -> None:

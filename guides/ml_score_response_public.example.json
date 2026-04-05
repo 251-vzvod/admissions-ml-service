@@ -1,12 +1,13 @@
 {
   "candidate_id": "form_123",
   "scoring_run_id": "run_abc123",
-  "scoring_version": "v1.4.0",
+  "scoring_version": "v1.5.0",
   "eligibility_status": "conditionally_eligible",
   "eligibility_reasons": [],
   "merit_score": 72,
   "confidence_score": 61,
   "authenticity_risk": 37,
+  "ai_probability_ai_generated": 0.2841,
   "recommendation": "review_priority",
   "review_flags": [
     "low_confidence"
@@ -26,6 +27,50 @@
     "Ask for one concrete example with measurable outcome."
   ],
   "suggested_follow_up_question": "What changed after your first attempt did not work?",
+  "text_ai_probabilities": {
+    "motivation_letter_text": {
+      "source_key": "motivation_letter_text",
+      "source_label": "Motivational letter",
+      "applicable": true,
+      "probability_ai_generated": 0.2413,
+      "note": "ok",
+      "question": null
+    },
+    "interview_text": {
+      "source_key": "interview_text",
+      "source_label": "Interview text",
+      "applicable": true,
+      "probability_ai_generated": 0.1984,
+      "note": "ok",
+      "question": null
+    },
+    "video_interview_transcript_text": {
+      "source_key": "video_interview_transcript_text",
+      "source_label": "Interview transcript",
+      "applicable": true,
+      "probability_ai_generated": 0.3322,
+      "note": "ok",
+      "question": null
+    },
+    "video_presentation_transcript_text": {
+      "source_key": "video_presentation_transcript_text",
+      "source_label": "Video presentation transcript",
+      "applicable": false,
+      "probability_ai_generated": null,
+      "note": "not_enough_text",
+      "question": null
+    },
+    "motivation_questions": [
+      {
+        "source_key": "motivation_questions[0].answer",
+        "source_label": "Motivational question answer #1",
+        "applicable": true,
+        "probability_ai_generated": 0.3675,
+        "note": "ok",
+        "question": "Why this program?"
+      }
+    ]
+  },
   "evidence_highlights": [
     {
       "claim": "Helped classmates prepare for exams",
@@ -43,7 +88,7 @@
     "Specificity is limited; more concrete examples and outcomes would improve reliability."
   ],
   "explanation": {
-    "summary": "This profile was scored using deterministic feature extraction with deterministic internal scoring.",
+    "summary": "This candidate shows credible growth and practical initiative. The main remaining question is whether the strongest claims can be verified through one concrete example with a measurable result.",
     "scoring_notes": {
       "potential": "Potential axis reflects growth, resilience, initiative, and fit signals.",
       "motivation": "Motivation axis combines clarity, fit, and grounded evidence.",

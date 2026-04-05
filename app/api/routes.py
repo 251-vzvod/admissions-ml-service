@@ -55,6 +55,7 @@ def _build_ranked_candidate_summaries(
             merit_score=item.merit_score,
             confidence_score=item.confidence_score,
             authenticity_risk=item.authenticity_risk,
+            ai_probability_ai_generated=item.ai_probability_ai_generated,
             shortlist_priority_score=item.shortlist_priority_score,
             hidden_potential_score=item.hidden_potential_score,
             support_needed_score=item.support_needed_score,

@@ -1,12 +1,21 @@
-"""Optional auxiliary detector for AI-generated English text."""
+"""Optional auxiliary detector for AI-generated English text via Hugging Face Inference API."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+import math
+import re
+from typing import Any
 
 from app.config import CONFIG
 from app.services.preprocessing import NormalizedTextBundle
+from app.utils.math_utils import clamp01, weighted_average_normalized
+
+try:  # pragma: no cover - optional dependency
+    from huggingface_hub import InferenceClient
+except Exception:  # pragma: no cover - optional dependency
+    InferenceClient = None
 
 try:  # pragma: no cover - optional dependency
     from langdetect import LangDetectException, detect
@@ -14,17 +23,20 @@ except Exception:  # pragma: no cover - optional dependency
     LangDetectException = Exception
     detect = None
 
-try:  # pragma: no cover - optional dependency
-    from transformers import AutoConfig, AutoModel, AutoTokenizer, PreTrainedModel
-    import torch
-    import torch.nn as nn
-except Exception:  # pragma: no cover - optional dependency
-    AutoConfig = None
-    AutoModel = None
-    AutoTokenizer = None
-    PreTrainedModel = object
-    torch = None
-    nn = None
+
+TOKEN_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
+
+
+@dataclass(slots=True)
+class AIDetectorSourceResult:
+    source_key: str
+    source_label: str
+    applicable: bool
+    probability_ai_generated: float | None
+    provider: str
+    model: str
+    note: str | None = None
+    question: str | None = None
 
 
 @dataclass(slots=True)
@@ -35,38 +47,36 @@ class AIDetectorResult:
     probability_ai_generated: float | None
     provider: str
     model: str
+    source_results: list[AIDetectorSourceResult]
     note: str | None = None
 
 
-class DesklibAIDetectionModel(PreTrainedModel):
-    """Local wrapper matching the model card architecture."""
-
-    config_class = AutoConfig
-
-    def __init__(self, config):
-        super().__init__(config)
-        if AutoModel is None or nn is None:  # pragma: no cover - optional dependency
-            raise RuntimeError("transformers_unavailable")
-        self.model = AutoModel.from_config(config)
-        self.classifier = nn.Linear(config.hidden_size, 1)
-        self.init_weights()
-
-    def forward(self, input_ids, attention_mask=None, labels=None):
-        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-        last_hidden_state = outputs[0]
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
-        sum_embeddings = torch.sum(last_hidden_state * input_mask_expanded, dim=1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(dim=1), min=1e-9)
-        pooled_output = sum_embeddings / sum_mask
-        logits = self.classifier(pooled_output)
-        return {"logits": logits}
+@dataclass(slots=True)
+class _NamedTextUnit:
+    source_key: str
+    source_label: str
+    text: str
+    weight: float
+    question: str | None = None
 
 
-def _detect_language(bundle: NormalizedTextBundle) -> str | None:
-    text = bundle.full_text_original.strip()
-    if len(text) < 40:
-        return None
-    if detect is None:  # pragma: no cover - optional dependency
+def _normalize_text(raw: str | None) -> str:
+    return " ".join((raw or "").split()).strip()
+
+
+def _runtime_model_name() -> str:
+    raw = (CONFIG.ai_detector.model or "").strip()
+    if ":" in raw:
+        return raw.split(":", 1)[0].strip()
+    return raw
+
+
+def _token_count(text: str) -> int:
+    return len(TOKEN_RE.findall(text))
+
+
+def _detect_language(text: str) -> str | None:
+    if len(text) < 40 or detect is None:  # pragma: no cover - optional dependency
         return None
     try:
         return detect(text)
@@ -74,89 +84,214 @@ def _detect_language(bundle: NormalizedTextBundle) -> str | None:
         return None
 
 
+def _iter_named_text_units(bundle: NormalizedTextBundle) -> list[_NamedTextUnit]:
+    units: list[_NamedTextUnit] = []
+
+    def add(source_key: str, source_label: str, text: str, weight: float, *, question: str | None = None) -> None:
+        cleaned = _normalize_text(text)
+        if cleaned:
+            units.append(
+                _NamedTextUnit(
+                    source_key=source_key,
+                    source_label=source_label,
+                    text=cleaned,
+                    weight=weight,
+                    question=_normalize_text(question) or None,
+                )
+            )
+
+    add("motivation_letter_text", "Motivational letter", bundle.motivation_letter_original, 0.30)
+    add("interview_text", "Interview text", bundle.interview_original, 0.26)
+    add("video_interview_transcript_text", "Interview transcript", bundle.video_interview_transcript_original, 0.22)
+    add(
+        "video_presentation_transcript_text",
+        "Video presentation transcript",
+        bundle.video_presentation_transcript_original,
+        0.18,
+    )
+    for idx, answer in enumerate(bundle.motivation_answers_original):
+        add(
+            f"motivation_questions[{idx}].answer",
+            f"Motivational question answer #{idx + 1}",
+            answer,
+            0.16,
+            question=bundle.qa_questions_original[idx] if idx < len(bundle.qa_questions_original) else None,
+        )
+    return units
+
+
 @lru_cache(maxsize=1)
-def _load_detector_components():
-    if AutoTokenizer is None or AutoConfig is None or torch is None:  # pragma: no cover - optional dependency
-        raise RuntimeError("detector_dependencies_unavailable")
-    model_name = CONFIG.ai_detector.model
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = DesklibAIDetectionModel.from_pretrained(model_name)
-    model.eval()
-    return tokenizer, model
+def _build_hf_client() -> Any:
+    if InferenceClient is None:
+        raise RuntimeError("huggingface_hub_unavailable")
+    if not CONFIG.ai_detector.api_key:
+        raise RuntimeError("missing_hf_token")
+    return InferenceClient(provider="auto", api_key=CONFIG.ai_detector.api_key)
+
+
+def _score_item(raw: Any) -> tuple[bool, float | None]:
+    label = str(getattr(raw, "label", "") or (raw.get("label") if isinstance(raw, dict) else "")).strip().lower()
+    score_raw = getattr(raw, "score", None)
+    if score_raw is None and isinstance(raw, dict):
+        score_raw = raw.get("score")
+    try:
+        score = float(score_raw)
+    except (TypeError, ValueError):
+        score = None
+
+    positive_markers = ("ai", "generated", "fake", "machine", "bot")
+    negative_markers = ("human", "real")
+    is_positive = any(marker in label for marker in positive_markers) and not any(marker in label for marker in negative_markers)
+    return is_positive, score
+
+
+def _parse_classification_response(response: Any) -> float:
+    if isinstance(response, list):
+        positives: list[float] = []
+        negatives: list[float] = []
+        for item in response:
+            is_positive, score = _score_item(item)
+            if score is None:
+                continue
+            if is_positive:
+                positives.append(score)
+            else:
+                negatives.append(score)
+        if positives:
+            return clamp01(max(positives))
+        if negatives:
+            return clamp01(1.0 - max(negatives))
+    if isinstance(response, dict):
+        if "score" in response:
+            is_positive, score = _score_item(response)
+            if score is not None:
+                return clamp01(score if is_positive else 1.0 - score)
+        for key in ("label", "generated", "ai"):
+            if key in response:
+                is_positive, score = _score_item(response)
+                if score is not None:
+                    return clamp01(score if is_positive else 1.0 - score)
+    raise RuntimeError("invalid_hf_detector_response")
 
 
 def _predict_probability(text: str) -> float:
-    tokenizer, model = _load_detector_components()
-    encoded = tokenizer(
-        text,
-        padding="max_length",
-        truncation=True,
-        max_length=768,
-        return_tensors="pt",
+    client = _build_hf_client()
+    response = client.text_classification(text, model=_runtime_model_name())
+    return _parse_classification_response(response)
+
+
+def _build_source_result(unit: _NamedTextUnit, *, language: str | None) -> AIDetectorSourceResult:
+    cfg = CONFIG.ai_detector
+    provider = cfg.provider
+    model = cfg.model
+
+    if _token_count(unit.text) < cfg.min_words:
+        return AIDetectorSourceResult(
+            source_key=unit.source_key,
+            source_label=unit.source_label,
+            applicable=False,
+            probability_ai_generated=None,
+            provider=provider,
+            model=model,
+            note="not_enough_text",
+            question=unit.question,
+        )
+
+    if cfg.english_only and language != "en":
+        return AIDetectorSourceResult(
+            source_key=unit.source_key,
+            source_label=unit.source_label,
+            applicable=False,
+            probability_ai_generated=None,
+            provider=provider,
+            model=model,
+            note="english_only_detector_not_applicable",
+            question=unit.question,
+        )
+
+    try:
+        probability = _predict_probability(unit.text)
+    except Exception as exc:
+        return AIDetectorSourceResult(
+            source_key=unit.source_key,
+            source_label=unit.source_label,
+            applicable=False,
+            probability_ai_generated=None,
+            provider=provider,
+            model=model,
+            note=f"detector_unavailable:{type(exc).__name__}",
+            question=unit.question,
+        )
+
+    return AIDetectorSourceResult(
+        source_key=unit.source_key,
+        source_label=unit.source_label,
+        applicable=True,
+        probability_ai_generated=probability,
+        provider=provider,
+        model=model,
+        note="ok",
+        question=unit.question,
     )
-    with torch.no_grad():
-        outputs = model(input_ids=encoded["input_ids"], attention_mask=encoded["attention_mask"])
-        logits = outputs["logits"]
-        probability = torch.sigmoid(logits).item()
-    return float(probability)
+
+
+def _aggregate_probability(units: list[_NamedTextUnit], source_results: list[AIDetectorSourceResult]) -> float | None:
+    weighted_items: list[tuple[float, float]] = []
+    for unit, result in zip(units, source_results, strict=False):
+        if not result.applicable or result.probability_ai_generated is None:
+            continue
+        length_boost = min(1.25, max(0.7, math.log(max(16, _token_count(unit.text)), 16)))
+        weighted_items.append((result.probability_ai_generated, unit.weight * length_boost))
+    if not weighted_items:
+        return None
+    return clamp01(weighted_average_normalized(weighted_items, default=0.0))
 
 
 def detect_ai_generated_text(bundle: NormalizedTextBundle) -> AIDetectorResult:
-    """Return optional auxiliary AI-generation signal for English text only."""
+    """Return aggregate and source-level AI-generation probabilities for English text inputs."""
     cfg = CONFIG.ai_detector
+    provider = cfg.provider
+    model = cfg.model
+    units = _iter_named_text_units(bundle)
+    full_text = _normalize_text(bundle.full_text_original)
+    language = _detect_language(full_text)
+
     if not cfg.enabled:
         return AIDetectorResult(
             enabled=False,
             applicable=False,
-            language=None,
+            language=language,
             probability_ai_generated=None,
-            provider="huggingface-local",
-            model=cfg.model,
+            provider=provider,
+            model=model,
+            source_results=[],
             note="disabled",
         )
 
-    if int(bundle.stats.get("word_count", 0)) < cfg.min_words:
-        return AIDetectorResult(
-            enabled=True,
-            applicable=False,
-            language=None,
-            probability_ai_generated=None,
-            provider="huggingface-local",
-            model=cfg.model,
-            note="not_enough_text",
-        )
-
-    language = _detect_language(bundle)
-    if cfg.english_only and language != "en":
+    if not units:
         return AIDetectorResult(
             enabled=True,
             applicable=False,
             language=language,
             probability_ai_generated=None,
-            provider="huggingface-local",
-            model=cfg.model,
-            note="english_only_detector_not_applicable",
+            provider=provider,
+            model=model,
+            source_results=[],
+            note="no_text_inputs",
         )
 
-    try:
-        probability = _predict_probability(bundle.full_text_original)
-    except Exception as exc:
-        return AIDetectorResult(
-            enabled=True,
-            applicable=False,
-            language=language,
-            probability_ai_generated=None,
-            provider="huggingface-local",
-            model=cfg.model,
-            note=f"detector_unavailable:{type(exc).__name__}",
-        )
+    source_results = [_build_source_result(unit, language=language) for unit in units]
+    aggregate_probability = _aggregate_probability(units, source_results)
+    applicable = any(item.applicable for item in source_results)
 
+    note = "ok" if applicable and aggregate_probability is not None else "no_applicable_text_sources"
     return AIDetectorResult(
         enabled=True,
-        applicable=True,
+        applicable=applicable,
         language=language,
-        probability_ai_generated=probability,
-        provider="huggingface-local",
-        model=cfg.model,
-        note="ok",
+        probability_ai_generated=aggregate_probability,
+        provider=provider,
+        model=model,
+        source_results=source_results,
+        note=note,
     )

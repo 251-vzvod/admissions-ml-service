@@ -80,6 +80,7 @@ def test_rank_endpoint_response_contract_and_ranked_ids_integrity() -> None:
     assert len(ranked_candidates) == len(input_ids)
     assert [item["candidate_id"] for item in ranked_candidates] == ranked_ids
     assert [item["rank_position"] for item in ranked_candidates] == [1, 2, 3]
+    assert all("ai_probability_ai_generated" in item for item in ranked_candidates)
 
 
 def test_rank_endpoint_prefers_growth_rich_candidate_over_polished_thin_candidate() -> None:

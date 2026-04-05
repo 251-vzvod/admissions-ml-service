@@ -48,6 +48,23 @@ def _normalize_text(raw: Any) -> str:
     return " ".join(str(raw).split()).strip()
 
 
+def _normalize_question_text(raw: Any) -> str:
+    if isinstance(raw, list):
+        for item in raw:
+            text = _normalize_question_text(item)
+            if text:
+                return text
+        return ""
+    if isinstance(raw, dict):
+        for key in ("question", "text", "value", "content", "message", "summary"):
+            if key in raw:
+                text = _normalize_question_text(raw.get(key))
+                if text:
+                    return text
+        return ""
+    return _normalize_text(raw)
+
+
 def _normalize_bool(raw: Any) -> bool:
     if isinstance(raw, bool):
         return raw
@@ -260,7 +277,7 @@ class LLMExplainabilityOutput(BaseModel):
     @field_validator("committee_follow_up_question", mode="before")
     @classmethod
     def normalize_follow_up(cls, value: Any) -> str:
-        return _normalize_text(value)
+        return _normalize_question_text(value)
 
     @field_validator("rubric", mode="before")
     @classmethod
@@ -339,6 +356,63 @@ class LLMParseError(RuntimeError):
     """Raised when LLM output cannot be parsed into schema."""
 
 
+class LLMCommitteeNarrativeOutput(BaseModel):
+    summary: str = ""
+    top_strengths: list[str] = Field(default_factory=list)
+    main_gaps: list[str] = Field(default_factory=list)
+    what_to_verify_manually: list[str] = Field(default_factory=list)
+    suggested_follow_up_question: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_root_keys(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        if "summary" not in normalized:
+            normalized["summary"] = (
+                normalized.get("brief_summary")
+                or normalized.get("detailed_summary")
+                or normalized.get("committee_rationale")
+                or ""
+            )
+        if "top_strengths" not in normalized:
+            normalized["top_strengths"] = normalized.get("strengths") or []
+        if "main_gaps" not in normalized:
+            normalized["main_gaps"] = normalized.get("gaps") or []
+        if "what_to_verify_manually" not in normalized:
+            normalized["what_to_verify_manually"] = (
+                normalized.get("manual_verification_focus")
+                or normalized.get("verify_manually")
+                or []
+            )
+        if "suggested_follow_up_question" not in normalized:
+            normalized["suggested_follow_up_question"] = normalized.get("follow_up_question") or ""
+        return normalized
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def normalize_summary(cls, value: Any) -> str:
+        return _normalize_text(value)
+
+    @field_validator("suggested_follow_up_question", mode="before")
+    @classmethod
+    def normalize_follow_up_question(cls, value: Any) -> str:
+        return _normalize_question_text(value)
+
+    @field_validator("top_strengths", "main_gaps", "what_to_verify_manually", mode="before")
+    @classmethod
+    def normalize_string_list(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        normalized: list[str] = []
+        for item in value:
+            text = _normalize_text(item)
+            if text:
+                normalized.append(text)
+        return normalized[:3]
+
+
 def _extract_first_json_object(raw_text: str) -> dict[str, Any] | None:
     """Extract first balanced JSON object from wrapper text responses."""
     start = raw_text.find("{")
@@ -396,3 +470,19 @@ def parse_llm_extraction_json(raw_text: str) -> LLMExplainabilityOutput:
         return LLMExplainabilityOutput.model_validate(payload)
     except ValidationError as exc:
         raise LLMParseError("invalid_explainability_schema") from exc
+
+
+def parse_llm_committee_json(raw_text: str) -> LLMCommitteeNarrativeOutput:
+    """Parse and validate LLM committee narrative JSON."""
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        extracted = _extract_first_json_object(raw_text)
+        if extracted is None:
+            raise LLMParseError("invalid_json_response") from exc
+        payload = extracted
+
+    try:
+        return LLMCommitteeNarrativeOutput.model_validate(payload)
+    except ValidationError as exc:
+        raise LLMParseError("invalid_committee_narrative_schema") from exc

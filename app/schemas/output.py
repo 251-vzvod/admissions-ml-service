@@ -46,6 +46,23 @@ class AIDetectorPayload(BaseModel):
     note: str | None = None
 
 
+class AIDetectorTextSourcePayload(BaseModel):
+    source_key: str
+    source_label: str
+    applicable: bool
+    probability_ai_generated: float | None = None
+    note: str | None = None
+    question: str | None = None
+
+
+class CandidateTextAIProbabilitiesPayload(BaseModel):
+    motivation_letter_text: AIDetectorTextSourcePayload | None = None
+    interview_text: AIDetectorTextSourcePayload | None = None
+    video_interview_transcript_text: AIDetectorTextSourcePayload | None = None
+    video_presentation_transcript_text: AIDetectorTextSourcePayload | None = None
+    motivation_questions: list[AIDetectorTextSourcePayload] = Field(default_factory=list)
+
+
 class LLMRubricAssessmentPayload(BaseModel):
     leadership_potential: int | None = None
     growth_trajectory: int | None = None
@@ -79,6 +96,7 @@ class ScoreResponse(BaseModel):
     merit_score: int
     confidence_score: int
     authenticity_risk: int
+    ai_probability_ai_generated: float | None = None
 
     recommendation: Recommendation
     review_flags: list[ReviewFlag] = Field(default_factory=list)
@@ -93,6 +111,7 @@ class ScoreResponse(BaseModel):
     why_candidate_surfaced: list[str] = Field(default_factory=list)
     what_to_verify_manually: list[str] = Field(default_factory=list)
     suggested_follow_up_question: str | None = None
+    text_ai_probabilities: CandidateTextAIProbabilitiesPayload | None = None
     evidence_highlights: list[ClaimEvidenceItem] = Field(default_factory=list)
     top_strengths: list[str] = Field(default_factory=list)
     main_gaps: list[str] = Field(default_factory=list)
@@ -126,6 +145,7 @@ class RankedCandidateSummary(BaseModel):
     merit_score: int
     confidence_score: int
     authenticity_risk: int
+    ai_probability_ai_generated: float | None = None
     shortlist_priority_score: int
     hidden_potential_score: int
     support_needed_score: int

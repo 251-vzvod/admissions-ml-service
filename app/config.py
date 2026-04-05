@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 
-SCORING_VERSION = "v1.4.0"
-SCORING_CONFIG_VERSION = "cfg-v1.5.0"
+SCORING_VERSION = "v1.5.0"
+SCORING_CONFIG_VERSION = "cfg-v1.6.0"
 WEIGHT_EXPERIMENT_PROTOCOL_VERSION = "weights-protocol-v3"
 PROMPT_VERSION: str | None = "llm-explainability-v2-evidence-first"
 
@@ -243,20 +243,26 @@ class SemanticConfig:
 class AIDetectorConfig:
     """Configuration for optional auxiliary AI-generated text detector."""
 
-    enabled: bool = False
-    model: str = "desklib/ai-text-detector-v1.01"
+    enabled: bool = True
+    provider: str = "huggingface-inference"
+    model: str = "fakespot-ai/roberta-base-ai-text-detection-v1:fastest"
     min_words: int = 60
     english_only: bool = True
     elevated_probability_threshold: float = 0.80
+    api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> "AIDetectorConfig":
         return cls(
-            enabled=parse_bool_env("AI_DETECTOR_ENABLED", default=False),
-            model=_strip_wrapping_quotes(os.getenv("AI_DETECTOR_MODEL", "desklib/ai-text-detector-v1.01")),
+            enabled=parse_bool_env("AI_DETECTOR_ENABLED", default=True),
+            provider=_strip_wrapping_quotes(os.getenv("AI_DETECTOR_PROVIDER", "huggingface-inference")),
+            model=_strip_wrapping_quotes(
+                os.getenv("AI_DETECTOR_MODEL", "fakespot-ai/roberta-base-ai-text-detection-v1:fastest")
+            ),
             min_words=_env_int("AI_DETECTOR_MIN_WORDS", 60),
             english_only=parse_bool_env("AI_DETECTOR_ENGLISH_ONLY", default=True),
             elevated_probability_threshold=_env_float("AI_DETECTOR_ELEVATED_PROBABILITY_THRESHOLD", 0.80),
+            api_key=_strip_wrapping_quotes(os.getenv("HF_TOKEN")) if os.getenv("HF_TOKEN") else None,
         )
 
 
