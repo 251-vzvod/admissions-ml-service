@@ -1,4 +1,4 @@
-"""Optional auxiliary detector for AI-generated English text via Hugging Face Inference API."""
+"""Optional auxiliary detector for AI-generated text via Hugging Face Inference API."""
 
 from __future__ import annotations
 
@@ -197,18 +197,6 @@ def _build_source_result(unit: _NamedTextUnit, *, language: str | None) -> AIDet
             question=unit.question,
         )
 
-    if cfg.english_only and language != "en":
-        return AIDetectorSourceResult(
-            source_key=unit.source_key,
-            source_label=unit.source_label,
-            applicable=False,
-            probability_ai_generated=None,
-            provider=provider,
-            model=model,
-            note="english_only_detector_not_applicable",
-            question=unit.question,
-        )
-
     try:
         probability = _predict_probability(unit.text)
     except Exception as exc:
@@ -248,7 +236,7 @@ def _aggregate_probability(units: list[_NamedTextUnit], source_results: list[AID
 
 
 def detect_ai_generated_text(bundle: NormalizedTextBundle) -> AIDetectorResult:
-    """Return aggregate and source-level AI-generation probabilities for English text inputs."""
+    """Return aggregate and source-level AI-generation probabilities for text inputs."""
     cfg = CONFIG.ai_detector
     provider = cfg.provider
     model = cfg.model

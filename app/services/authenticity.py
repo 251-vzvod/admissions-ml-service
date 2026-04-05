@@ -172,7 +172,7 @@ def estimate_authenticity_risk(
         _append_unique_flag(flags, ReviewFlag.AUXILIARY_AI_GENERATION_SIGNAL)
         _append_unique_reason(
             reasons,
-            "Auxiliary English-only AI detector assigned elevated AI-likeness; treat this only as a manual review signal."
+            "Auxiliary AI detector assigned elevated AI-likeness; treat this only as a manual review signal."
         )
     if 0.45 <= risk < 0.70:
         _append_unique_flag(flags, ReviewFlag.MODERATE_AUTHENTICITY_RISK)
